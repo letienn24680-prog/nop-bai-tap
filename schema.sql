@@ -46,10 +46,23 @@ CREATE TABLE IF NOT EXISTS eduproof_submissions (
   resubmit_requested BOOLEAN DEFAULT FALSE
 );
 
--- Cho phép đọc ghi thông qua Anon Key
-ALTER TABLE eduproof_users DISABLE ROW LEVEL SECURITY;
-ALTER TABLE eduproof_assignments DISABLE ROW LEVEL SECURITY;
-ALTER TABLE eduproof_submissions DISABLE ROW LEVEL SECURITY;
+-- Cho phép đọc ghi đầy đủ thông qua Anon Key
+ALTER TABLE eduproof_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE eduproof_assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE eduproof_submissions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public all users" ON eduproof_users;
+CREATE POLICY "Public all users" ON eduproof_users FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public all assignments" ON eduproof_assignments;
+CREATE POLICY "Public all assignments" ON eduproof_assignments FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public all submissions" ON eduproof_submissions;
+CREATE POLICY "Public all submissions" ON eduproof_submissions FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+GRANT ALL ON TABLE eduproof_users TO anon, authenticated;
+GRANT ALL ON TABLE eduproof_assignments TO anon, authenticated;
+GRANT ALL ON TABLE eduproof_submissions TO anon, authenticated;
 
 -- Tạo sẵn tài khoản Admin và Giáo viên mẫu nếu chưa có
 INSERT INTO eduproof_users (id, username, password, name, role, class, subject, teacher_id)
