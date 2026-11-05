@@ -47,6 +47,33 @@ CREATE TABLE IF NOT EXISTS eduproof_submissions (
 );
 
 -- ========================================================
+-- KÍCH HOẠT REALTIME CẬP NHẬT TỨC THÌ
+-- ========================================================
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND tablename = 'eduproof_users'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE eduproof_users;
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND tablename = 'eduproof_assignments'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE eduproof_assignments;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND tablename = 'eduproof_submissions'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE eduproof_submissions;
+  END IF;
+END $$;
+
+-- ========================================================
 -- PHÂN QUYỀN ROW LEVEL SECURITY (RLS) & BẢO VỆ DỮ LIỆU
 -- ========================================================
 ALTER TABLE eduproof_users ENABLE ROW LEVEL SECURITY;
