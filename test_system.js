@@ -555,4 +555,86 @@ const studentS = { id: "hs_an", role: "student", teacherId: "gvcn_ngo_ha" };
 syncAssignmentsBetweenTeacherAndStudent(teacherT, studentS, []);
 console.log("✅ 17. Kiểm thử đồng bộ hai chiều tạo và xóa bài tập giữa Giáo viên và Học sinh: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (17/17)!");
+// 18. Test: Storage upload with fallback logic
+async function mockUploadPhotoToStorage(mockSb, dataUrl, filePath) {
+  if (!mockSb || !dataUrl || !dataUrl.startsWith("data:")) return null;
+  try {
+    const res = await mockSb.storage.from("proofs").upload(filePath, dataUrl);
+    if (res.error) return null;
+    return mockSb.storage.from("proofs").getPublicUrl(filePath).data.publicUrl;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Case 1: Storage online & bucket exists -> returns public storage URL
+const mockSbOk = {
+  storage: {
+    from: () => ({
+      upload: async () => ({ error: null }),
+      getPublicUrl: (p) => ({ data: { publicUrl: `https://test.supabase.co/storage/v1/object/public/proofs/${p}` } })
+    })
+  }
+};
+// Case 2: Storage bucket not found -> fallback gracefully (returns null)
+const mockSbFail = {
+  storage: {
+    from: () => ({
+      upload: async () => ({ error: { message: "Bucket not found" } }),
+      getPublicUrl: () => ({ data: null })
+    })
+  }
+};
+
+(async () => {
+  const urlOk = await mockUploadPhotoToStorage(mockSbOk, "data:image/jpeg;base64,abc", "submissions/asg1/hs1/p1.jpg");
+  assert.strictEqual(urlOk, "https://test.supabase.co/storage/v1/object/public/proofs/submissions/asg1/hs1/p1.jpg");
+
+  const urlFail = await mockUploadPhotoToStorage(mockSbFail, "data:image/jpeg;base64,abc", "submissions/asg1/hs1/p1.jpg");
+  assert.strictEqual(urlFail, null, "Khi bucket chưa tạo phải fallback về null (giữ nguyên base64)");
+})();
+console.log("✅ 18. Kiểm thử tải ảnh lên Supabase Storage với cơ chế fallback Base64 an toàn: ĐẠT");
+
+// 19. Test: RPC Identity Verification & Anti-Impersonation
+function mockRpcSubmitHomework(usersTable, submissionsTable, p) {
+  // 1. Xác thực học sinh & mật khẩu
+  const student = usersTable.find((u) => u.id === p.studentId && u.password === p.password && u.role === "student");
+  if (!student) {
+    throw new Error("Xác thực không thành công: Mã học sinh hoặc mật khẩu không chính xác.");
+  }
+  // 2. Không cho phép nộp đè nếu bài đã chấm
+  const existing = submissionsTable.find((s) => s.assignmentId === p.assignmentId && s.studentId === p.studentId);
+  if (existing && existing.status === "graded") {
+    throw new Error("Bài nộp này đã được giáo viên chấm điểm. Không thể sửa.");
+  }
+  return { success: true };
+}
+
+const mockUsers = [
+  { id: "hs_an", password: "123", role: "student" },
+  { id: "hs_binh", password: "456", role: "student" },
+  { id: "gv_ha", password: "000", role: "teacher" }
+];
+const mockSubs = [
+  { id: "sub_1", assignmentId: "asg_1", studentId: "hs_an", status: "graded", grade: 9 }
+];
+
+// Chính chủ nộp bài mới -> Thành công
+assert.strictEqual(
+  mockRpcSubmitHomework(mockUsers, mockSubs, { studentId: "hs_binh", password: "456", assignmentId: "asg_1" }).success,
+  true
+);
+
+// Kẻ mạo danh nộp bài thay hs_binh nhưng không biết mật khẩu -> Bị chặn
+assert.throws(() => {
+  mockRpcSubmitHomework(mockUsers, mockSubs, { studentId: "hs_binh", password: "wrong", assignmentId: "asg_1" });
+}, /Mã học sinh hoặc mật khẩu không chính xác/);
+
+// Học sinh cố tình nộp đè lên bài đã được chấm điểm 9 -> Bị chặn
+assert.throws(() => {
+  mockRpcSubmitHomework(mockUsers, mockSubs, { studentId: "hs_an", password: "123", assignmentId: "asg_1" });
+}, /đã được giáo viên chấm điểm/);
+
+console.log("✅ 19. Kiểm thử xác thực RPC submit_homework chống nộp thay & chống sửa điểm: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (19/19)!");

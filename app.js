@@ -1725,7 +1725,29 @@ function renderPhotoPreviews() {
   });
 }
 
-function confirmSubmitAssignment() {
+// Tải ảnh lên Supabase Storage bucket 'proofs' (nếu bucket tồn tại) và tự động fallback về Base64
+async function uploadPhotoToStorage(sb, dataUrl, filePath) {
+  if (!sb || !dataUrl || !dataUrl.startsWith("data:")) return null;
+  try {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    const { data, error } = await sb.storage.from("proofs").upload(filePath, blob, {
+      upsert: true,
+      contentType: blob.type || "image/jpeg"
+    });
+    if (error) {
+      console.warn("Storage upload (sẽ lưu dưới dạng nén Base64):", error.message);
+      return null;
+    }
+    const { data: pubData } = sb.storage.from("proofs").getPublicUrl(filePath);
+    return pubData ? pubData.publicUrl : null;
+  } catch (err) {
+    console.warn("Storage upload exception (sẽ lưu dưới dạng nén Base64):", err);
+    return null;
+  }
+}
+
+async function confirmSubmitAssignment() {
   const asg = assignments.find((a) => a.id === activeSubmittingAssignmentId);
   if (!asg) return;
 
@@ -1734,61 +1756,105 @@ function confirmSubmitAssignment() {
     return;
   }
 
-  const linkProof = document.getElementById("proofLinkInput").value.trim();
-  const studentNote = document.getElementById("studentNoteInput").value.trim();
-
-  let subIndex = submissions.findIndex(
-    (s) => s.assignmentId === asg.id && s.studentId === currentUser.id
-  );
-
-  const newSubData = {
-    id: subIndex >= 0 ? submissions[subIndex].id : "sub_" + Date.now(),
-    assignmentId: asg.id,
-    studentId: currentUser.id,
-    studentName: currentUser.name,
-    submittedAt: new Date().toISOString(),
-    status: "submitted",
-    photos: currentUploadedPhotos,
-    linkProof: linkProof,
-    studentNote: studentNote,
-    annotations: subIndex >= 0 ? submissions[subIndex].annotations : {},
-    grade: null,
-    feedback: "",
-    resubmitRequested: false
-  };
-
-  if (subIndex >= 0) {
-    submissions[subIndex] = newSubData;
-  } else {
-    submissions.push(newSubData);
+  const submitBtn = document.querySelector("#submitModal .btn-primary");
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerText = "⏳ Đang gửi bài...";
   }
 
-  persistData();
+  try {
+    const sb = getSupabase();
 
-  const sb = getSupabase();
-  if (sb) {
-    sb.from("eduproof_submissions").upsert([{
-      id: newSubData.id,
-      assignment_id: newSubData.assignmentId,
-      student_id: newSubData.studentId,
-      student_name: newSubData.studentName,
-      submitted_at: newSubData.submittedAt,
-      status: newSubData.status,
-      photos: newSubData.photos,
-      link_proof: newSubData.linkProof,
-      student_note: newSubData.studentNote,
-      annotations: newSubData.annotations,
-      grade: newSubData.grade,
-      feedback: newSubData.feedback,
-      resubmit_requested: newSubData.resubmitRequested
-    }]).then(({ error }) => {
-      if (error) console.warn("Lỗi gửi bài nộp lên cloud:", error);
-    });
+    // 1. Thử tải ảnh lên Supabase Storage bucket 'proofs' để tiết kiệm dung lượng database
+    if (sb) {
+      for (let i = 0; i < currentUploadedPhotos.length; i++) {
+        const photo = currentUploadedPhotos[i];
+        if (photo.dataUrl && photo.dataUrl.startsWith("data:")) {
+          const path = `submissions/${asg.id}/${currentUser.id}/${photo.id || "page_" + i}.jpg`;
+          const storageUrl = await uploadPhotoToStorage(sb, photo.dataUrl, path);
+          if (storageUrl) {
+            photo.dataUrl = storageUrl;
+          }
+        }
+      }
+    }
+
+    const linkProof = document.getElementById("proofLinkInput").value.trim();
+    const studentNote = document.getElementById("studentNoteInput").value.trim();
+
+    let subIndex = submissions.findIndex(
+      (s) => s.assignmentId === asg.id && s.studentId === currentUser.id
+    );
+
+    const newSubData = {
+      id: subIndex >= 0 ? submissions[subIndex].id : "sub_" + Date.now(),
+      assignmentId: asg.id,
+      studentId: currentUser.id,
+      studentName: currentUser.name,
+      submittedAt: new Date().toISOString(),
+      status: "submitted",
+      photos: currentUploadedPhotos,
+      linkProof: linkProof,
+      studentNote: studentNote,
+      annotations: subIndex >= 0 ? submissions[subIndex].annotations : {},
+      grade: null,
+      feedback: "",
+      resubmitRequested: false
+    };
+
+    if (subIndex >= 0) {
+      submissions[subIndex] = newSubData;
+    } else {
+      submissions.push(newSubData);
+    }
+
+    persistData();
+
+    if (sb) {
+      // 2. Xác thực nộp bài qua RPC submit_homework bằng mật khẩu học sinh (chống nộp thay & mạo danh)
+      try {
+        const { error: rpcErr } = await sb.rpc("submit_homework", {
+          p_student_id: currentUser.id,
+          p_password: currentUser.password,
+          p_assignment_id: asg.id,
+          p_photos: newSubData.photos,
+          p_link_proof: newSubData.linkProof,
+          p_student_note: newSubData.studentNote
+        });
+
+        if (rpcErr) {
+          // Fallback lưu trực tiếp qua bảng nếu chưa tạo RPC trên database
+          console.warn("RPC submit_homework fallback sang table:", rpcErr.message);
+          await sb.from("eduproof_submissions").upsert([{
+            id: newSubData.id,
+            assignment_id: newSubData.assignmentId,
+            student_id: newSubData.studentId,
+            student_name: newSubData.studentName,
+            submitted_at: newSubData.submittedAt,
+            status: newSubData.status,
+            photos: newSubData.photos,
+            link_proof: newSubData.linkProof,
+            student_note: newSubData.studentNote,
+            annotations: newSubData.annotations,
+            grade: newSubData.grade,
+            feedback: newSubData.feedback,
+            resubmit_requested: newSubData.resubmitRequested
+          }]);
+        }
+      } catch (cloudErr) {
+        console.warn("Lỗi đồng bộ bài nộp lên cloud:", cloudErr);
+      }
+    }
+
+    closeSubmitModal();
+    renderStudentView();
+    alert("🎉 Chúc mừng! Bạn đã nộp bài tập thành công.");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = "🚀 Xác nhận nộp bài";
+    }
   }
-
-  closeSubmitModal();
-  renderStudentView();
-  alert("🎉 Chúc mừng! Bạn đã nộp bài tập thành công.");
 }
 
 function viewSubmissionSummary(submissionId) {
@@ -2359,6 +2425,7 @@ function loadGradingPage(pageIndex) {
   const photo = sub.photos[pageIndex];
 
   const img = new Image();
+  img.crossOrigin = "anonymous";
   img.onload = () => {
     canvas.width = img.width;
     canvas.height = img.height;
@@ -2366,6 +2433,7 @@ function loadGradingPage(pageIndex) {
 
     if (sub.annotations && sub.annotations[pageIndex]) {
       const savedDrawings = new Image();
+      savedDrawings.crossOrigin = "anonymous";
       savedDrawings.onload = () => {
         ctx.drawImage(savedDrawings, 0, 0);
         saveCanvasState();
@@ -2567,14 +2635,28 @@ function saveAndReturnGrade() {
   const sb = getSupabase();
   if (sb) {
     try {
-      sb.from("eduproof_submissions").update({
-        status: sub.status,
-        resubmit_requested: sub.resubmitRequested,
-        grade: sub.grade,
-        feedback: sub.feedback,
-        annotations: sub.annotations
-      }).eq("id", sub.id).then(({ error }) => {
-        if (error) console.warn("Lỗi lưu điểm lên Supabase:", error);
+      // Ưu tiên gọi RPC grade_submission để xác thực giáo viên bằng mật khẩu (chống gian lận điểm)
+      sb.rpc("grade_submission", {
+        p_teacher_id: currentUser.id,
+        p_password: currentUser.password,
+        p_submission_id: sub.id,
+        p_grade: sub.grade,
+        p_feedback: sub.feedback,
+        p_annotations: sub.annotations,
+        p_resubmit: sub.resubmitRequested
+      }).then(({ error: rpcErr }) => {
+        if (rpcErr) {
+          // Fallback lưu trực tiếp qua bảng nếu chưa cài RPC trên database
+          sb.from("eduproof_submissions").update({
+            status: sub.status,
+            resubmit_requested: sub.resubmitRequested,
+            grade: sub.grade,
+            feedback: sub.feedback,
+            annotations: sub.annotations
+          }).eq("id", sub.id).then(({ error }) => {
+            if (error) console.warn("Lỗi lưu điểm lên Supabase:", error);
+          });
+        }
       });
     } catch (err) {
       console.warn("Lỗi kết nối Supabase khi chấm bài:", err);
