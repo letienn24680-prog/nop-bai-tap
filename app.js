@@ -702,6 +702,320 @@ function copyAccountInfo(username) {
 }
 
 // ==========================================
+// 2A. BATCH IMPORT STUDENTS FROM EXCEL
+// ==========================================
+
+let pendingParsedStudents = [];
+
+function openExcelImportModal() {
+  if (!currentUser || currentUser.role !== "teacher") {
+    alert("Chỉ giáo viên mới có quyền nhập danh sách học sinh.");
+    return;
+  }
+  resetExcelImport();
+  document.getElementById("excelImportModal").style.display = "flex";
+  setupExcelDropzone();
+}
+
+function closeExcelImportModal() {
+  document.getElementById("excelImportModal").style.display = "none";
+}
+
+function resetExcelImport() {
+  pendingParsedStudents = [];
+  const fileInput = document.getElementById("excelStudentFileInput");
+  if (fileInput) fileInput.value = "";
+  const previewSection = document.getElementById("excelPreviewSection");
+  if (previewSection) previewSection.style.display = "none";
+  const dropzone = document.getElementById("excelDropzone");
+  if (dropzone) dropzone.style.display = "block";
+  const btnConfirm = document.getElementById("btnConfirmBatchCreate");
+  if (btnConfirm) {
+    btnConfirm.disabled = true;
+    btnConfirm.innerText = "✅ Tạo tài khoản hàng loạt";
+  }
+}
+
+function setupExcelDropzone() {
+  const dropzone = document.getElementById("excelDropzone");
+  if (!dropzone || dropzone.dataset.initialized) return;
+  dropzone.dataset.initialized = "true";
+
+  dropzone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropzone.classList.add("dragover");
+  });
+
+  dropzone.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    dropzone.classList.remove("dragover");
+  });
+
+  dropzone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropzone.classList.remove("dragover");
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleExcelFile(e.dataTransfer.files[0]);
+    }
+  });
+}
+
+function handleExcelFileInput(event) {
+  const file = event.target.files && event.target.files[0];
+  if (file) {
+    handleExcelFile(file);
+  }
+}
+
+function normalizeHeaderKey(key) {
+  return (key || "")
+    .toString()
+    .toLowerCase()
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "d")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function generateCleanUsername(name, existingUsernames) {
+  const clean = (name || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9\s]/g, "")
+    .trim();
+  const parts = clean.split(/\s+/);
+  const lastName = parts[parts.length - 1] || "hs";
+  let base = `hs_${lastName}`;
+  let candidate = base;
+  let counter = 1;
+  while (existingUsernames.has(candidate) || users.some((u) => u.username === candidate)) {
+    counter++;
+    candidate = `${base}${counter}`;
+  }
+  return candidate;
+}
+
+function handleExcelFile(file) {
+  if (typeof XLSX === "undefined") {
+    alert("Thư viện đọc Excel (SheetJS) chưa sẵn sàng. Vui lòng kiểm tra kết nối mạng!");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+      if (!rows || rows.length === 0) {
+        alert("File Excel không có dữ liệu học sinh!");
+        return;
+      }
+
+      const defaultClass = currentUser.class || "12A1";
+      const existingUsernames = new Set(users.map((u) => u.username));
+      const parsedList = [];
+
+      rows.forEach((row, index) => {
+        let nameVal = "";
+        let usernameVal = "";
+        let classVal = "";
+        let passwordVal = "";
+
+        Object.keys(row).forEach((col) => {
+          const norm = normalizeHeaderKey(col);
+          const val = (row[col] !== undefined && row[col] !== null) ? row[col].toString().trim() : "";
+
+          if (norm.includes("tendangnhap") || norm.includes("dangnhap") || norm.includes("taikhoan") || norm.includes("username") || norm === "user" || norm.includes("mahs") || norm.includes("mssv")) {
+            if (!usernameVal) usernameVal = val;
+          } else if (norm.includes("ten") || norm.includes("hoten") || norm.includes("hovaten") || norm.includes("fullname") || norm === "name" || norm.includes("hocsinh")) {
+            if (!nameVal) nameVal = val;
+          } else if (norm.includes("lop") || norm.includes("class") || norm.includes("grade")) {
+            if (!classVal) classVal = val;
+          } else if (norm.includes("matkhau") || norm.includes("password") || norm.includes("pass") || norm === "mk") {
+            if (!passwordVal) passwordVal = val;
+          }
+        });
+
+        if (!nameVal) return;
+
+        if (!usernameVal) {
+          usernameVal = generateCleanUsername(nameVal, existingUsernames);
+        }
+
+        if (!passwordVal) {
+          passwordVal = "123456";
+        }
+
+        if (!classVal) {
+          classVal = defaultClass;
+        }
+
+        existingUsernames.add(usernameVal);
+
+        parsedList.push({
+          id: "hs_" + Date.now() + "_" + index,
+          name: nameVal,
+          username: usernameVal,
+          class: classVal,
+          password: passwordVal,
+          role: "student",
+          teacherId: currentUser.id
+        });
+      });
+
+      if (parsedList.length === 0) {
+        alert("Không tìm thấy thông tin học sinh hợp lệ. Vui lòng tải file mẫu để xem định dạng chuẩn.");
+        return;
+      }
+
+      pendingParsedStudents = parsedList;
+      displayExcelPreview(parsedList);
+    } catch (err) {
+      console.error("Lỗi đọc file Excel:", err);
+      alert("Không thể đọc file Excel này: " + err.message);
+    }
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+function displayExcelPreview(list) {
+  const previewSection = document.getElementById("excelPreviewSection");
+  const countText = document.getElementById("excelParsedCountText");
+  const tbody = document.getElementById("excelPreviewTableBody");
+  const btnConfirm = document.getElementById("btnConfirmBatchCreate");
+
+  countText.innerText = `✅ Đã nhận diện ${list.length} học sinh sẵn sàng tạo tài khoản`;
+
+  tbody.innerHTML = list
+    .map(
+      (s, idx) => `
+      <tr>
+        <td>${idx + 1}</td>
+        <td><strong>${s.name}</strong></td>
+        <td><code>${s.username}</code></td>
+        <td>${s.class}</td>
+        <td><code>${s.password}</code></td>
+      </tr>
+    `
+    )
+    .join("");
+
+  previewSection.style.display = "block";
+  btnConfirm.disabled = false;
+  btnConfirm.innerText = `✅ Tạo ${list.length} tài khoản học sinh`;
+}
+
+async function confirmBatchCreateStudents() {
+  if (!pendingParsedStudents || pendingParsedStudents.length === 0) {
+    alert("Không có danh sách học sinh để tạo.");
+    return;
+  }
+
+  const btnConfirm = document.getElementById("btnConfirmBatchCreate");
+  btnConfirm.disabled = true;
+  btnConfirm.innerText = "⏳ Đang tạo tài khoản...";
+
+  pendingParsedStudents.forEach((newS) => {
+    const existingIdx = users.findIndex((u) => u.username === newS.username);
+    if (existingIdx >= 0) {
+      users[existingIdx] = newS;
+    } else {
+      users.push(newS);
+    }
+  });
+
+  persistData();
+
+  const sb = getSupabase();
+  if (sb) {
+    try {
+      const payloads = pendingParsedStudents.map((s) => ({
+        id: s.id,
+        username: s.username,
+        password: s.password,
+        name: s.name,
+        role: "student",
+        class: s.class,
+        teacher_id: currentUser.id
+      }));
+
+      await sb.from("eduproof_users").upsert(payloads);
+    } catch (err) {
+      console.warn("Lỗi kết nối Supabase:", err);
+    }
+  }
+
+  const shareLines = pendingParsedStudents.map(
+    (s, idx) => `${idx + 1}. ${s.name} (Lớp ${s.class}): TK: ${s.username} | MK: ${s.password}`
+  );
+  const shareMsg = `📋 DANH SÁCH TÀI KHOẢN HỌC SINH NỘP BÀI TẬP EDUPROOF:\n${shareLines.join("\n")}\n\n👉 Các em học sinh đăng nhập vào hệ thống để nộp bài tập về nhà đúng hạn nhé!`;
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(shareMsg);
+  }
+
+  const createdCount = pendingParsedStudents.length;
+  closeExcelImportModal();
+  renderTeacherView();
+
+  alert(
+    `🎉 ĐÃ TỰ ĐỘNG TẠO THÀNH CÔNG ${createdCount} TÀI KHOẢN HỌC SINH!\n\n` +
+    `📋 Danh sách tài khoản đã được tự động sao chép vào bộ nhớ tạm (Clipboard).\n` +
+    `Thầy/Cô có thể nhấn Ctrl+V dán ngay vào nhóm Zalo/Facebook của lớp.`
+  );
+}
+
+function downloadStudentTemplateExcel() {
+  if (typeof XLSX === "undefined") {
+    alert("Thư viện Excel đang tải, vui lòng kiểm tra kết nối mạng và thử lại sau.");
+    return;
+  }
+
+  const sampleData = [
+    { "Họ và tên": "Nguyễn Văn An", "Tên đăng nhập": "hs_an", "Lớp": "12A1", "Mật khẩu": "123456" },
+    { "Họ và tên": "Trần Thị Mai", "Tên đăng nhập": "hs_mai", "Lớp": "12A1", "Mật khẩu": "123456" },
+    { "Họ và tên": "Lê Hoàng Nam", "Tên đăng nhập": "hs_nam", "Lớp": "12A1", "Mật khẩu": "123456" },
+    { "Họ và tên": "Phạm Thu Hà", "Tên đăng nhập": "hs_ha", "Lớp": "12A1", "Mật khẩu": "123456" },
+    { "Họ và tên": "Đỗ Quang Minh", "Tên đăng nhập": "hs_minh", "Lớp": "12A1", "Mật khẩu": "123456" }
+  ];
+
+  const ws = XLSX.utils.json_to_sheet(sampleData);
+  ws["!cols"] = [{ wch: 22 }, { wch: 18 }, { wch: 10 }, { wch: 14 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "DanhSachHocSinh");
+  XLSX.writeFile(wb, "Mau_Danh_Sach_Hoc_Sinh_EduProof.xlsx");
+}
+
+function copyAllStudentAccounts() {
+  const myStudents = users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
+  if (myStudents.length === 0) {
+    alert("Chưa có tài khoản học sinh nào trong danh sách.");
+    return;
+  }
+
+  const lines = myStudents.map(
+    (s, idx) => `${idx + 1}. ${s.name} - Lớp ${s.class || ""}\n   👉 Tên đăng nhập: ${s.username} | Mật khẩu: ${s.password}`
+  );
+  const text = `📋 DANH SÁCH TÀI KHOẢN NỘP BÀI TẬP EDUPROOF (${currentUser.name}):\n\n${lines.join("\n\n")}\n\n👉 Các em học sinh đăng nhập vào hệ thống để nhận đề và nộp bài đúng hạn nhé!`;
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text);
+    alert(`Đã sao chép danh sách ${myStudents.length} tài khoản học sinh!\nThầy/Cô có thể dán (Ctrl+V) gửi ngay vào nhóm Zalo lớp.`);
+  } else {
+    alert(text);
+  }
+}
+
+// ==========================================
 // 2B. ADMIN VIEW LOGIC (QUẢN LÝ GIÁO VIÊN & HỌC SINH TOÀN TRƯỜNG)
 // ==========================================
 

@@ -331,4 +331,85 @@ assert.strictEqual(cloudSubs.rows[0].grade, 10);
 assert.strictEqual(cloudSubs.rows[0].feedback, "Đã chỉnh sửa hoàn hảo");
 console.log("✅ 11. Kiểm thử vòng đời đồng bộ đám mây liên thông Giáo viên - Học sinh: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (11/11)!");
+// 12. Test: Excel Batch Student Row Parsing & Normalization
+function normalizeHeaderKey(key) {
+  return (key || "")
+    .toString()
+    .toLowerCase()
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "d")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function parseMockExcelRows(rows, teacherId, defaultClass) {
+  const result = [];
+  rows.forEach((row, idx) => {
+    let name = "";
+    let username = "";
+    let studentClass = "";
+    let password = "";
+
+    Object.keys(row).forEach((col) => {
+      const norm = normalizeHeaderKey(col);
+      const val = row[col] ? row[col].toString().trim() : "";
+      if (norm.includes("tendangnhap") || norm.includes("dangnhap") || norm.includes("taikhoan") || norm.includes("username") || norm === "user" || norm.includes("mahs")) {
+        if (!username) username = val;
+      } else if (norm.includes("ten") || norm.includes("hoten") || norm.includes("hovaten") || norm.includes("fullname") || norm === "name" || norm.includes("hocsinh")) {
+        if (!name) name = val;
+      } else if (norm.includes("lop") || norm.includes("class")) {
+        if (!studentClass) studentClass = val;
+      } else if (norm.includes("matkhau") || norm.includes("password") || norm === "mk") {
+        if (!password) password = val;
+      }
+    });
+
+    if (!name) return; // skip row without name
+
+    result.push({
+      id: "hs_" + Date.now() + "_" + idx,
+      name,
+      username: username || ("hs_" + idx),
+      class: studentClass || defaultClass,
+      password: password || "123456",
+      role: "student",
+      teacherId
+    });
+  });
+  return result;
+}
+
+const rawExcelSample = [
+  { "Họ và tên": "Đặng Thị Thảo", "Tên đăng nhập": "hs_thao", "Lớp": "12A1", "Mật khẩu": "pass123" },
+  { "Tên học sinh": "Bùi Tuấn Anh", "Tài khoản": "hs_tuananh", "Lớp học": "12A1", "MK": "000000" },
+  { "name": "Vũ Lan Hương", "username": "", "class": "", "password": "" }, // missing optional fields
+  { "Ghi chú": "Không phải học sinh" } // invalid row to skip
+];
+
+const parsedStudents = parseMockExcelRows(rawExcelSample, "gvcn_ngo_ha", "12A1");
+assert.strictEqual(parsedStudents.length, 3, "Chỉ 3 dòng có tên hợp lệ được parse");
+assert.strictEqual(parsedStudents[0].name, "Đặng Thị Thảo");
+assert.strictEqual(parsedStudents[0].password, "pass123");
+assert.strictEqual(parsedStudents[1].username, "hs_tuananh");
+assert.strictEqual(parsedStudents[2].name, "Vũ Lan Hương");
+assert.strictEqual(parsedStudents[2].class, "12A1", "Tự động gán lớp mặc định nếu trống");
+assert.strictEqual(parsedStudents[2].password, "123456", "Tự động gán mật khẩu 123456 nếu trống");
+assert.strictEqual(parsedStudents[2].teacherId, "gvcn_ngo_ha", "Gán đúng quyền quản lý cho giáo viên");
+console.log("✅ 12. Kiểm thử nhận diện và chuẩn hóa cột dữ liệu Excel đa dạng: ĐẠT");
+
+// 13. Test: Batch Student Creation to Supabase Cloud Payload
+const cloudBatchPayload = parsedStudents.map((s) => ({
+  id: s.id,
+  username: s.username,
+  password: s.password,
+  name: s.name,
+  role: s.role,
+  class: s.class,
+  teacher_id: s.teacherId
+}));
+assert.strictEqual(cloudBatchPayload.length, 3);
+assert.strictEqual(cloudBatchPayload[0].teacher_id, "gvcn_ngo_ha");
+console.log("✅ 13. Kiểm thử đóng gói dữ liệu hàng loạt đẩy lên Supabase Cloud: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (13/13)!");

@@ -752,3 +752,20 @@ body {
 .data-table tr:hover {
   background: #FBFCFD;
 }
+
+/* Excel Import Dropzone */
+.excel-dropzone {
+  border: 2px dashed #CBD5E1;
+  border-radius: var(--radius-md);
+  padding: 1.75rem 1.25rem;
+  text-align: center;
+  background: #F8FAFC;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.excel-dropzone:hover,
+.excel-dropzone.dragover {
+  border-color: var(--primary);
+  background: #EEF2FF;
+}

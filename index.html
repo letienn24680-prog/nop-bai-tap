@@ -180,9 +180,12 @@
           <h1 class="view-title">Phòng Quản lý & Chấm bài</h1>
           <p class="view-desc">Theo dõi tiến độ nộp bài của lớp 12A1 và chữa bài trực tiếp trên ảnh.</p>
         </div>
-        <div style="display: flex; gap: 0.5rem;">
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="btn btn-secondary" onclick="openExcelImportModal()">
+            📥 Nhập Excel học sinh
+          </button>
           <button class="btn btn-secondary" onclick="openCreateStudentModal()">
-            👥 Cấp tài khoản học sinh
+            👥 Cấp tài khoản lẻ
           </button>
           <button class="btn btn-primary" onclick="openCreateAssignmentModal()">
             ➕ Tạo bài tập mới
@@ -256,9 +259,20 @@
                 Chỉ có giáo viên mới có quyền tạo và cấp phát tài khoản nộp bài tập cho học sinh.
               </p>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="openCreateStudentModal()">
-              ➕ Cấp tài khoản mới
-            </button>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button class="btn btn-secondary btn-sm" onclick="downloadStudentTemplateExcel()">
+                📄 Tải file mẫu Excel
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="openExcelImportModal()">
+                📥 Nhập từ Excel
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="openCreateStudentModal()">
+                ➕ Cấp tài khoản lẻ
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="copyAllStudentAccounts()">
+                📋 Sao chép danh sách gửi Zalo
+              </button>
+            </div>
           </div>
 
           <table class="data-table" id="studentAccountsTable">
@@ -595,6 +609,79 @@
       </div>
     </div>
   </div>
+
+  <!-- ==================== MODAL 5: IMPORT STUDENTS EXCEL MODAL ==================== -->
+  <div id="excelImportModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.1rem; font-weight: 700;">Nhập danh sách học sinh từ file Excel</h3>
+        <button class="tool-icon-btn" onclick="closeExcelImportModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="margin-bottom: 1rem; font-size: 0.82rem; color: var(--text-muted);">
+          Hệ thống hỗ trợ file <strong>.xlsx, .xls, .csv</strong>. Các cột chuẩn trong file: 
+          <code style="background: #EEF2FF; padding: 2px 6px; border-radius: 4px; color: var(--primary);">Họ và tên</code>, 
+          <code style="background: #EEF2FF; padding: 2px 6px; border-radius: 4px; color: var(--primary);">Tên đăng nhập</code>, 
+          <code style="background: #EEF2FF; padding: 2px 6px; border-radius: 4px; color: var(--primary);">Lớp</code>, 
+          <code style="background: #EEF2FF; padding: 2px 6px; border-radius: 4px; color: var(--primary);">Mật khẩu</code>.
+        </div>
+
+        <!-- Drag & Drop Zone -->
+        <div class="excel-dropzone" id="excelDropzone" onclick="document.getElementById('excelStudentFileInput').click()">
+          <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">📊</div>
+          <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0.3rem;">
+            Kéo thả file Excel vào đây hoặc <span style="color: var(--primary); text-decoration: underline;">bấm để chọn file</span>
+          </div>
+          <div style="font-size: 0.76rem; color: var(--text-muted);">
+            Hỗ trợ file .xlsx, .xls, .csv từ Excel, Google Sheets
+          </div>
+          <input type="file" id="excelStudentFileInput" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleExcelFileInput(event)">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 0.5rem;">
+          <button class="btn btn-secondary btn-sm" onclick="downloadStudentTemplateExcel()">
+            📥 Tải file mẫu chuẩn (.xlsx)
+          </button>
+        </div>
+
+        <!-- Preview Area after Upload -->
+        <div id="excelPreviewSection" style="display: none; margin-top: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <strong id="excelParsedCountText" style="font-size: 0.9rem; color: #16A34A;">Đã phát hiện 0 học sinh hợp lệ</strong>
+            <button class="btn btn-secondary btn-sm" onclick="resetExcelImport()">Chọn lại file</button>
+          </div>
+
+          <div style="max-height: 220px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px;">
+            <table class="data-table" style="font-size: 0.78rem;">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Họ và tên</th>
+                  <th>Tên đăng nhập</th>
+                  <th>Lớp</th>
+                  <th>Mật khẩu</th>
+                </tr>
+              </thead>
+              <tbody id="excelPreviewTableBody">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeExcelImportModal()">Đóng</button>
+        <button class="btn btn-primary" id="btnConfirmBatchCreate" disabled onclick="confirmBatchCreateStudents()">
+          ✅ Tạo tài khoản hàng loạt
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SheetJS (Excel Parser) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <!-- Supabase Cloud SDK & Configuration -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
