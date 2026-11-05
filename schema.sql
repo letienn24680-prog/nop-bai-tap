@@ -71,16 +71,17 @@ DROP POLICY IF EXISTS "Allow all assignments" ON eduproof_assignments;
 CREATE POLICY "Allow all assignments" ON eduproof_assignments FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- 3. Bảng eduproof_submissions:
--- Cho phép Học sinh nộp bài (INSERT), xem bài (SELECT), sửa bài nộp hoặc Giáo viên chấm điểm (UPDATE).
--- TUYỆT ĐỐI KHÔNG CẤP QUYỀN DELETE: Ngăn chặn kẻ xấu xóa sạch bài nộp của lớp.
+-- Cho phép Học sinh nộp bài (INSERT), xem bài (SELECT), sửa bài nộp hoặc Giáo viên chấm điểm (UPDATE) và xóa khi xóa đợt bài (DELETE).
 DROP POLICY IF EXISTS "Public all submissions" ON eduproof_submissions;
 DROP POLICY IF EXISTS "Allow select submissions" ON eduproof_submissions;
 DROP POLICY IF EXISTS "Allow insert submissions" ON eduproof_submissions;
 DROP POLICY IF EXISTS "Allow update submissions" ON eduproof_submissions;
+DROP POLICY IF EXISTS "Allow delete submissions" ON eduproof_submissions;
 
 CREATE POLICY "Allow select submissions" ON eduproof_submissions FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY "Allow insert submissions" ON eduproof_submissions FOR INSERT TO anon, authenticated WITH CHECK (student_id IS NOT NULL);
 CREATE POLICY "Allow update submissions" ON eduproof_submissions FOR UPDATE TO anon, authenticated USING (true);
+CREATE POLICY "Allow delete submissions" ON eduproof_submissions FOR DELETE TO anon, authenticated USING (true);
 
 GRANT ALL ON TABLE eduproof_users TO anon, authenticated;
 GRANT ALL ON TABLE eduproof_assignments TO anon, authenticated;

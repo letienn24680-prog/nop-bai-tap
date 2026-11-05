@@ -458,33 +458,42 @@ async function syncCloudData(notify = false) {
     }
 
     // 2. Sync Assignments
-    if (asgRes.data && asgRes.data.length > 0) {
-      assignments = asgRes.data.map((a) => ({
-        id: a.id,
-        teacherId: a.teacher_id,
-        title: a.title,
-        subject: a.subject,
-        deadline: a.deadline,
-        description: a.description,
-        minPhotos: a.min_photos,
-        allowLink: a.allow_link,
-        allowNote: a.allow_note,
-        createdAt: a.created_at
-      }));
-    } else if (assignments.length > 0) {
-      const asgPayloads = assignments.map((a) => ({
-        id: a.id,
-        teacher_id: a.teacherId,
-        title: a.title,
-        subject: a.subject,
-        deadline: a.deadline,
-        description: a.description,
-        min_photos: a.minPhotos || 1,
-        allow_link: a.allowLink !== false,
-        allow_note: a.allowNote !== false,
-        created_at: a.createdAt || new Date().toISOString()
-      }));
-      await sb.from("eduproof_assignments").upsert(asgPayloads);
+    if (asgRes.data) {
+      if (asgRes.data.length > 0) {
+        assignments = asgRes.data.map((a) => ({
+          id: a.id,
+          teacherId: a.teacher_id,
+          title: a.title,
+          subject: a.subject,
+          deadline: a.deadline,
+          description: a.description,
+          minPhotos: a.min_photos,
+          allowLink: a.allow_link,
+          allowNote: a.allow_note,
+          createdAt: a.created_at
+        }));
+        localStorage.setItem("eduproof_cloud_bootstrapped", "true");
+      } else {
+        const hasBootstrapped = localStorage.getItem("eduproof_cloud_bootstrapped");
+        if (!hasBootstrapped && assignments.length > 0) {
+          const asgPayloads = assignments.map((a) => ({
+            id: a.id,
+            teacher_id: a.teacherId,
+            title: a.title,
+            subject: a.subject,
+            deadline: a.deadline,
+            description: a.description,
+            min_photos: a.minPhotos || 1,
+            allow_link: a.allowLink !== false,
+            allow_note: a.allowNote !== false,
+            created_at: a.createdAt || new Date().toISOString()
+          }));
+          await sb.from("eduproof_assignments").upsert(asgPayloads);
+          localStorage.setItem("eduproof_cloud_bootstrapped", "true");
+        } else {
+          assignments = [];
+        }
+      }
     }
 
     // 3. Sync Submissions
@@ -2162,22 +2171,41 @@ function renderTeacherAssignments(myAssignmentsList) {
   });
 }
 
-function deleteAssignment(assignmentId) {
+async function deleteAssignment(assignmentId) {
+  if (!assignmentId) return;
   const asg = assignments.find((a) => a.id === assignmentId);
-  if (!asg) return;
+  const title = asg ? asg.title : "này";
 
-  if (confirm(`Bạn có chắc chắn muốn xóa bài tập "${asg.title}"?\n\nLưu ý: Mọi bài nộp của học sinh liên quan đến bài tập này cũng sẽ bị xóa bỏ hoàn toàn.`)) {
-    assignments = assignments.filter((a) => a.id !== assignmentId);
-    submissions = submissions.filter((s) => s.assignmentId !== assignmentId);
-
-    if (selectedCampaignId === assignmentId) {
-      selectedCampaignId = assignments.length > 0 ? assignments[0].id : null;
-    }
-
-    persistData();
-    renderTeacherView();
-    alert("Đã xóa bài tập thành công.");
+  if (!confirm(`Bạn có chắc chắn muốn xóa bài tập "${title}"?\n\nLưu ý: Mọi bài nộp của học sinh liên quan đến bài tập này cũng sẽ bị xóa bỏ hoàn toàn trên cả thiết bị và Supabase Cloud.`)) {
+    return;
   }
+
+  assignments = assignments.filter((a) => a.id !== assignmentId);
+  submissions = submissions.filter((s) => s.assignmentId !== assignmentId);
+
+  if (selectedCampaignId === assignmentId) {
+    selectedCampaignId = assignments.length > 0 ? assignments[0].id : null;
+    localStorage.setItem("eduproof_selected_campaign", selectedCampaignId || "");
+  }
+
+  persistData();
+
+  // Xóa trực tiếp trên Supabase Cloud ngay lập tức
+  const sb = getSupabase();
+  if (sb) {
+    try {
+      await Promise.all([
+        sb.from("eduproof_assignments").delete().eq("id", assignmentId),
+        sb.from("eduproof_submissions").delete().eq("assignment_id", assignmentId)
+      ]);
+      console.log("✅ Đã xóa bài tập trên Supabase Cloud:", assignmentId);
+    } catch (err) {
+      console.warn("Lỗi xóa bài tập trên Cloud:", err);
+    }
+  }
+
+  renderTeacherView();
+  alert("Đã xóa bài tập thành công.");
 }
 
 // Student Accounts Management
@@ -2534,6 +2562,25 @@ function saveAndReturnGrade() {
   }
 
   persistData();
+
+  // Đồng bộ kết quả chấm bài lên Supabase Cloud
+  const sb = getSupabase();
+  if (sb) {
+    try {
+      sb.from("eduproof_submissions").update({
+        status: sub.status,
+        resubmit_requested: sub.resubmitRequested,
+        grade: sub.grade,
+        feedback: sub.feedback,
+        annotations: sub.annotations
+      }).eq("id", sub.id).then(({ error }) => {
+        if (error) console.warn("Lỗi lưu điểm lên Supabase:", error);
+      });
+    } catch (err) {
+      console.warn("Lỗi kết nối Supabase khi chấm bài:", err);
+    }
+  }
+
   closeGradingStudio();
   renderCurrentView();
   alert(requestResubmit ? "Đã gửi thông báo yêu cầu học sinh chụp nộp lại!" : "Đã lưu điểm và trả bài thành công!");
@@ -2554,7 +2601,7 @@ function closeCreateAssignmentModal() {
   document.getElementById("createAssignmentModal").style.display = "none";
 }
 
-function confirmCreateAssignment() {
+async function confirmCreateAssignment() {
   const title = document.getElementById("newTitleInput").value.trim();
   const subject = document.getElementById("newSubjectInput").value;
   const deadline = document.getElementById("newDeadlineInput").value;
@@ -2582,10 +2629,38 @@ function confirmCreateAssignment() {
 
   assignments.unshift(newAsg);
   selectedCampaignId = newAsg.id;
+  localStorage.setItem("eduproof_selected_campaign", newAsg.id);
   persistData();
+
+  // Đẩy trực tiếp lên Supabase Cloud để tài khoản Học sinh nhận được ngay lập tức
+  const sb = getSupabase();
+  if (sb) {
+    try {
+      const { error } = await sb.from("eduproof_assignments").insert([{
+        id: newAsg.id,
+        teacher_id: newAsg.teacherId,
+        title: newAsg.title,
+        subject: newAsg.subject,
+        deadline: newAsg.deadline,
+        description: newAsg.description,
+        min_photos: newAsg.minPhotos,
+        allow_link: newAsg.allowLink,
+        allow_note: newAsg.allowNote,
+        created_at: newAsg.createdAt
+      }]);
+      if (error) {
+        console.warn("Lỗi lưu bài tập lên Supabase:", error);
+      } else {
+        console.log("✅ Đã lưu bài tập mới lên Supabase Cloud thành công:", newAsg.id);
+      }
+    } catch (err) {
+      console.warn("Lỗi kết nối Supabase khi tạo bài tập:", err);
+    }
+  }
+
   closeCreateAssignmentModal();
   renderCurrentView();
-  alert("Đã tạo bài tập mới thành công!");
+  alert("🎉 Đã tạo bài tập mới và đồng bộ thành công lên hệ thống!");
 }
 
 window.addEventListener("DOMContentLoaded", initData);

@@ -223,13 +223,18 @@
       <div id="teacherCampaignTab" style="display: none;">
         <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); padding: 1.25rem; margin-bottom: 1.25rem;">
           <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
-            <div>
-              <label style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">
-                CHỌN ĐỢT BÀI TẬP CẦN THEO DÕI NỘP BÀI:
-              </label>
-              <select id="campaignSelectBox" class="form-select" style="min-width: 320px; font-weight: 600;" onchange="handleCampaignSelectChange(this.value)">
-                <!-- Options rendered dynamically -->
-              </select>
+            <div style="display: flex; align-items: flex-end; gap: 0.75rem; flex-wrap: wrap;">
+              <div>
+                <label style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">
+                  CHỌN ĐỢT BÀI TẬP CẦN THEO DÕI NỘP BÀI:
+                </label>
+                <select id="campaignSelectBox" class="form-select" style="min-width: 320px; font-weight: 600;" onchange="handleCampaignSelectChange(this.value)">
+                  <!-- Options rendered dynamically -->
+                </select>
+              </div>
+              <button class="btn btn-danger btn-sm" onclick="deleteAssignment(selectedCampaignId)" title="Xóa đợt bài tập này và toàn bộ bài nộp liên quan">
+                🗑️ Xóa đợt bài này
+              </button>
             </div>
             <div id="campaignDeadlineNotice" style="font-size: 0.85rem; color: var(--text-muted);">
               <!-- Rendered dynamically -->
@@ -242,8 +247,24 @@
         </div>
       </div>
 
-      <!-- Tab 3: Assignments Tab Content -->
+      <!-- Tab 3: Assignments Tab Content (Toàn bộ bài tập đã giao) -->
       <div id="teacherAssignmentsTab" style="display: none;">
+        <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); padding: 1.25rem; margin-bottom: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+              <h3 style="font-size: 1.1rem; font-weight: 700;">Danh sách toàn bộ bài tập đã giao</h3>
+              <p style="font-size: 0.78rem; color: var(--text-muted);">
+                Theo dõi tiến độ, hạn nộp và có thể xóa bất kỳ bài tập nào đã giao nhầm hoặc hoàn thành.
+              </p>
+            </div>
+            <div>
+              <button class="btn btn-primary btn-sm" onclick="openCreateAssignmentModal()">
+                ➕ Giao bài tập mới
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="assignment-grid" id="teacherAssignmentsList">
           <!-- Rendered dynamically -->
         </div>

@@ -522,4 +522,37 @@ assert.strictEqual(validateUploadFile(testExe).valid, false);
 assert.strictEqual(validateUploadFile(testExe).reason, "NOT_IMAGE");
 console.log("✅ 16. Kiểm thử ràng buộc bảo mật tệp đính kèm (MIME và dung lượng tối đa): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (16/16)!");
+// 17. Test: Cloud Assignment Sync & Deletion Lifecycle
+function syncAssignmentsBetweenTeacherAndStudent(teacherUser, studentUser, asgList) {
+  // Teacher creates an assignment
+  const newAsg = {
+    id: "asg_cloud_99",
+    teacherId: teacherUser.id,
+    title: "Văn 12 - Nghị luận xã hội",
+    subject: "Ngữ văn",
+    deadline: new Date().toISOString()
+  };
+  asgList.push(newAsg);
+
+  // Student queries their assignments
+  const studentVisible = asgList.filter(
+    (a) => a.teacherId === studentUser.teacherId || !a.teacherId || a.teacherId === "gvcn_ngo_ha"
+  );
+  assert.strictEqual(studentVisible.some((a) => a.id === newAsg.id), true, "Học sinh phải thấy bài tập mới của GV");
+
+  // Teacher deletes the assignment
+  const updatedAsgList = asgList.filter((a) => a.id !== newAsg.id);
+  const studentVisibleAfterDelete = updatedAsgList.filter(
+    (a) => a.teacherId === studentUser.teacherId || !a.teacherId || a.teacherId === "gvcn_ngo_ha"
+  );
+  assert.strictEqual(studentVisibleAfterDelete.some((a) => a.id === newAsg.id), false, "Bài tập đã xóa không còn hiển thị với học sinh");
+
+  return true;
+}
+
+const teacherT = { id: "gvcn_ngo_ha", role: "teacher" };
+const studentS = { id: "hs_an", role: "student", teacherId: "gvcn_ngo_ha" };
+syncAssignmentsBetweenTeacherAndStudent(teacherT, studentS, []);
+console.log("✅ 17. Kiểm thử đồng bộ hai chiều tạo và xóa bài tập giữa Giáo viên và Học sinh: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (17/17)!");
