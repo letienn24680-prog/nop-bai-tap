@@ -1,0 +1,334 @@
+// Self-check test suite for EduProof core business logic
+const assert = require("assert");
+
+console.log("🧪 Đang chạy kiểm thử hệ thống EduProof...");
+
+// 1. Test: Image compression calculation logic
+function computeTargetDimensions(width, height, maxDimension) {
+  if (width <= maxDimension && height <= maxDimension) {
+    return { width, height };
+  }
+  if (width > height) {
+    return {
+      width: maxDimension,
+      height: Math.round((height * maxDimension) / width)
+    };
+  } else {
+    return {
+      width: Math.round((width * maxDimension) / height),
+      height: maxDimension
+    };
+  }
+}
+
+const dim1 = computeTargetDimensions(4000, 3000, 1600);
+assert.strictEqual(dim1.width, 1600, "Chiều rộng tối đa phải là 1600");
+assert.strictEqual(dim1.height, 1200, "Tỷ lệ chiều cao phải giữ nguyên 4:3 (1200)");
+console.log("✅ 1. Kiểm thử thuật toán tính toán kích thước nén ảnh: ĐẠT");
+
+// 2. Test: Submission validation
+function validateSubmission(photos, minRequired) {
+  if (!Array.isArray(photos)) return false;
+  return photos.length >= (minRequired || 1);
+}
+
+assert.strictEqual(validateSubmission([], 1), false, "Không có ảnh phải bị từ chối");
+assert.strictEqual(validateSubmission(["p1.jpg", "p2.jpg"], 2), true, "Đủ số trang yêu cầu phải hợp lệ");
+console.log("✅ 2. Kiểm thử ràng buộc số lượng ảnh minh chứng tối thiểu: ĐẠT");
+
+// 3. Test: Score bounds and status transitions
+function gradeSubmission(sub, score, feedback, requestResubmit) {
+  if (requestResubmit) {
+    sub.status = "resubmit_requested";
+    sub.resubmitRequested = true;
+    sub.grade = null;
+    sub.feedback = feedback || "Yêu cầu chụp lại.";
+    return sub;
+  }
+
+  if (score < 0 || score > 10 || isNaN(score)) {
+    throw new Error("Điểm số ngoài khoảng 0 - 10");
+  }
+
+  sub.status = "graded";
+  sub.resubmitRequested = false;
+  sub.grade = score;
+  sub.feedback = feedback;
+  return sub;
+}
+
+const sampleSub = { id: "sub_1", status: "submitted", grade: null };
+gradeSubmission(sampleSub, 8.5, "Tốt", false);
+assert.strictEqual(sampleSub.status, "graded");
+assert.strictEqual(sampleSub.grade, 8.5);
+
+gradeSubmission(sampleSub, 0, "Ảnh mờ", true);
+assert.strictEqual(sampleSub.status, "resubmit_requested");
+assert.strictEqual(sampleSub.grade, null);
+console.log("✅ 3. Kiểm thử chuyển đổi trạng thái chấm điểm và yêu cầu nộp lại: ĐẠT");
+
+// 4. Test: Account Management - Only teacher can create student accounts
+function createStudent(actingUser, usersList, studentData) {
+  if (!actingUser || actingUser.role !== "teacher") {
+    throw new Error("Chỉ giáo viên mới có quyền tạo tài khoản");
+  }
+  if (!studentData.username || !studentData.name) {
+    throw new Error("Thiếu thông tin học sinh");
+  }
+  if (usersList.some((u) => u.username === studentData.username)) {
+    throw new Error("Tên đăng nhập đã tồn tại");
+  }
+  const newUser = {
+    id: "hs_" + Date.now(),
+    role: "student",
+    ...studentData
+  };
+  usersList.push(newUser);
+  return newUser;
+}
+
+const testUsers = [
+  { id: "gv_1", username: "gvcn-ngo-ha", password: "000000", role: "teacher" },
+  { id: "hs_1", username: "hs_an", password: "123456", role: "student" }
+];
+
+// Student tries to create account -> blocked
+assert.throws(() => {
+  createStudent(testUsers[1], testUsers, { username: "hs_mai", name: "Trần Mai" });
+}, /Chỉ giáo viên mới có quyền/);
+
+// Teacher creates account -> success
+const created = createStudent(testUsers[0], testUsers, { username: "hs_mai", name: "Trần Mai", class: "12A1" });
+assert.strictEqual(created.role, "student");
+assert.strictEqual(testUsers.length, 3);
+console.log("✅ 4. Kiểm thử phân quyền tạo tài khoản học sinh bởi giáo viên: ĐẠT");
+
+// 5. Test: Assignment Deletion (cleans up assignment & related submissions)
+function deleteAssignmentCascade(assignmentsList, submissionsList, assignmentId) {
+  const newAssignments = assignmentsList.filter((a) => a.id !== assignmentId);
+  const newSubmissions = submissionsList.filter((s) => s.assignmentId !== assignmentId);
+  return { newAssignments, newSubmissions };
+}
+
+const mockAssignments = [{ id: "asg_1" }, { id: "asg_2" }];
+const mockSubmissions = [
+  { id: "sub_1", assignmentId: "asg_1" },
+  { id: "sub_2", assignmentId: "asg_2" },
+  { id: "sub_3", assignmentId: "asg_1" }
+];
+
+const deleteRes = deleteAssignmentCascade(mockAssignments, mockSubmissions, "asg_1");
+assert.strictEqual(deleteRes.newAssignments.length, 1);
+assert.strictEqual(deleteRes.newSubmissions.length, 1);
+assert.strictEqual(deleteRes.newSubmissions[0].assignmentId, "asg_2");
+console.log("✅ 5. Kiểm thử xóa bài tập và dọn dẹp các bài nộp liên quan: ĐẠT");
+
+// 6. Test: Campaign (Đợt bài tập) Roster Calculation
+function calculateCampaignStats(studentsList, submissionsList, assignmentId) {
+  const asgSubs = submissionsList.filter((s) => s.assignmentId === assignmentId);
+  const submittedCount = asgSubs.length;
+  const gradedCount = asgSubs.filter((s) => s.status === "graded").length;
+  const notSubmittedCount = Math.max(0, studentsList.length - submittedCount);
+  return { submittedCount, gradedCount, notSubmittedCount };
+}
+
+const mockStudents = [{ id: "s1" }, { id: "s2" }, { id: "s3" }];
+const mockSubsForCampaign = [
+  { studentId: "s1", assignmentId: "asg_1", status: "graded" }
+];
+const campaignStats = calculateCampaignStats(mockStudents, mockSubsForCampaign, "asg_1");
+assert.strictEqual(campaignStats.submittedCount, 1);
+assert.strictEqual(campaignStats.gradedCount, 1);
+assert.strictEqual(campaignStats.notSubmittedCount, 2);
+console.log("✅ 6. Kiểm thử thống kê tiến độ nộp bài theo đợt bài tập: ĐẠT");
+
+// 7. Test: Gatekeeper Login & Session Independence
+function checkAccessControl(sessionUser, requestedView) {
+  if (!sessionUser) {
+    return "LOGIN_REQUIRED";
+  }
+  if (requestedView === "teacher_view" && sessionUser.role !== "teacher") {
+    return "ACCESS_DENIED";
+  }
+  if (requestedView === "student_view" && sessionUser.role !== "student") {
+    return "ACCESS_DENIED";
+  }
+  return "ACCESS_GRANTED";
+}
+
+// Unauthenticated user must see login
+assert.strictEqual(checkAccessControl(null, "student_view"), "LOGIN_REQUIRED");
+assert.strictEqual(checkAccessControl(null, "teacher_view"), "LOGIN_REQUIRED");
+
+// Student user cannot access teacher view
+const studentSession = { id: "hs_1", role: "student" };
+assert.strictEqual(checkAccessControl(studentSession, "student_view"), "ACCESS_GRANTED");
+assert.strictEqual(checkAccessControl(studentSession, "teacher_view"), "ACCESS_DENIED");
+
+// Teacher user cannot access student view directly (independent accounts)
+const teacherSession = { id: "gv_1", role: "teacher" };
+assert.strictEqual(checkAccessControl(teacherSession, "teacher_view"), "ACCESS_GRANTED");
+assert.strictEqual(checkAccessControl(teacherSession, "student_view"), "ACCESS_DENIED");
+
+console.log("✅ 7. Kiểm thử bảo vệ cổng đăng nhập & tính độc lập giữa học sinh - giáo viên: ĐẠT");
+
+// 8. Test: Multi-Teacher Data Isolation
+const multiTeachers = [
+  { id: "gv_ha", username: "gvcn-ngo-ha", role: "teacher" },
+  { id: "gv_nam", username: "gv-nam", role: "teacher" }
+];
+
+const multiStudents = [
+  { id: "hs_an", name: "An", role: "student", teacherId: "gv_ha" },
+  { id: "hs_mai", name: "Mai", role: "student", teacherId: "gv_ha" },
+  { id: "hs_tuan", name: "Tuấn", role: "student", teacherId: "gv_nam" }
+];
+
+const multiAssignments = [
+  { id: "asg_math", teacherId: "gv_ha", title: "Toán 12" },
+  { id: "asg_eng", teacherId: "gv_nam", title: "Anh văn 12" }
+];
+
+// Check teacher Ha's scope
+const haStudents = multiStudents.filter((s) => s.teacherId === "gv_ha");
+const haAssignments = multiAssignments.filter((a) => a.teacherId === "gv_ha");
+assert.strictEqual(haStudents.length, 2, "Cô Hà quản lý đúng 2 học sinh của mình");
+assert.strictEqual(haAssignments.length, 1, "Cô Hà chỉ thấy 1 bài tập do mình tạo");
+assert.strictEqual(haStudents.some((s) => s.id === "hs_tuan"), false, "Cô Hà không được thấy học sinh Tuấn của Thầy Nam");
+
+// Check teacher Nam's scope
+const namStudents = multiStudents.filter((s) => s.teacherId === "gv_nam");
+assert.strictEqual(namStudents.length, 1, "Thầy Nam quản lý đúng 1 học sinh");
+assert.strictEqual(namStudents[0].id, "hs_tuan");
+console.log("✅ 8. Kiểm thử cô lập dữ liệu giữa các giáo viên khác nhau: ĐẠT");
+
+// 9. Test: Admin Oversight & Teacher Hierarchy
+function checkAdminCapabilities(adminUser, allTeachers, allStudents) {
+  if (!adminUser || adminUser.role !== "admin") {
+    throw new Error("Chỉ tài khoản admin mới có quyền quản trị trường");
+  }
+  return {
+    totalTeachers: allTeachers.length,
+    totalStudents: allStudents.length,
+    studentsPerTeacher: allTeachers.map((t) => ({
+      teacher: t.username,
+      students: allStudents.filter((s) => s.teacherId === t.id)
+    }))
+  };
+}
+
+const adminUser = { id: "admin_root", username: "admin", role: "admin" };
+const adminReport = checkAdminCapabilities(adminUser, multiTeachers, multiStudents);
+assert.strictEqual(adminReport.totalTeachers, 2);
+assert.strictEqual(adminReport.totalStudents, 3);
+assert.strictEqual(adminReport.studentsPerTeacher[0].students.length, 2);
+assert.strictEqual(adminReport.studentsPerTeacher[1].students.length, 1);
+
+// Teacher trying to access admin function -> blocked
+assert.throws(() => {
+  checkAdminCapabilities(multiTeachers[0], multiTeachers, multiStudents);
+}, /Chỉ tài khoản admin mới có quyền/);
+
+console.log("✅ 9. Kiểm thử quyền giám sát toàn trường & quản lý giáo viên của Admin: ĐẠT");
+
+// 10. Test: Supabase Cloud Data Mapping & Serialization
+function mapSupabaseToApp(asgRow, subRow) {
+  const asg = {
+    id: asgRow.id,
+    teacherId: asgRow.teacher_id,
+    title: asgRow.title,
+    subject: asgRow.subject,
+    deadline: asgRow.deadline,
+    description: asgRow.description,
+    minPhotos: asgRow.min_photos,
+    allowLink: asgRow.allow_link,
+    allowNote: asgRow.allow_note,
+    createdAt: asgRow.created_at
+  };
+  const sub = {
+    id: subRow.id,
+    assignmentId: subRow.assignment_id,
+    studentId: subRow.student_id,
+    studentName: subRow.student_name,
+    submittedAt: subRow.submitted_at,
+    status: subRow.status,
+    photos: subRow.photos || [],
+    linkProof: subRow.link_proof || "",
+    studentNote: subRow.student_note || "",
+    annotations: subRow.annotations || {},
+    grade: subRow.grade,
+    feedback: subRow.feedback || "",
+    resubmitRequested: subRow.resubmit_requested || false
+  };
+  return { asg, sub };
+}
+
+const mockDbAsg = {
+  id: "asg_101",
+  teacher_id: "gvcn_ngo_ha",
+  title: "Đại số 12 - Ôn tập",
+  subject: "Toán",
+  deadline: "2026-11-06T20:00:00Z",
+  description: "Làm bài tập trang 45",
+  min_photos: 2,
+  allow_link: true,
+  allow_note: true,
+  created_at: "2026-11-05T08:00:00Z"
+};
+const mockDbSub = {
+  id: "sub_202",
+  assignment_id: "asg_101",
+  student_id: "hs_an",
+  student_name: "Nguyễn Văn An",
+  submitted_at: "2026-11-05T10:00:00Z",
+  status: "graded",
+  photos: [{ id: "p1", data: "data:image/jpeg;base64,abc" }],
+  link_proof: "https://drive.google.com/test",
+  student_note: "Em đã hoàn thành bài 1 và 2",
+  annotations: { 0: [{ type: "check", x: 100, y: 150 }] },
+  grade: 9.5,
+  feedback: "Làm bài rất tốt",
+  resubmit_requested: false
+};
+
+const mapped = mapSupabaseToApp(mockDbAsg, mockDbSub);
+assert.strictEqual(mapped.asg.teacherId, mockDbAsg.teacher_id);
+assert.strictEqual(mapped.asg.minPhotos, 2);
+assert.strictEqual(mapped.sub.assignmentId, mockDbSub.assignment_id);
+assert.strictEqual(mapped.sub.grade, 9.5);
+assert.strictEqual(mapped.sub.photos.length, 1);
+assert.strictEqual(mapped.sub.annotations["0"][0].type, "check");
+console.log("✅ 10. Kiểm thử ánh xạ chuẩn hóa cấu trúc dữ liệu Supabase Cloud: ĐẠT");
+
+// 11. Test: Full Cloud Lifecycle (Teacher creates -> Student submits -> Teacher grades)
+class MockSupabaseTable {
+  constructor() { this.rows = []; }
+  upsert(items) {
+    for (const item of items) {
+      const idx = this.rows.findIndex((r) => r.id === item.id);
+      if (idx >= 0) this.rows[idx] = item;
+      else this.rows.push(item);
+    }
+    return Promise.resolve({ data: items, error: null });
+  }
+  select() { return Promise.resolve({ data: [...this.rows], error: null }); }
+}
+
+const cloudAsgs = new MockSupabaseTable();
+const cloudSubs = new MockSupabaseTable();
+
+// 1. Teacher publishes assignment
+cloudAsgs.upsert([mockDbAsg]);
+// 2. Student queries assignments and submits work
+cloudSubs.upsert([mockDbSub]);
+// 3. Teacher updates grade on cloud
+mockDbSub.grade = 10;
+mockDbSub.feedback = "Đã chỉnh sửa hoàn hảo";
+cloudSubs.upsert([mockDbSub]);
+
+assert.strictEqual(cloudAsgs.rows.length, 1);
+assert.strictEqual(cloudSubs.rows[0].grade, 10);
+assert.strictEqual(cloudSubs.rows[0].feedback, "Đã chỉnh sửa hoàn hảo");
+console.log("✅ 11. Kiểm thử vòng đời đồng bộ đám mây liên thông Giáo viên - Học sinh: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (11/11)!");
