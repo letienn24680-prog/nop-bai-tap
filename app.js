@@ -6,6 +6,28 @@ const DB_KEY_SUBMISSIONS = "eduproof_submissions";
 const DB_KEY_USERS = "eduproof_users";
 const DB_KEY_AUTH = "eduproof_auth_user";
 
+// ==========================================
+// SECURITY: XSS SANITIZATION & SAFE OUTPUT
+// ==========================================
+function sanitizeText(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function sanitizeUrl(url) {
+  if (!url) return "#";
+  const trimmed = String(url).trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return sanitizeText(trimmed);
+  }
+  return "#";
+}
+
 // In-Memory State
 let users = [];
 let currentUser = null;
@@ -953,10 +975,10 @@ function displayExcelPreview(list) {
       (s, idx) => `
       <tr>
         <td>${idx + 1}</td>
-        <td><strong>${s.name}</strong></td>
-        <td><code>${s.username}</code></td>
-        <td>${s.class}</td>
-        <td><code>${s.password}</code></td>
+        <td><strong>${sanitizeText(s.name)}</strong></td>
+        <td><code>${sanitizeText(s.username)}</code></td>
+        <td>${sanitizeText(s.class)}</td>
+        <td><code>${sanitizeText(s.password)}</code></td>
       </tr>
     `
     )
@@ -1242,20 +1264,20 @@ function renderAdminTeachersTable() {
           const asgCount = assignments.filter((a) => a.teacherId === t.id).length;
           return `
             <tr>
-              <td><strong>${t.name}</strong></td>
-              <td><code>${t.username}</code></td>
-              <td><code>${t.password}</code></td>
-              <td>${t.subject || "Bộ môn"}</td>
+              <td><strong>${sanitizeText(t.name)}</strong></td>
+              <td><code>${sanitizeText(t.username)}</code></td>
+              <td><code>${sanitizeText(t.password)}</code></td>
+              <td>${sanitizeText(t.subject || "Bộ môn")}</td>
               <td><span class="badge-status status-submitted">${stCount} học sinh</span></td>
               <td><strong>${asgCount} bài</strong></td>
               <td>
-                <button class="btn btn-secondary btn-sm" onclick="filterAdminTreeForTeacher('${t.id}')">
+                <button class="btn btn-secondary btn-sm" onclick="filterAdminTreeForTeacher('${sanitizeText(t.id)}')">
                   👥 Xem học sinh
                 </button>
-                <button class="btn btn-secondary btn-sm" onclick="copyTeacherInfo('${t.username}')">
+                <button class="btn btn-secondary btn-sm" onclick="copyTeacherInfo('${sanitizeText(t.username)}')">
                   📋 Sao chép
                 </button>
-                <button class="btn btn-danger btn-sm" onclick="deleteTeacherAccount('${t.id}')">
+                <button class="btn btn-danger btn-sm" onclick="deleteTeacherAccount('${sanitizeText(t.id)}')">
                   🗑️ Xóa
                 </button>
               </td>
@@ -1318,14 +1340,14 @@ function renderAdminStudentsTree(selectedTeacherId) {
       ${studentUsers
         .map((s) => {
           const teacher = users.find((u) => u.id === s.teacherId);
-          const teacherName = teacher ? `${teacher.name} (${teacher.username})` : `<span style="color:red">Chưa gán</span>`;
+          const teacherName = teacher ? `${sanitizeText(teacher.name)} (${sanitizeText(teacher.username)})` : `<span style="color:red">Chưa gán</span>`;
           const subCount = submissions.filter((sub) => sub.studentId === s.id).length;
           return `
             <tr>
-              <td><strong>${s.name}</strong></td>
-              <td><code>${s.username}</code></td>
-              <td><code>${s.password}</code></td>
-              <td>${s.class || "12A1"}</td>
+              <td><strong>${sanitizeText(s.name)}</strong></td>
+              <td><code>${sanitizeText(s.username)}</code></td>
+              <td><code>${sanitizeText(s.password)}</code></td>
+              <td>${sanitizeText(s.class || "12A1")}</td>
               <td><span class="badge-status status-graded">${teacherName}</span></td>
               <td><strong>${subCount} bài</strong></td>
             </tr>
@@ -1451,11 +1473,11 @@ function renderStudentView() {
     card.innerHTML = `
       <div>
         <div class="card-top">
-          <span class="badge-subject">${asg.subject}</span>
+          <span class="badge-subject">${sanitizeText(asg.subject)}</span>
           ${statusBadge}
         </div>
-        <h3 class="card-title">${asg.title}</h3>
-        <p class="card-instructions">${asg.description}</p>
+        <h3 class="card-title">${sanitizeText(asg.title)}</h3>
+        <p class="card-instructions">${sanitizeText(asg.description)}</p>
         <div class="proof-requirements">
           <span class="proof-tag">📷 Vở ghi (≥${asg.minPhotos} trang)</span>
           ${asg.allowLink ? '<span class="proof-tag">🔗 Kèm link</span>' : ""}
@@ -1559,8 +1581,23 @@ function handleFileSelect(event) {
   const files = Array.from(event.target.files);
   if (!files || files.length === 0) return;
 
-  files.forEach((file) => {
-    if (!file.type.startsWith("image/")) return;
+  const maxSizeBytes = 15 * 1024 * 1024; // 15MB limit per file
+
+  for (const file of files) {
+    if (currentUploadedPhotos.length >= 10) {
+      alert("Hệ thống chỉ cho phép tải tối đa 10 ảnh minh chứng cho một bài nộp.");
+      break;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      alert(`Tệp "${sanitizeText(file.name)}" không phải là hình ảnh hợp lệ.`);
+      continue;
+    }
+
+    if (file.size > maxSizeBytes) {
+      alert(`Ảnh "${sanitizeText(file.name)}" vượt quá dung lượng tối đa 15MB.`);
+      continue;
+    }
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -1575,7 +1612,7 @@ function handleFileSelect(event) {
       });
     };
     reader.readAsDataURL(file);
-  });
+  }
 
   event.target.value = "";
 }
@@ -1856,20 +1893,20 @@ function renderTeacherSubmissions(mySubmissionsList) {
     card.innerHTML = `
       <div>
         <div class="card-top">
-          <strong style="font-size: 0.95rem;">${sub.studentName}</strong>
+          <strong style="font-size: 0.95rem;">${sanitizeText(sub.studentName)}</strong>
           ${statusBadge}
         </div>
         <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.25rem;">
-          ${asg ? asg.title : "Bài tập đã xóa"}
+          ${asg ? sanitizeText(asg.title) : "Bài tập đã xóa"}
         </div>
         <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">
           Nộp lúc: ${submittedDate} • ${sub.photos.length} trang ảnh
         </div>
-        ${sub.studentNote ? `<div style="font-size: 0.78rem; background: #F1F5F9; padding: 0.4rem; border-radius: 4px; margin-bottom: 0.5rem;">💬 <em>"${sub.studentNote}"</em></div>` : ""}
+        ${sub.studentNote ? `<div style="font-size: 0.78rem; background: #F1F5F9; padding: 0.4rem; border-radius: 4px; margin-bottom: 0.5rem;">💬 <em>"${sanitizeText(sub.studentNote)}"</em></div>` : ""}
       </div>
       <div class="card-footer">
         <span style="font-size: 0.75rem; color: var(--text-muted);">Lớp: 12A1</span>
-        <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sub.id}', false)">
+        <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
           ✍️ ${sub.status === "graded" ? "Sửa điểm & Nhận xét" : "Mở chấm bài"}
         </button>
       </div>
@@ -2014,13 +2051,13 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
 
                 return `
                   <tr>
-                    <td><strong>${student.name}</strong> <span style="font-size: 0.75rem; color: var(--text-muted);">(${student.username})</span></td>
+                    <td><strong>${sanitizeText(student.name)}</strong> <span style="font-size: 0.75rem; color: var(--text-muted);">(${sanitizeText(student.username)})</span></td>
                     <td>${badge}</td>
                     <td>${timeStr}</td>
                     <td>📷 ${sub.photos.length} trang</td>
                     <td><strong>${sub.grade !== null ? sub.grade + "/10" : "—"}</strong></td>
                     <td>
-                      <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sub.id}', false)">
+                      <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
                         ✍️ ${sub.status === "graded" ? "Sửa điểm" : "Chấm bài"}
                       </button>
                     </td>
@@ -2029,7 +2066,7 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
               } else {
                 return `
                   <tr>
-                    <td><strong>${student.name}</strong> <span style="font-size: 0.75rem; color: var(--text-muted);">(${student.username})</span></td>
+                    <td><strong>${sanitizeText(student.name)}</strong> <span style="font-size: 0.75rem; color: var(--text-muted);">(${sanitizeText(student.username)})</span></td>
                     <td><span class="badge-status status-pending">❌ Chưa nộp bài</span></td>
                     <td style="color: var(--text-muted);">—</td>
                     <td style="color: var(--text-muted);">0 trang</td>
@@ -2100,11 +2137,11 @@ function renderTeacherAssignments(myAssignmentsList) {
     card.innerHTML = `
       <div>
         <div class="card-top">
-          <span class="badge-subject">${asg.subject}</span>
+          <span class="badge-subject">${sanitizeText(asg.subject)}</span>
           <span style="font-size: 0.75rem; color: var(--text-muted);">Đã nộp: ${subsForAsg.length}</span>
         </div>
-        <h3 class="card-title">${asg.title}</h3>
-        <p class="card-instructions">${asg.description}</p>
+        <h3 class="card-title">${sanitizeText(asg.title)}</h3>
+        <p class="card-instructions">${sanitizeText(asg.description)}</p>
         <div style="font-size: 0.78rem; color: var(--primary); font-weight: 600;">
           Tiến độ chấm: ${gradedCount}/${subsForAsg.length} bài
         </div>
@@ -2166,16 +2203,16 @@ function renderTeacherStudents(myStudentsList) {
           const count = submissions.filter((s) => s.studentId === st.id).length;
           return `
             <tr>
-              <td><strong>${st.name}</strong></td>
-              <td><code>${st.username}</code></td>
-              <td><code>${st.password}</code></td>
-              <td>${st.class || "12A1"}</td>
+              <td><strong>${sanitizeText(st.name)}</strong></td>
+              <td><code>${sanitizeText(st.username)}</code></td>
+              <td><code>${sanitizeText(st.password)}</code></td>
+              <td>${sanitizeText(st.class || "12A1")}</td>
               <td><strong>${count} bài</strong></td>
               <td>
-                <button class="btn btn-secondary btn-sm" onclick="copyAccountInfo('${st.username}')">
+                <button class="btn btn-secondary btn-sm" onclick="copyAccountInfo('${sanitizeText(st.username)}')">
                   📋 Sao chép gửi HS
                 </button>
-                <button class="btn btn-danger btn-sm" onclick="deleteStudentAccount('${st.id}')">
+                <button class="btn btn-danger btn-sm" onclick="deleteStudentAccount('${sanitizeText(st.id)}')">
                   🗑️ Xóa
                 </button>
               </td>
@@ -2225,9 +2262,9 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
 
           return `
             <tr>
-              <td><strong>${st.name}</strong></td>
-              <td><code>${st.username}</code></td>
-              <td>${st.class || "12A1"}</td>
+              <td><strong>${sanitizeText(st.name)}</strong></td>
+              <td><code>${sanitizeText(st.username)}</code></td>
+              <td>${sanitizeText(st.class || "12A1")}</td>
               <td>${stSubs.length} / ${myAssignments.length} bài</td>
               <td style="font-weight: 700; color: var(--primary);">${avgScore}</td>
               <td>${attendanceBadge}</td>
@@ -2262,10 +2299,11 @@ function openGradingStudio(submissionId, isReadOnly = false) {
   document.getElementById("requestResubmitCheckbox").checked = sub.status === "resubmit_requested";
 
   const proofsView = document.getElementById("studentAdditionalProofsView");
+  const safeUrl = sanitizeUrl(sub.linkProof);
   proofsView.innerHTML = `
     <strong>Minh chứng khác:</strong><br>
-    ${sub.linkProof ? `🔗 <a href="${sub.linkProof}" target="_blank" style="color: var(--primary); word-break: break-all;">${sub.linkProof}</a><br>` : "<em>Không có link đính kèm</em><br>"}
-    ${sub.studentNote ? `✍️ <em>Ghi chú: "${sub.studentNote}"</em>` : ""}
+    ${sub.linkProof && safeUrl !== "#" ? `🔗 <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); word-break: break-all;">${sanitizeText(sub.linkProof)}</a><br>` : "<em>Không có link đính kèm</em><br>"}
+    ${sub.studentNote ? `✍️ <em>Ghi chú: "${sanitizeText(sub.studentNote)}"</em>` : ""}
   `;
 
   document.getElementById("gradeScoreInput").disabled = isReadOnly;
