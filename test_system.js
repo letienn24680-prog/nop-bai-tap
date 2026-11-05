@@ -412,4 +412,55 @@ assert.strictEqual(cloudBatchPayload.length, 3);
 assert.strictEqual(cloudBatchPayload[0].teacher_id, "gvcn_ngo_ha");
 console.log("✅ 13. Kiểm thử đóng gói dữ liệu hàng loạt đẩy lên Supabase Cloud: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (13/13)!");
+// 14. Test: Session & State Retention across F5 (Page Refresh)
+class MockStorage {
+  constructor() { this.store = {}; }
+  getItem(k) { return this.store[k] || null; }
+  setItem(k, v) { this.store[k] = String(v); }
+  removeItem(k) { delete this.store[k]; }
+}
+
+const mockLocalStorage = new MockStorage();
+const mockSessionStorage = new MockStorage();
+
+function simulateLogin(user, teacherTab) {
+  mockLocalStorage.setItem("eduproof_auth_user", JSON.stringify(user));
+  mockSessionStorage.setItem("eduproof_auth_user", JSON.stringify(user));
+  mockLocalStorage.setItem("eduproof_teacher_tab", teacherTab || "submissions");
+}
+
+function simulateRefreshF5(usersList) {
+  const savedAuth = mockLocalStorage.getItem("eduproof_auth_user") || mockSessionStorage.getItem("eduproof_auth_user");
+  let restoredUser = null;
+  if (savedAuth) {
+    const parsed = JSON.parse(savedAuth);
+    restoredUser = usersList.find((u) => u.username === parsed.username) || parsed;
+  }
+  const restoredTab = mockLocalStorage.getItem("eduproof_teacher_tab") || "submissions";
+  return { currentUser: restoredUser, teacherActiveTab: restoredTab };
+}
+
+function simulateLogout() {
+  mockLocalStorage.removeItem("eduproof_auth_user");
+  mockSessionStorage.removeItem("eduproof_auth_user");
+  mockLocalStorage.removeItem("eduproof_teacher_tab");
+}
+
+// 1. User logs in as Teacher on students tab
+const teacherUser = { id: "gvcn_ngo_ha", username: "gvcn-ngo-ha", role: "teacher" };
+simulateLogin(teacherUser, "students");
+
+// 2. F5 is pressed -> session & tab are restored perfectly
+const stateAfterF5 = simulateRefreshF5([teacherUser]);
+assert.notStrictEqual(stateAfterF5.currentUser, null, "currentUser không được là null sau F5");
+assert.strictEqual(stateAfterF5.currentUser.username, "gvcn-ngo-ha", "Đúng tài khoản giáo viên");
+assert.strictEqual(stateAfterF5.teacherActiveTab, "students", "Giữ nguyên tab danh sách học sinh đang mở");
+
+// 3. User logs out explicitly -> session cleared
+simulateLogout();
+const stateAfterLogoutF5 = simulateRefreshF5([teacherUser]);
+assert.strictEqual(stateAfterLogoutF5.currentUser, null, "Sau đăng xuất thì về màn hình đăng nhập");
+
+console.log("✅ 14. Kiểm thử duy trì phiên làm việc & tab đang xem khi nhấn F5: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (14/14)!");

@@ -180,18 +180,31 @@ function initData() {
 
   localStorage.setItem(DB_KEY_USERS, JSON.stringify(users));
 
-  // 2. Session check (sessionStorage đảm bảo khi mở web lần đầu luôn hiện màn hình đăng nhập)
-  const savedAuth = sessionStorage.getItem(DB_KEY_AUTH);
+  // 2. Session check: Giữ nguyên trạng thái đăng nhập và vị trí trang khi nhấn F5
+  const savedAuth = localStorage.getItem(DB_KEY_AUTH) || sessionStorage.getItem(DB_KEY_AUTH);
   if (savedAuth) {
     try {
       const parsed = JSON.parse(savedAuth);
-      currentUser = users.find((u) => u.username === parsed.username) || null;
+      currentUser = users.find((u) => u.username === parsed.username) || parsed;
     } catch (e) {
       currentUser = null;
     }
   } else {
-    currentUser = null; // Luôn bắt đầu tại cổng đăng nhập
+    currentUser = null;
   }
+
+  // Khôi phục tab và đợt bài tập đang mở trước khi F5
+  const savedTeacherTab = localStorage.getItem("eduproof_teacher_tab");
+  if (savedTeacherTab) teacherActiveTab = savedTeacherTab;
+
+  const savedAdminTab = localStorage.getItem("eduproof_admin_tab");
+  if (savedAdminTab) adminActiveTab = savedAdminTab;
+
+  const savedStudentFilter = localStorage.getItem("eduproof_student_filter");
+  if (savedStudentFilter) studentFilter = savedStudentFilter;
+
+  const savedSelectedCampaign = localStorage.getItem("eduproof_selected_campaign");
+  if (savedSelectedCampaign) selectedCampaignId = savedSelectedCampaign;
 
   // 3. Load or Seed Assignments & Submissions
   const savedAssignments = localStorage.getItem(DB_KEY_ASSIGNMENTS);
@@ -204,7 +217,9 @@ function initData() {
       assignments.forEach((a) => {
         if (!a.teacherId) a.teacherId = "gvcn_ngo_ha";
       });
-      if (assignments.length > 0) selectedCampaignId = assignments[0].id;
+      if (!selectedCampaignId && assignments.length > 0) {
+        selectedCampaignId = assignments[0].id;
+      }
       updateHeaderUserDisplay();
       renderCurrentView();
 
@@ -344,8 +359,10 @@ function persistData() {
   localStorage.setItem(DB_KEY_ASSIGNMENTS, JSON.stringify(assignments));
   localStorage.setItem(DB_KEY_SUBMISSIONS, JSON.stringify(submissions));
   if (currentUser) {
+    localStorage.setItem(DB_KEY_AUTH, JSON.stringify(currentUser));
     sessionStorage.setItem(DB_KEY_AUTH, JSON.stringify(currentUser));
   } else {
+    localStorage.removeItem(DB_KEY_AUTH);
     sessionStorage.removeItem(DB_KEY_AUTH);
   }
 }
@@ -554,17 +571,54 @@ function hideLoginScreen() {
 
 function logout() {
   currentUser = null;
-  sessionStorage.removeItem(DB_KEY_AUTH);
   localStorage.removeItem(DB_KEY_AUTH);
+  sessionStorage.removeItem(DB_KEY_AUTH);
+  localStorage.removeItem("eduproof_teacher_tab");
+  localStorage.removeItem("eduproof_admin_tab");
+  localStorage.removeItem("eduproof_selected_campaign");
+  localStorage.removeItem("eduproof_student_filter");
   showLoginScreen();
 }
 
-function handleLoginFormSubmit(event) {
+async function handleLoginFormSubmit(event) {
   event.preventDefault();
   const username = document.getElementById("loginUsernameInput").value.trim();
   const pass = document.getElementById("loginPasswordInput").value.trim();
 
-  const found = users.find((u) => u.username === username && u.password === pass);
+  let found = users.find((u) => u.username === username && u.password === pass);
+
+  // Nếu chưa có trong cache cục bộ, kiểm tra trực tiếp trên Supabase Cloud
+  if (!found) {
+    const sb = getSupabase();
+    if (sb) {
+      try {
+        const { data, error } = await sb
+          .from("eduproof_users")
+          .select("*")
+          .eq("username", username)
+          .eq("password", pass)
+          .maybeSingle();
+
+        if (data && !error) {
+          found = {
+            id: data.id,
+            username: data.username,
+            password: data.password,
+            name: data.name,
+            role: data.role,
+            class: data.class,
+            subject: data.subject,
+            teacherId: data.teacher_id
+          };
+          users.push(found);
+          syncCloudData(false);
+        }
+      } catch (err) {
+        console.warn("Lỗi kiểm tra đăng nhập online:", err);
+      }
+    }
+  }
+
   if (found) {
     currentUser = found;
     persistData();
@@ -1024,11 +1078,19 @@ let adminSelectedTeacherId = "all";
 
 function switchAdminTab(tab, btnElement) {
   adminActiveTab = tab;
+  localStorage.setItem("eduproof_admin_tab", tab);
   document.querySelectorAll("#adminView .filter-tabs .tab-btn").forEach((b) => b.classList.remove("active"));
-  if (btnElement) btnElement.classList.add("active");
+  if (btnElement) {
+    btnElement.classList.add("active");
+  } else {
+    const btn = document.querySelector(`#adminView .filter-tabs .tab-btn[onclick*="'${tab}'"]`);
+    if (btn) btn.classList.add("active");
+  }
 
-  document.getElementById("adminTeachersTab").style.display = tab === "teachers" ? "block" : "none";
-  document.getElementById("adminStudentsTreeTab").style.display = tab === "studentsTree" ? "block" : "none";
+  const teaTab = document.getElementById("adminTeachersTab");
+  const treeTab = document.getElementById("adminStudentsTreeTab");
+  if (teaTab) teaTab.style.display = tab === "teachers" ? "block" : "none";
+  if (treeTab) treeTab.style.display = tab === "studentsTree" ? "block" : "none";
 
   renderAdminView();
 }
@@ -1138,6 +1200,16 @@ function renderAdminView() {
   document.getElementById("adminTotalStudentsCount").innerText = studentUsers.length;
   document.getElementById("adminTotalAssignmentsCount").innerText = assignments.length;
   document.getElementById("adminTotalSubmissionsCount").innerText = submissions.length;
+
+  const teaTab = document.getElementById("adminTeachersTab");
+  const treeTab = document.getElementById("adminStudentsTreeTab");
+  if (teaTab) teaTab.style.display = adminActiveTab === "teachers" ? "block" : "none";
+  if (treeTab) treeTab.style.display = adminActiveTab === "studentsTree" ? "block" : "none";
+
+  document.querySelectorAll("#adminView .filter-tabs .tab-btn").forEach((b) => {
+    const isMatch = b.getAttribute("onclick") && b.getAttribute("onclick").includes(`'${adminActiveTab}'`);
+    b.classList.toggle("active", Boolean(isMatch));
+  });
 
   if (adminActiveTab === "teachers") {
     renderAdminTeachersTable();
@@ -1304,14 +1376,23 @@ function renderCurrentView() {
 
 function filterStudentAssignments(filter, btnElement) {
   studentFilter = filter;
+  localStorage.setItem("eduproof_student_filter", filter);
+  document.querySelectorAll("#studentView .tab-btn").forEach((b) => b.classList.remove("active"));
   if (btnElement) {
-    document.querySelectorAll("#studentView .tab-btn").forEach((b) => b.classList.remove("active"));
     btnElement.classList.add("active");
+  } else {
+    const btn = document.querySelector(`#studentView .tab-btn[onclick*="'${filter}'"]`);
+    if (btn) btn.classList.add("active");
   }
   renderStudentView();
 }
 
 function renderStudentView() {
+  document.querySelectorAll("#studentView .tab-btn").forEach((b) => {
+    const isMatch = b.getAttribute("onclick") && b.getAttribute("onclick").includes(`'${studentFilter}'`);
+    b.classList.toggle("active", Boolean(isMatch));
+  });
+
   const container = document.getElementById("studentAssignmentsList");
   container.innerHTML = "";
 
@@ -1674,14 +1755,26 @@ function viewSubmissionSummary(submissionId) {
 
 function switchTeacherTab(tab, btnElement) {
   teacherActiveTab = tab;
+  localStorage.setItem("eduproof_teacher_tab", tab);
   document.querySelectorAll("#teacherView .filter-tabs .tab-btn").forEach((b) => b.classList.remove("active"));
-  if (btnElement) btnElement.classList.add("active");
+  if (btnElement) {
+    btnElement.classList.add("active");
+  } else {
+    const btn = document.querySelector(`#teacherView .filter-tabs .tab-btn[onclick*="'${tab}'"]`);
+    if (btn) btn.classList.add("active");
+  }
 
-  document.getElementById("teacherSubmissionsTab").style.display = tab === "submissions" ? "block" : "none";
-  document.getElementById("teacherCampaignTab").style.display = tab === "campaigns" ? "block" : "none";
-  document.getElementById("teacherAssignmentsTab").style.display = tab === "assignments" ? "block" : "none";
-  document.getElementById("teacherStudentsTab").style.display = tab === "students" ? "block" : "none";
-  document.getElementById("teacherGradebookTab").style.display = tab === "gradebook" ? "block" : "none";
+  const subTab = document.getElementById("teacherSubmissionsTab");
+  const camTab = document.getElementById("teacherCampaignTab");
+  const asgTab = document.getElementById("teacherAssignmentsTab");
+  const stuTab = document.getElementById("teacherStudentsTab");
+  const graTab = document.getElementById("teacherGradebookTab");
+
+  if (subTab) subTab.style.display = tab === "submissions" ? "block" : "none";
+  if (camTab) camTab.style.display = tab === "campaigns" ? "block" : "none";
+  if (asgTab) asgTab.style.display = tab === "assignments" ? "block" : "none";
+  if (stuTab) stuTab.style.display = tab === "students" ? "block" : "none";
+  if (graTab) graTab.style.display = tab === "gradebook" ? "block" : "none";
 
   renderTeacherView();
 }
@@ -1695,6 +1788,23 @@ function renderTeacherView() {
   const pendingSubs = mySubmissions.filter((s) => s.status === "submitted");
   document.getElementById("pendingSubCount").innerText = pendingSubs.length;
   document.getElementById("totalStudentsCount").innerText = myStudents.length;
+
+  const subTab = document.getElementById("teacherSubmissionsTab");
+  const camTab = document.getElementById("teacherCampaignTab");
+  const asgTab = document.getElementById("teacherAssignmentsTab");
+  const stuTab = document.getElementById("teacherStudentsTab");
+  const graTab = document.getElementById("teacherGradebookTab");
+
+  if (subTab) subTab.style.display = teacherActiveTab === "submissions" ? "block" : "none";
+  if (camTab) camTab.style.display = teacherActiveTab === "campaigns" ? "block" : "none";
+  if (asgTab) asgTab.style.display = teacherActiveTab === "assignments" ? "block" : "none";
+  if (stuTab) stuTab.style.display = teacherActiveTab === "students" ? "block" : "none";
+  if (graTab) graTab.style.display = teacherActiveTab === "gradebook" ? "block" : "none";
+
+  document.querySelectorAll("#teacherView .filter-tabs .tab-btn").forEach((b) => {
+    const isMatch = b.getAttribute("onclick") && b.getAttribute("onclick").includes(`'${teacherActiveTab}'`);
+    b.classList.toggle("active", Boolean(isMatch));
+  });
 
   if (teacherActiveTab === "submissions") {
     renderTeacherSubmissions(mySubmissions);
@@ -1772,11 +1882,13 @@ function renderTeacherSubmissions(mySubmissionsList) {
 // Campaign (Đợt nộp bài tập) View
 function viewAssignmentCampaign(assignmentId) {
   selectedCampaignId = assignmentId;
+  localStorage.setItem("eduproof_selected_campaign", assignmentId);
   switchTeacherTab("campaigns");
 }
 
 function handleCampaignSelectChange(assignmentId) {
   selectedCampaignId = assignmentId;
+  localStorage.setItem("eduproof_selected_campaign", assignmentId);
   renderTeacherCampaignView();
 }
 
