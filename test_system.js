@@ -1,5 +1,6 @@
 // Self-check test suite for EduProof core business logic
 const assert = require("assert");
+const path = require("path");
 
 console.log("🧪 Đang chạy kiểm thử hệ thống EduProof...");
 
@@ -794,7 +795,7 @@ console.log("✅ 26. Kiểm thử tính toán cột hiển thị trên màn hìn
 
 // 27. Test: Cross-Browser Backdrop-Filter Fallback & Dark Mode / Forced Dark Mode Adaptability
 const fs = require("fs");
-const cssContent = fs.readFileSync("app.css", "utf8");
+const cssContent = fs.readFileSync(path.join(__dirname, "app.css"), "utf8");
 
 assert.ok(
   cssContent.includes("@supports not") && cssContent.includes("backdrop-filter"),
@@ -811,7 +812,7 @@ assert.ok(
 console.log("✅ 27. Kiểm thử cơ chế fallback backdrop-filter và bảo vệ tương phản Dark Mode: ĐẠT");
 
 // 28. Test: SVG Favicon, Vector Brand Logo & UI Icon Integrity
-const htmlContent = fs.readFileSync("index.html", "utf8");
+const htmlContent = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
 
 assert.ok(
   htmlContent.includes('<link rel="icon" type="image/svg+xml"'),
@@ -879,7 +880,7 @@ assert.strictEqual(normalizePhotos("").length, 0);
 console.log("✅ 29. Kiểm thử chuẩn hóa dữ liệu ảnh minh chứng (normalizePhotos) chống mất ảnh: ĐẠT");
 
 // 30. Test: School Youth Union (Đoàn trường) Activities & Statistical Reporting
-const appJsContent = fs.readFileSync("app.js", "utf8");
+const appJsContent = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
 
 assert.ok(
   appJsContent.includes("exportCampaignReport") && appJsContent.includes("copyUnsubmittedStudents"),
@@ -897,7 +898,7 @@ assert.ok(
 console.log("✅ 30. Kiểm thử phân loại Hoạt động Đoàn trường & Báo cáo thống kê hoàn thành: ĐẠT");
 
 // 31. Test: Mobile Segmented Filter Tabs & DataURL to Blob Conversion
-const currentCss = fs.readFileSync("app.css", "utf8");
+const currentCss = fs.readFileSync(path.join(__dirname, "app.css"), "utf8");
 assert.ok(
   currentCss.includes("tab-label-short") && currentCss.includes("tab-label-full"),
   "app.css phải hỗ trợ lớp nhãn ngắn gọn .tab-label-short cho thiết bị di động"
@@ -914,8 +915,8 @@ assert.ok(
 console.log("✅ 31. Kiểm thử giao diện thẻ lọc di động (Segmented Tabs) & nạp ảnh Base64 an toàn: ĐẠT");
 
 // 32. Test: Mobile Responsive No-Scroll Cards for Campaign & Students Table
-const currentAppJs = fs.readFileSync("app.js", "utf8");
-const currentAppHtml = fs.readFileSync("index.html", "utf8");
+const currentAppJs = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const currentAppHtml = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
 assert.ok(
   currentCss.includes("campaign-mobile-view") && currentCss.includes("campaign-desktop-view"),
   "app.css phải có lớp phân chia hiển thị bảng máy tính và thẻ di động"
@@ -944,9 +945,9 @@ assert.ok(
 console.log("✅ 33. Kiểm thử hộp thoại thông báo nội bộ trong web (In-App Notice Dialog): ĐẠT");
 
 // 34. Test: Full Responsive Containment & Mobile Cards Across All Tabs (No Horizontal Scroll)
-const updatedHtml = fs.readFileSync("index.html", "utf8");
-const updatedJs = fs.readFileSync("app.js", "utf8");
-const updatedCss = fs.readFileSync("app.css", "utf8");
+const updatedHtml = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+const updatedJs = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const updatedCss = fs.readFileSync(path.join(__dirname, "app.css"), "utf8");
 
 assert.ok(
   updatedHtml.includes('id="gradebookCards"') && updatedHtml.includes('id="adminTeachersCards"') && updatedHtml.includes('id="adminStudentsTreeCards"'),
@@ -964,8 +965,8 @@ assert.ok(
 console.log("✅ 34. Kiểm thử cô lập toàn diện chống tràn trang & thẻ di động trên tất cả các tab: ĐẠT");
 
 // 35. Test: Resilient Photo Fallback (Never Show Broken Image or "Lỗi ảnh")
-const latestJs = fs.readFileSync("app.js", "utf8");
-const latestSchema = fs.readFileSync("schema.sql", "utf8");
+const latestJs = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const latestSchema = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8");
 
 assert.ok(
   latestJs.includes("FALLBACK_PHOTO_SVG") && latestJs.includes("handlePhotoError"),
@@ -983,9 +984,9 @@ assert.ok(
 console.log("✅ 35. Kiểm thử cơ chế cứu hộ ảnh minh chứng (Resilient Photo Fallback): ĐẠT");
 
 // 36. Test: Responsive Cards for Tablet/Medium Screens (max-width: 920px) & In-App Confirm Dialog
-const testAppHtml = fs.readFileSync("index.html", "utf8");
-const testAppJs = fs.readFileSync("app.js", "utf8");
-const testAppCss = fs.readFileSync("app.css", "utf8");
+const testAppHtml = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+const testAppJs = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const testAppCss = fs.readFileSync(path.join(__dirname, "app.css"), "utf8");
 
 assert.ok(
   testAppHtml.includes('id="confirmModal"') && testAppHtml.includes('id="confirmModalActionBtn"'),
@@ -1007,8 +1008,8 @@ assert.ok(
 console.log("✅ 36. Kiểm thử chuyển đổi thẻ di động mở rộng (920px) & Hộp thoại xác nhận nội bộ trong trang: ĐẠT");
 
 // 37. Test: Parallel PC & Mobile Touch Feature Parity in Grading Studio
-const currentJs37 = fs.readFileSync("app.js", "utf8");
-const currentCss37 = fs.readFileSync("app.css", "utf8");
+const currentJs37 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const currentCss37 = fs.readFileSync(path.join(__dirname, "app.css"), "utf8");
 
 assert.ok(
   currentJs37.includes("touchstart") && currentJs37.includes("touchmove") && currentJs37.includes("touchend"),
@@ -1022,8 +1023,8 @@ assert.ok(
 console.log("✅ 37. Kiểm thử tính năng song song PC và Điện thoại (Touch Events & Chấm bài trên Canvas): ĐẠT");
 
 // 38. Test: Gradebook per-assignment selector and isolated student status
-const currentJs38 = fs.readFileSync("app.js", "utf8");
-const currentHtml38 = fs.readFileSync("index.html", "utf8");
+const currentJs38 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const currentHtml38 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
 
 assert.ok(
   currentHtml38.includes('id="gradebookAssignmentSelect"') && currentHtml38.includes('id="gradebookDetailContainer"'),
@@ -1041,8 +1042,8 @@ assert.ok(
 console.log("✅ 38. Kiểm thử Sổ điểm theo từng đề bài độc lập & Thống kê song song PC/Điện thoại: ĐẠT");
 
 // 39. Test: Homework Completion Verification without Numerical Grading & Resubmission Request
-const currentJs39 = fs.readFileSync("app.js", "utf8");
-const currentHtml39 = fs.readFileSync("index.html", "utf8");
+const currentJs39 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const currentHtml39 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
 
 // Kiểm tra index.html đã xóa hoàn toàn ô nhập điểm và bảng đánh giá điểm số
 assert.ok(
@@ -1098,8 +1099,8 @@ assert.strictEqual(mockSubCheck.feedback, "Ảnh mờ trang 2, em chụp lại r
 console.log("✅ 39. Kiểm thử xác nhận học sinh đã làm bài (Không chấm điểm số) & Yêu cầu nộp lại: ĐẠT");
 
 // 40. Test: Mandatory Photo Attachment Before Submitting Homework
-const currentJs40 = fs.readFileSync("app.js", "utf8");
-const currentSchema40 = fs.readFileSync("schema.sql", "utf8");
+const currentJs40 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const currentSchema40 = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8");
 
 // 1. Kiểm tra app.js ràng buộc bắt buộc phải có ảnh mới được nộp
 assert.ok(
@@ -1142,9 +1143,9 @@ console.log("✅ 40. Kiểm thử cơ chế bắt buộc đính kèm ảnh bài 
 // ==========================================
 // 41. Kiểm thử Quản lý Email học sinh, Khớp tên file Excel & Thông báo Email tự động khi tạo đề bài
 // ==========================================
-const currentHtml41 = fs.readFileSync("index.html", "utf-8");
-const currentJs41 = fs.readFileSync("app.js", "utf-8");
-const currentSchema41 = fs.readFileSync("schema.sql", "utf-8");
+const currentHtml41 = fs.readFileSync(path.join(__dirname, "index.html"), "utf-8");
+const currentJs41 = fs.readFileSync(path.join(__dirname, "app.js"), "utf-8");
+const currentSchema41 = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf-8");
 
 // 1. Kiểm thử giao diện HTML có đầy đủ các thành phần nhập email và thông báo
 assert.ok(
@@ -1239,9 +1240,9 @@ assert.strictEqual(matchResults[1].name, "Lê Văn Mới");
 console.log("✅ 41. Kiểm thử Quản lý Email học sinh, Khớp tên file Excel & Thông báo Email tự động khi tạo đề bài: ĐẠT");
 
 // 42. Test: Streamlined Campaign Banner (Single Unified Card & Mobile 3+2 Grid Tabs)
-const html42 = fs.readFileSync("index.html", "utf8");
-const js42 = fs.readFileSync("app.js", "utf8");
-const css42 = fs.readFileSync("app.css", "utf8");
+const html42 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+const js42 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const css42 = fs.readFileSync(path.join(__dirname, "app.css"), "utf8");
 
 assert.ok(
   !html42.includes("CHỌN ĐỢT BÀI TẬP CẦN THEO DÕI NỘP BÀI:"),
@@ -1259,9 +1260,9 @@ assert.ok(
 console.log("✅ 42. Kiểm thử Tinh giản Giao diện Quản lý đợt bài tập (Thống nhất 1 Card & Tab Mobile 3+2): ĐẠT");
 
 // 43. Test: Resubmit Photo Replacement & Teacher Reject Photo with Automatic Email Notification
-const html43 = fs.readFileSync("index.html", "utf8");
-const js43 = fs.readFileSync("app.js", "utf8");
-const sql43 = fs.readFileSync("schema.sql", "utf8");
+const html43 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+const js43 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const sql43 = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8");
 
 // 1. Kiểm tra index.html có modal từ chối ảnh và nút trong grading studio
 assert.ok(
@@ -1309,4 +1310,68 @@ assert.ok(
 
 console.log("✅ 43. Kiểm thử Nộp lại thay thế ảnh bài làm, Chặn sửa khi GV đã xác nhận & Từ chối ảnh gửi Email tự động: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (43/43)!");
+// 44. Test: Comprehensive Disclaimer Audit & Risk Hardening (Kiểm tra & Giải quyết các mục rủi ro/bỏ qua đã ghi nhận)
+const html44 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+const js44 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const css44 = fs.readFileSync(path.join(__dirname, "app.css"), "utf8");
+const sql44 = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8");
+
+// 1. Kiểm tra chống cache trình duyệt di động: meta tags Cache-Control, Pragma, Expires & hash query string
+assert.ok(
+  html44.includes('http-equiv="Cache-Control"') &&
+  html44.includes('http-equiv="Pragma"') &&
+  html44.includes('http-equiv="Expires"') &&
+  html44.includes("app.css?v=") &&
+  html44.includes("app.js?v="),
+  "index.html phải cấu hình đầy đủ meta chống cache và version query string cho css/js"
+);
+
+// 2. Kiểm tra Popup Blocker Fallback: link mở thủ công nếu popup bị chặn khi gửi mail
+assert.ok(
+  js44.includes("sentGmailUrl") &&
+  js44.includes("Bấm vào đây nếu trình duyệt chặn tự mở Gmail"),
+  "app.js phải cung cấp link mở lại Gmail trực tiếp trong notice modal đề phòng popup bị chặn"
+);
+
+// 3. Kiểm tra tính tương thích báo cáo Excel: không bị lỗi 'null/10' và hiển thị đúng trạng thái Đã làm / Cần nộp lại
+assert.ok(
+  js44.includes("Đã kiểm tra (Đã làm)") &&
+  js44.includes("Cần nộp lại ảnh") &&
+  js44.includes("Đã hoàn thành"),
+  "exportCampaignReport phải chuẩn hóa hiển thị trạng thái hoàn thành và cần nộp lại, không in null/10"
+);
+
+// 4. Kiểm tra phân quyền Storage Supabase: Cho phép Update và Delete đè ảnh cũ
+assert.ok(
+  sql44.includes('"Allow Update Proofs"') &&
+  sql44.includes('"Allow Delete Proofs"') &&
+  sql44.includes("bucket_id = 'proofs'"),
+  "schema.sql phải có đầy đủ chính sách Allow Update Proofs và Allow Delete Proofs trên bucket proofs"
+);
+
+// 5. Kiểm tra RPC Dynamic Drop Function loop chống lỗi 42725 function not unique
+assert.ok(
+  sql44.includes("SELECT oid::regprocedure AS func_sig") &&
+  sql44.includes("EXECUTE 'DROP FUNCTION IF EXISTS ' || r.func_sig || ' CASCADE;'"),
+  "schema.sql phải quét và xóa triệt để mọi overload cũ của hàm bằng dynamic loop"
+);
+
+// 6. Kiểm tra Canvas Touch Actions chống vuốt lùi màn hình và hỗ trợ đa điểm
+assert.ok(
+  css44.includes("#annotationCanvas") &&
+  css44.includes("touch-action: none;") &&
+  js44.includes("newCanvas.addEventListener(\"touchstart\"") &&
+  js44.includes("{ passive: false }"),
+  "Canvas phải cấu hình touch-action: none và touch listener passive: false để vẽ mượt trên mobile"
+);
+
+// 7. Kiểm tra Rate Limiting & Xác thực tài khoản học sinh
+assert.ok(
+  sql44.includes("INTERVAL '3 seconds'") &&
+  sql44.includes("role = 'student'"),
+  "schema.sql phải duy trì cơ chế rate-limiting 3s và xác thực chính chủ học sinh"
+);
+
+console.log("✅ 44. Kiểm thử Toàn diện Khắc phục & Bảo đảm Rủi ro (Cache-Control, Popup Fallback, Storage Policies, Rate-limit): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (44/44)!");

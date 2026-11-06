@@ -2961,12 +2961,20 @@ function exportCampaignReport(assignmentId) {
 
     if (sub) {
       sub.photos = normalizePhotos(sub.photos);
-      statusText = sub.status === "graded" ? `Đã chấm (${sub.grade}/10)` : "Đã nộp minh chứng";
+      if (sub.status === "graded") {
+        statusText = sub.grade !== null && sub.grade !== undefined ? `Đã kiểm tra (${sub.grade}đ)` : "Đã kiểm tra (Đã làm)";
+        scoreText = sub.grade !== null && sub.grade !== undefined ? sub.grade : "Đã hoàn thành";
+      } else if (sub.status === "resubmit_requested" || sub.resubmitRequested) {
+        statusText = "Cần nộp lại ảnh";
+        scoreText = "Từ chối ảnh (Cần chụp lại)";
+      } else {
+        statusText = "Đã nộp (Chờ xem)";
+        scoreText = "Chờ giáo viên xem";
+      }
       submitTime = new Date(sub.submittedAt).toLocaleString("vi-VN");
       photoCount = sub.photos.length;
-      scoreText = sub.grade !== null ? sub.grade : "Chờ chấm";
       linkProof = sub.linkProof || "—";
-      note = sub.studentNote || "—";
+      note = sub.studentNote || sub.feedback || "—";
     }
 
     return {
@@ -4320,6 +4328,7 @@ function confirmRejectPhotoAndNotify() {
   }
 
   let emailSent = false;
+  let sentGmailUrl = "";
   if (student.email && student.email.includes("@") && student.email.includes(".")) {
     const appUrl = window.location.origin + window.location.pathname;
     const emailSubject = `[EduProof] Yêu cầu nộp lại ảnh bài làm - Môn ${asg.subject}: ${asg.title}`;
@@ -4327,6 +4336,7 @@ function confirmRejectPhotoAndNotify() {
 
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(student.email)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
     const mailtoUrl = `mailto:${encodeURIComponent(student.email)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    sentGmailUrl = gmailUrl;
 
     try {
       const win = window.open(gmailUrl, "_blank");
@@ -4345,7 +4355,7 @@ function confirmRejectPhotoAndNotify() {
 
   if (emailSent) {
     showNoticeModal(
-      `Đã từ chối ảnh bài làm và tự động kích hoạt gửi thư thông báo tới email học sinh <strong>${sanitizeText(student.name)}</strong> (${sanitizeText(student.email)})!`,
+      `Đã từ chối ảnh bài làm và tự động kích hoạt gửi thư thông báo tới email học sinh <strong>${sanitizeText(student.name)}</strong> (${sanitizeText(student.email)})!<br><br><a href="${sentGmailUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="display:inline-flex; align-items:center; gap:0.4rem; padding:0.45rem 0.9rem; font-size:0.82rem; text-decoration:none; margin-top:0.3rem;">📧 Bấm vào đây nếu trình duyệt chặn tự mở Gmail</a>`,
       "Từ chối & Gửi Email thành công",
       "📧"
     );
