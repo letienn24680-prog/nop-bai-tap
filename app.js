@@ -74,6 +74,57 @@ function formatSubjectBadge(subject) {
   return `<span class="badge-subject">${icon} ${sanitizeText(s)}</span>`;
 }
 
+// ==========================================
+// IN-APP NOTICE / DIALOG POPUP (Thay thế alert trình duyệt)
+// ==========================================
+function showNoticeModal(message, title = "Thông báo hệ thống", icon = "") {
+  const modal = document.getElementById("noticeModal");
+  if (!modal) {
+    console.log(message);
+    return;
+  }
+  const titleEl = document.getElementById("noticeModalTitle");
+  const contentEl = document.getElementById("noticeModalContent");
+  const iconEl = document.getElementById("noticeModalIcon");
+
+  const str = String(message || "");
+  let displayTitle = title;
+  let displayIcon = icon;
+
+  if (!icon) {
+    if (str.includes("🎉") || str.toLowerCase().includes("thành công")) {
+      displayIcon = "🎉";
+      if (displayTitle === "Thông báo hệ thống") displayTitle = "Thành công!";
+    } else if (str.includes("⚠️") || str.toLowerCase().includes("lỗi") || str.toLowerCase().includes("sai") || str.toLowerCase().includes("không")) {
+      displayIcon = "⚠️";
+      if (displayTitle === "Thông báo hệ thống") displayTitle = "Lưu ý";
+    } else if (str.includes("📋") || str.toLowerCase().includes("sao chép")) {
+      displayIcon = "📋";
+      if (displayTitle === "Thông báo hệ thống") displayTitle = "Đã sao chép";
+    } else {
+      displayIcon = "🔔";
+    }
+  }
+
+  if (titleEl) titleEl.innerText = displayTitle;
+  if (contentEl) contentEl.innerText = str;
+  if (iconEl) iconEl.innerText = displayIcon;
+
+  modal.style.display = "flex";
+}
+
+function closeNoticeModal() {
+  const modal = document.getElementById("noticeModal");
+  if (modal) modal.style.display = "none";
+}
+
+// Ghi đè hàm alert() của trình duyệt sang popup trong trang web
+if (typeof window !== "undefined") {
+  window.alert = function(msg) {
+    showNoticeModal(msg);
+  };
+}
+
 // In-Memory State
 let users = [];
 let currentUser = null;

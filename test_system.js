@@ -931,4 +931,16 @@ assert.ok(
 
 console.log("✅ 32. Kiểm thử hiển thị danh sách học sinh dạng thẻ trên điện thoại (Không cần kéo ngang): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (32/32)!");
+// 33. Test: In-App Notice Dialog replacing Native Browser Alert
+assert.ok(
+  currentAppHtml.includes('id="noticeModal"') && currentAppHtml.includes('id="noticeModalContent"'),
+  "index.html phải có modal popup thông báo nội bộ noticeModal"
+);
+assert.ok(
+  currentAppJs.includes("showNoticeModal") && currentAppJs.includes("closeNoticeModal"),
+  "app.js phải có hàm showNoticeModal và closeNoticeModal điều khiển popup thông báo nội bộ"
+);
+
+console.log("✅ 33. Kiểm thử hộp thoại thông báo nội bộ trong web (In-App Notice Dialog): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (33/33)!");
