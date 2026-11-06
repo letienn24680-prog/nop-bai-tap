@@ -432,29 +432,59 @@ async function syncCloudData(notify = false) {
     ]);
 
     // 1. Sync Users
-    if (usersRes.data && usersRes.data.length > 0) {
-      users = usersRes.data.map((u) => ({
-        id: u.id,
-        username: u.username,
-        password: u.password,
-        name: u.name,
-        role: u.role,
-        class: u.class,
-        subject: u.subject,
-        teacherId: u.teacher_id
-      }));
-    } else if (users.length > 0) {
-      const userPayloads = users.map((u) => ({
-        id: u.id,
-        username: u.username,
-        password: u.password,
-        name: u.name,
-        role: u.role,
-        class: u.class || null,
-        subject: u.subject || null,
-        teacher_id: u.teacherId || null
-      }));
-      await sb.from("eduproof_users").upsert(userPayloads);
+    let syncedUsers = null;
+    if (currentUser && (currentUser.role === "teacher" || currentUser.role === "admin")) {
+      try {
+        const { data: studentList, error: slErr } = await sb.rpc("get_my_students", {
+          p_teacher_id: currentUser.id,
+          p_password: currentUser.password
+        });
+        if (!slErr && Array.isArray(studentList) && studentList.length > 0) {
+          syncedUsers = studentList.map((u) => ({
+            id: u.id,
+            username: u.username,
+            password: u.password,
+            name: u.name,
+            role: u.role,
+            class: u.class,
+            subject: u.subject,
+            teacherId: u.teacherId || u.teacher_id
+          }));
+        }
+      } catch (e) {
+        console.warn("RPC get_my_students fallback:", e);
+      }
+    }
+
+    if (!syncedUsers) {
+      if (usersRes.data && usersRes.data.length > 0) {
+        syncedUsers = usersRes.data.map((u) => ({
+          id: u.id,
+          username: u.username,
+          password: u.password || (currentUser && currentUser.id === u.id ? currentUser.password : ""),
+          name: u.name,
+          role: u.role,
+          class: u.class,
+          subject: u.subject,
+          teacherId: u.teacher_id
+        }));
+      } else if (users.length > 0) {
+        const userPayloads = users.map((u) => ({
+          id: u.id,
+          username: u.username,
+          password: u.password,
+          name: u.name,
+          role: u.role,
+          class: u.class || null,
+          subject: u.subject || null,
+          teacher_id: u.teacherId || null
+        }));
+        await sb.from("eduproof_users").upsert(userPayloads);
+      }
+    }
+
+    if (syncedUsers && syncedUsers.length > 0) {
+      users = syncedUsers;
     }
 
     // 2. Sync Assignments
@@ -616,37 +646,67 @@ async function handleLoginFormSubmit(event) {
   const username = document.getElementById("loginUsernameInput").value.trim();
   const pass = document.getElementById("loginPasswordInput").value.trim();
 
-  let found = users.find((u) => u.username === username && u.password === pass);
+  let found = null;
+  const sb = getSupabase();
 
-  // Nếu chưa có trong cache cục bộ, kiểm tra trực tiếp trên Supabase Cloud
-  if (!found) {
-    const sb = getSupabase();
-    if (sb) {
-      try {
-        const { data, error } = await sb
-          .from("eduproof_users")
-          .select("*")
-          .eq("username", username)
-          .eq("password", pass)
-          .maybeSingle();
+  // 1. Ưu tiên xác thực bảo mật qua RPC login_user trực tiếp trên Supabase
+  if (sb) {
+    try {
+      const { data: rpcUser, error: rpcErr } = await sb.rpc("login_user", {
+        p_username: username,
+        p_password: pass
+      });
 
-        if (data && !error) {
-          found = {
-            id: data.id,
-            username: data.username,
-            password: data.password,
-            name: data.name,
-            role: data.role,
-            class: data.class,
-            subject: data.subject,
-            teacherId: data.teacher_id
-          };
-          users.push(found);
-          syncCloudData(false);
-        }
-      } catch (err) {
-        console.warn("Lỗi kiểm tra đăng nhập online:", err);
+      if (!rpcErr && rpcUser) {
+        found = {
+          id: rpcUser.id,
+          username: rpcUser.username,
+          password: pass,
+          name: rpcUser.name,
+          role: rpcUser.role,
+          class: rpcUser.class,
+          subject: rpcUser.subject,
+          teacherId: rpcUser.teacherId || rpcUser.teacher_id
+        };
+        const existIdx = users.findIndex((u) => u.username === found.username);
+        if (existIdx >= 0) users[existIdx] = found;
+        else users.push(found);
       }
+    } catch (err) {
+      console.warn("Lỗi RPC login_user:", err);
+    }
+  }
+
+  // 2. Fallback: Kiểm tra cache cục bộ (hoặc khi offline)
+  if (!found) {
+    found = users.find((u) => u.username === username && u.password === pass);
+  }
+
+  // 3. Fallback: Kiểm tra qua bảng trực tiếp nếu RPC chưa được cài đặt
+  if (!found && sb) {
+    try {
+      const { data, error } = await sb
+        .from("eduproof_users")
+        .select("*")
+        .eq("username", username)
+        .eq("password", pass)
+        .maybeSingle();
+
+      if (data && !error) {
+        found = {
+          id: data.id,
+          username: data.username,
+          password: data.password,
+          name: data.name,
+          role: data.role,
+          class: data.class,
+          subject: data.subject,
+          teacherId: data.teacher_id
+        };
+        users.push(found);
+      }
+    } catch (err) {
+      console.warn("Lỗi kiểm tra đăng nhập online:", err);
     }
   }
 
@@ -656,6 +716,8 @@ async function handleLoginFormSubmit(event) {
     hideLoginScreen();
     updateHeaderUserDisplay();
     renderCurrentView();
+    // Đồng bộ danh sách học sinh theo quyền sau khi đăng nhập thành công
+    syncCloudData(false);
   } else {
     alert("Sai tên đăng nhập hoặc mật khẩu! Học sinh vui lòng nhận tài khoản từ giáo viên.");
   }

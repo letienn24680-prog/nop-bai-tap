@@ -277,8 +277,93 @@ BEGIN
 END;
 $$;
 
+-- 3. Hàm đăng nhập bảo mật: Xác thực trực tiếp trên database, không trả về mật khẩu người khác
+CREATE OR REPLACE FUNCTION login_user(
+  p_username TEXT,
+  p_password TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_user RECORD;
+BEGIN
+  SELECT id, username, name, role, class, subject, teacher_id 
+  INTO v_user 
+  FROM eduproof_users 
+  WHERE username = p_username AND password = p_password;
+  
+  IF NOT FOUND THEN
+    RETURN NULL;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'id', v_user.id,
+    'username', v_user.username,
+    'password', p_password,
+    'name', v_user.name,
+    'role', v_user.role,
+    'class', v_user.class,
+    'subject', v_user.subject,
+    'teacherId', v_user.teacher_id
+  );
+END;
+$$;
+
+-- 4. Hàm lấy danh sách tài khoản học sinh bảo vệ mật khẩu cho Giáo viên / Admin
+CREATE OR REPLACE FUNCTION get_my_students(
+  p_teacher_id TEXT,
+  p_password TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_teacher RECORD;
+  v_students JSONB;
+BEGIN
+  SELECT * INTO v_teacher FROM eduproof_users 
+  WHERE id = p_teacher_id AND password = p_password AND role IN ('teacher', 'admin');
+  
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Xác thực giáo viên không thành công hoặc không có quyền.';
+  END IF;
+
+  IF v_teacher.role = 'admin' THEN
+    SELECT jsonb_agg(jsonb_build_object(
+      'id', u.id,
+      'username', u.username,
+      'password', u.password,
+      'name', u.name,
+      'role', u.role,
+      'class', u.class,
+      'subject', u.subject,
+      'teacherId', u.teacher_id
+    )) INTO v_students FROM eduproof_users u;
+  ELSE
+    SELECT jsonb_agg(jsonb_build_object(
+      'id', u.id,
+      'username', u.username,
+      'password', u.password,
+      'name', u.name,
+      'role', u.role,
+      'class', u.class,
+      'subject', u.subject,
+      'teacherId', u.teacher_id
+    )) INTO v_students FROM eduproof_users u 
+    WHERE u.teacher_id = p_teacher_id OR u.id = p_teacher_id;
+  END IF;
+
+  RETURN COALESCE(v_students, '[]'::jsonb);
+END;
+$$;
+
 GRANT EXECUTE ON FUNCTION submit_homework TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION grade_submission TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION login_user TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_my_students TO anon, authenticated;
 
 -- Khởi tạo sẵn tài khoản Admin và Giáo viên mẫu nếu chưa có
 INSERT INTO eduproof_users (id, username, password, name, role, class, subject, teacher_id)

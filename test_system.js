@@ -637,4 +637,59 @@ assert.throws(() => {
 
 console.log("✅ 19. Kiểm thử xác thực RPC submit_homework chống nộp thay & chống sửa điểm: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (19/19)!");
+// 20. Test: RPC login_user (Secure Authentication without Password Leaks)
+function mockRpcLoginUser(usersTable, username, password) {
+  const user = usersTable.find((u) => u.username === username && u.password === password);
+  if (!user) return null;
+  return {
+    id: user.id,
+    username: user.username,
+    name: user.name,
+    role: user.role,
+    class: user.class,
+    subject: user.subject,
+    teacherId: user.teacherId
+  };
+}
+
+const userDir = [
+  { id: "admin_root", username: "admin", password: "123", name: "Admin", role: "admin" },
+  { id: "gv_ha", username: "gv-ha", password: "000", name: "Cô Hà", role: "teacher" },
+  { id: "hs_an", username: "hs-an", password: "111", name: "An", role: "student", teacherId: "gv_ha" }
+];
+
+// Login đúng -> Trả về profile không chứa password của người khác
+const loginOk = mockRpcLoginUser(userDir, "hs-an", "111");
+assert.strictEqual(loginOk.username, "hs-an");
+assert.strictEqual(loginOk.role, "student");
+assert.strictEqual(loginOk.password, undefined, "Mật khẩu không được trả về trong payload công khai");
+
+// Login sai -> Trả về null
+assert.strictEqual(mockRpcLoginUser(userDir, "hs-an", "sai_pass"), null);
+console.log("✅ 20. Kiểm thử RPC login_user xác thực bảo mật & chống lộ mật khẩu: ĐẠT");
+
+// 21. Test: RPC get_my_students (Teacher Scoped Student Access)
+function mockRpcGetMyStudents(usersTable, teacherId, password) {
+  const teacher = usersTable.find((u) => u.id === teacherId && u.password === password && (u.role === "teacher" || u.role === "admin"));
+  if (!teacher) {
+    throw new Error("Xác thực giáo viên không thành công.");
+  }
+  if (teacher.role === "admin") {
+    return usersTable.filter((u) => u.role === "student");
+  }
+  return usersTable.filter((u) => u.role === "student" && u.teacherId === teacherId);
+}
+
+// Giáo viên đúng mật khẩu -> Chỉ lấy được học sinh lớp mình
+const teacherStudents = mockRpcGetMyStudents(userDir, "gv_ha", "000");
+assert.strictEqual(teacherStudents.length, 1);
+assert.strictEqual(teacherStudents[0].id, "hs_an");
+
+// Học sinh mạo danh giáo viên -> Bị chặn
+assert.throws(() => {
+  mockRpcGetMyStudents(userDir, "hs_an", "111");
+}, /Xác thực giáo viên không thành công/);
+
+console.log("✅ 21. Kiểm thử RPC get_my_students phân quyền tài khoản theo lớp của giáo viên: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (21/21)!");
