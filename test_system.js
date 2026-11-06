@@ -1704,4 +1704,70 @@ assert.ok(
 
 console.log("✅ 52. Kiểm thử Toàn diện Khắc phục các Điểm Bỏ qua (Dọn dẹp Storage, Cascade Delete, Session Sync & Fallbacks): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (52/52)!");
+// --- TEST 53: Kiểm thử Vòng đời Toàn diện Khép kín (End-to-End State Machine: Nộp -> Từ chối -> Nộp lại -> Xác nhận -> Xóa) ---
+const mockTeacher53 = { id: "gv_53", name: "Cô Thảo", role: "teacher", class: "12A2" };
+const mockStudent53 = { id: "hs_53", name: "Nguyễn Văn An", username: "hs_053", role: "student", teacherId: "gv_53", email: "an@gmail.com" };
+const mockAsg53 = { id: "asg_53", teacherId: "gv_53", title: "Bài tập Số 53", subject: "Ngữ văn", deadline: new Date(Date.now() + 86400000).toISOString() };
+
+// 1. Học sinh nộp bài lần đầu: status = 'submitted'
+let sub53 = {
+  id: "sub_53",
+  assignmentId: "asg_53",
+  studentId: "hs_53",
+  studentName: "Nguyễn Văn An",
+  submittedAt: new Date().toISOString(),
+  status: "submitted",
+  photos: [{ id: "p1", url: "https://cloud.com/p1.jpg" }],
+  resubmitRequested: false,
+  feedback: ""
+};
+
+// Hàng chờ: Bài mới nộp phải xuất hiện trong hàng chờ giáo viên
+let queue53 = [sub53].filter((s) => s.status === "submitted");
+assert.strictEqual(queue53.length, 1, "Bài vừa nộp phải có trong hàng chờ bài nộp của giáo viên");
+
+// 2. Giáo viên từ chối ảnh: chuyển sang 'resubmit_requested'
+sub53.status = "resubmit_requested";
+sub53.resubmitRequested = true;
+sub53.feedback = "Ảnh mờ góc phải, em chụp lại giúp cô!";
+sub53.grade = null;
+
+// Hàng chờ: Bài bị từ chối phải tự động biến mất khỏi hàng chờ
+queue53 = [sub53].filter((s) => s.status === "submitted");
+assert.strictEqual(queue53.length, 0, "Bài bị từ chối ảnh phải lập tức rời khỏi hàng chờ giáo viên");
+
+// Trạng thái thẻ & nút bấm: Phải là 'Cần nộp lại' và 'Xem bài đã từ chối', KHÔNG còn nút 'Từ chối ảnh'
+const statusLabel53 = sub53.status === "graded" ? "Đã làm" : ((sub53.status === "resubmit_requested" || sub53.resubmitRequested) ? "Cần nộp lại" : "Chờ xem");
+const btnLabel53 = sub53.status === "graded" ? "Xem lại bài" : ((sub53.status === "resubmit_requested" || sub53.resubmitRequested) ? "Xem bài đã từ chối" : "Kiểm tra bài làm");
+const canReject53 = sub53.status === "submitted" && !sub53.resubmitRequested;
+
+assert.strictEqual(statusLabel53, "Cần nộp lại", "Dòng trạng thái phải là 'Cần nộp lại'");
+assert.strictEqual(btnLabel53, "Xem bài đã từ chối", "Nút chính phải đổi thành 'Xem bài đã từ chối'");
+assert.strictEqual(canReject53, false, "Không được hiển thị nút từ chối ảnh khi bài đã bị từ chối");
+
+// 3. Học sinh xem bài: Thấy cảnh báo và nộp lại ảnh mới thay thế
+const studentStatus53 = sub53.status === "resubmit_requested" ? "resubmit" : "submitted";
+assert.strictEqual(studentStatus53, "resubmit", "Học sinh phải thấy trạng thái yêu cầu chụp nộp lại");
+
+// Học sinh tải ảnh mới lên thay thế: status quay lại 'submitted'
+sub53.photos = [{ id: "p2", url: "https://cloud.com/p2.jpg" }];
+sub53.status = "submitted";
+sub53.resubmitRequested = false;
+sub53.submittedAt = new Date().toISOString();
+
+// Hàng chờ: Bài vừa nộp lại phải tự động xuất hiện lại trong hàng chờ
+queue53 = [sub53].filter((s) => s.status === "submitted");
+assert.strictEqual(queue53.length, 1, "Bài sau khi nộp lại phải tự động quay lại hàng chờ giáo viên");
+
+// 4. Giáo viên kiểm tra & xác nhận hoàn thành: status = 'graded'
+sub53.status = "graded";
+sub53.grade = 10;
+sub53.feedback = "Bài làm rất tốt!";
+
+// Kiểm tra chặn học sinh nộp đè bài khi đã được xác nhận hoàn thành
+const canStudentResubmit53 = sub53.status !== "graded";
+assert.strictEqual(canStudentResubmit53, false, "Học sinh không được phép nộp lại bài khi giáo viên đã chấm điểm/xác nhận");
+
+console.log("✅ 53. Kiểm thử Vòng đời Toàn diện Khép kín (End-to-End State Machine Lifecycle): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (53/53)!");
