@@ -1562,16 +1562,16 @@ function renderStudentView() {
       statusBadge = isLate
         ? `<span class="badge-status status-resubmit">⚠️ Đã quá hạn</span>`
         : `<span class="badge-status status-pending">⏳ Cần nộp bài</span>`;
-      actionBtn = `<button class="btn btn-primary btn-sm" onclick="openSubmitModal('${asg.id}')">${isLate ? "📸 Nộp bài muộn" : "📸 Nộp bài tập"}</button>`;
+      actionBtn = `<button class="btn btn-primary btn-sm" onclick="openSubmitModal('${asg.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> ${isLate ? "Nộp bài muộn" : "Nộp bài tập"}</button>`;
     } else if (status === "resubmit") {
       statusBadge = `<span class="badge-status status-resubmit">⚠️ Yêu cầu chụp lại</span>`;
-      actionBtn = `<button class="btn btn-danger btn-sm" onclick="openSubmitModal('${asg.id}')">🔄 Chụp nộp lại</button>`;
+      actionBtn = `<button class="btn btn-danger btn-sm" onclick="openSubmitModal('${asg.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Chụp nộp lại</button>`;
     } else if (status === "submitted") {
       statusBadge = `<span class="badge-status status-submitted">✅ Đã nộp (${sub.photos.length} trang)</span>`;
-      actionBtn = `<button class="btn btn-secondary btn-sm" onclick="viewSubmissionSummary('${sub.id}')">👀 Xem bài đã gửi</button>`;
+      actionBtn = `<button class="btn btn-secondary btn-sm" onclick="viewSubmissionSummary('${sub.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Xem bài đã gửi</button>`;
     } else if (status === "graded") {
       statusBadge = `<span class="badge-status status-graded">🎯 Điểm: ${sub.grade}/10</span>`;
-      actionBtn = `<button class="btn btn-secondary btn-sm" onclick="viewSubmissionSummary('${sub.id}')">📝 Lời phê & Bút đỏ</button>`;
+      actionBtn = `<button class="btn btn-secondary btn-sm" onclick="viewSubmissionSummary('${sub.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Lời phê & Bút đỏ</button>`;
     }
 
     card.innerHTML = `
@@ -2130,7 +2130,8 @@ function renderTeacherSubmissions(mySubmissionsList) {
       <div class="card-footer">
         <span style="font-size: 0.75rem; color: var(--text-muted);">Lớp: 12A1</span>
         <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
-          ✍️ ${sub.status === "graded" ? "Sửa điểm & Nhận xét" : "Mở chấm bài"}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          ${sub.status === "graded" ? "Sửa điểm & Nhận xét" : "Mở chấm bài"}
         </button>
       </div>
     `;
@@ -2373,10 +2374,10 @@ function renderTeacherAssignments(myAssignmentsList) {
         <span class="deadline-text">Hạn nộp: <strong>${new Date(asg.deadline).toLocaleDateString("vi-VN")}</strong></span>
         <div style="display: flex; gap: 0.4rem;">
           <button class="btn btn-secondary btn-sm" onclick="viewAssignmentCampaign('${asg.id}')">
-            📂 Xem đợt nộp này
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> Xem đợt nộp này
           </button>
           <button class="btn btn-danger btn-sm" title="Xóa bài tập nếu đăng nhầm" onclick="deleteAssignment('${asg.id}')">
-            🗑️ Xóa
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Xóa
           </button>
         </div>
       </div>

@@ -792,4 +792,43 @@ assert.strictEqual(computeResponsiveColumns(820), 2, "iPad 820px -> 2 cột");
 assert.strictEqual(computeResponsiveColumns(1200), 3, "Desktop -> 3 cột");
 console.log("✅ 26. Kiểm thử tính toán cột hiển thị trên màn hình gập & đa kích thước: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (26/26)!");
+// 27. Test: Cross-Browser Backdrop-Filter Fallback & Dark Mode / Forced Dark Mode Adaptability
+const fs = require("fs");
+const cssContent = fs.readFileSync("app.css", "utf8");
+
+assert.ok(
+  cssContent.includes("@supports not") && cssContent.includes("backdrop-filter"),
+  "CSS phải có @supports not fallback cho trình duyệt không hỗ trợ backdrop-filter"
+);
+assert.ok(
+  cssContent.includes("@media (prefers-color-scheme: dark)"),
+  "CSS phải có media query hỗ trợ giao diện tối và chống lỗi tương phản Forced Dark Mode"
+);
+assert.ok(
+  cssContent.includes(".btn svg") || cssContent.includes(".tab-btn svg"),
+  "CSS phải định kiểu căn chỉnh mượt mà cho icon vector SVG"
+);
+console.log("✅ 27. Kiểm thử cơ chế fallback backdrop-filter và bảo vệ tương phản Dark Mode: ĐẠT");
+
+// 28. Test: SVG Favicon, Vector Brand Logo & UI Icon Integrity
+const htmlContent = fs.readFileSync("index.html", "utf8");
+
+assert.ok(
+  htmlContent.includes('<link rel="icon" type="image/svg+xml"'),
+  "Trang web phải có thẻ favicon SVG vector sắc nét trên thanh tiêu đề trình duyệt"
+);
+assert.ok(
+  htmlContent.includes('<meta name="color-scheme" content="light dark">'),
+  "Trang web phải khai báo color-scheme chuẩn W3C để trình duyệt không làm méo màu"
+);
+assert.ok(
+  htmlContent.includes("brand-icon") && htmlContent.includes("<svg"),
+  "Logo ứng dụng phải dùng định dạng vector SVG thay vì văn bản ký tự thô"
+);
+assert.ok(
+  htmlContent.includes('id="pendingSubCount"') && htmlContent.includes('id="totalStudentsCount"'),
+  "Các mốc ID bộ đếm bài nộp và học sinh trong tab phải được bảo toàn nguyên vẹn"
+);
+console.log("✅ 28. Kiểm thử định dạng Vector SVG, Favicon chuẩn hóa và toàn vẹn thẻ UI: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (28/28)!");

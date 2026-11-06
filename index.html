@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#4F46E5">
   <title>EduProof - Nộp & Chấm Bài Tập Minh Chứng</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234F46E5'/%3E%3Cpath d='M16 5L4 11.5L16 18L28 11.5L16 5Z' fill='white'/%3E%3Cpath d='M8 14.5V20.5C8 24 11.5 26.5 16 26.5C20.5 26.5 24 24 24 20.5V14.5L16 19L8 14.5Z' fill='white' fill-opacity='0.85'/%3E%3Cpath d='M26 13.5V22' stroke='%23FDE047' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='26' cy='22.5' r='1.5' fill='%23FDE047'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
@@ -12,7 +15,14 @@
   <div id="loginScreen" class="login-page">
     <div class="login-card">
       <div class="login-brand">
-        <div class="brand-icon">EP</div>
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 4L3 11L16 18L29 11L16 4Z" fill="white" />
+            <path d="M7 14.2V20.5C7 24.2 11 27 16 27C21 27 25 24.2 25 20.5V14.2L16 19.2L7 14.2Z" fill="white" fill-opacity="0.88"/>
+            <path d="M27.5 13V22" stroke="#FDE047" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="27.5" cy="22.5" r="2" fill="#FDE047"/>
+          </svg>
+        </div>
         <div>
           <h2 style="font-size: 1.25rem; font-weight: 700;">EduProof</h2>
           <p style="font-size: 0.78rem; color: var(--text-muted);">Hệ thống Nộp & Chấm Bài tập Minh chứng</p>
@@ -40,7 +50,14 @@
   <!-- Top Navigation Bar -->
   <header class="topbar" id="appHeader" style="display: none;">
     <div class="brand">
-      <div class="brand-icon">EP</div>
+      <div class="brand-icon">
+        <svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M16 4L3 11L16 18L29 11L16 4Z" fill="white" />
+          <path d="M7 14.2V20.5C7 24.2 11 27 16 27C21 27 25 24.2 25 20.5V14.2L16 19.2L7 14.2Z" fill="white" fill-opacity="0.88"/>
+          <path d="M27.5 13V22" stroke="#FDE047" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="27.5" cy="22.5" r="2" fill="#FDE047"/>
+        </svg>
+      </div>
       <div>
         <div class="brand-title">EduProof</div>
         <div class="brand-subtitle">Hệ thống Nộp & Chấm Bài tập Minh chứng</div>
@@ -51,7 +68,8 @@
       <!-- Live Cloud Sync Indicator -->
       <button class="btn btn-secondary btn-sm" id="cloudSyncBtn" onclick="syncCloudData(true)" title="Nhấn để đồng bộ dữ liệu mới nhất từ Supabase Cloud">
         <span id="cloudStatusDot" style="width: 8px; height: 8px; border-radius: 50%; background: #16A34A; display: inline-block;"></span>
-        <span id="cloudStatusText">Supabase Cloud</span> 🔄
+        <span id="cloudStatusText">Supabase Cloud</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
       </button>
 
       <!-- Active User Profile Display -->
@@ -64,7 +82,8 @@
       </div>
 
       <button class="btn btn-secondary btn-sm logout-btn" onclick="logout()" title="Đăng xuất khỏi hệ thống">
-        🚪 <span class="logout-btn-text">Đăng xuất</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        <span class="logout-btn-text">Đăng xuất</span>
       </button>
     </div>
   </header>
@@ -161,10 +180,22 @@
 
       <!-- Filters -->
       <div class="filter-tabs">
-        <button class="tab-btn active" onclick="filterStudentAssignments('all', this)">Tất cả bài tập</button>
-        <button class="tab-btn" onclick="filterStudentAssignments('pending', this)">Chưa nộp (Cần làm)</button>
-        <button class="tab-btn" onclick="filterStudentAssignments('submitted', this)">Đã nộp / Chờ chấm</button>
-        <button class="tab-btn" onclick="filterStudentAssignments('graded', this)">Đã có điểm & Nhận xét</button>
+        <button class="tab-btn active" onclick="filterStudentAssignments('all', this)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Tất cả bài tập
+        </button>
+        <button class="tab-btn" onclick="filterStudentAssignments('pending', this)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Chưa nộp (Cần làm)
+        </button>
+        <button class="tab-btn" onclick="filterStudentAssignments('submitted', this)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Đã nộp / Chờ chấm
+        </button>
+        <button class="tab-btn" onclick="filterStudentAssignments('graded', this)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Đã có điểm & Nhận xét
+        </button>
       </div>
 
       <!-- Grid of Assignments -->
@@ -182,13 +213,16 @@
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
           <button class="btn btn-secondary" onclick="openExcelImportModal()">
-            📥 Nhập Excel học sinh
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+            <span>Nhập Excel học sinh</span>
           </button>
           <button class="btn btn-secondary" onclick="openCreateStudentModal()">
-            👥 Cấp tài khoản lẻ
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            <span>Cấp tài khoản lẻ</span>
           </button>
           <button class="btn btn-primary" onclick="openCreateAssignmentModal()">
-            ➕ Tạo bài tập mới
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            <span>Tạo bài tập mới</span>
           </button>
         </div>
       </div>
@@ -196,19 +230,24 @@
       <!-- Teacher Navigation Tabs -->
       <div class="filter-tabs">
         <button class="tab-btn active" onclick="switchTeacherTab('submissions', this)">
-          📝 Hàng chờ bài nộp (<span id="pendingSubCount">0</span>)
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Hàng chờ bài nộp (<span id="pendingSubCount">0</span>)
         </button>
         <button class="tab-btn" onclick="switchTeacherTab('campaigns', this)">
-          📂 Quản lý nộp theo đợt bài tập
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Quản lý nộp theo đợt bài tập
         </button>
         <button class="tab-btn" onclick="switchTeacherTab('assignments', this)">
-          📚 Danh sách bài đã giao
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Danh sách bài đã giao
         </button>
         <button class="tab-btn" onclick="switchTeacherTab('students', this)">
-          👥 Quản lý tài khoản học sinh (<span id="totalStudentsCount">0</span>)
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Quản lý tài khoản học sinh (<span id="totalStudentsCount">0</span>)
         </button>
         <button class="tab-btn" onclick="switchTeacherTab('gradebook', this)">
-          📊 Sổ theo dõi chuyên cần & Điểm số
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Sổ theo dõi chuyên cần & Điểm số
         </button>
       </div>
 
