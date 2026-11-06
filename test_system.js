@@ -1590,4 +1590,30 @@ assert.ok(
 
 console.log("✅ 48. Kiểm thử Cố định Chiều cao Chuẩn Ô chọn Đợt bài (Chống Giãn dọc Khổng lồ trên Mobile/PC): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (48/48)!");
+// 49. Test: Loại bỏ hoàn toàn cơ chế tự động reload/re-render web ngầm, chỉ giữ duy trì trạng thái khi người dùng tự F5
+const js49 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+
+// 1. Đảm bảo đã xóa bỏ listener realtime ngầm tự động kích hoạt reload/re-render
+assert.ok(
+  !js49.includes("function setupRealtimeListener") &&
+  !js49.includes("setupRealtimeListener()") &&
+  !js49.includes("realtimeDebounceTimer"),
+  "app.js không được chứa listener realtime ngầm tự ý re-render/reload web"
+);
+
+// 2. Kiểm tra syncCloudData không tự ý gọi renderCurrentView() khi chạy nền (chỉ gọi khi người dùng bấm nút đồng bộ chủ động)
+assert.ok(
+  !js49.includes("renderCurrentView();\n\n    if (notify)"),
+  "syncCloudData chạy nền không được gọi renderCurrentView() làm gián đoạn giao diện của người dùng"
+);
+
+// 3. Đảm bảo cơ chế lưu và khôi phục khi người dùng chủ động nhấn F5 vẫn hoạt động hoàn hảo
+assert.ok(
+  js49.includes("localStorage.getItem(DB_KEY_AUTH)") &&
+  js49.includes("sessionStorage.getItem(DB_KEY_AUTH)"),
+  "app.js phải bảo tồn phiên đăng nhập và vị trí tab khi người dùng chủ động F5"
+);
+
+console.log("✅ 49. Kiểm thử Loại bỏ Hoàn toàn Cơ chế Tự Động Reload Trang Web & Bảo tồn F5 Thủ công: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (49/49)!");

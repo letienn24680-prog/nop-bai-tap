@@ -411,7 +411,6 @@ function initData() {
 
       // Tự động đồng bộ với Supabase Cloud ngay khi có mạng
       syncCloudData(false);
-      setupRealtimeListener();
       return;
     } catch (e) {
       console.warn("Lỗi đọc cache, khởi tạo dữ liệu mẫu...", e);
@@ -537,7 +536,6 @@ function initData() {
 
   // Khởi động đồng bộ dữ liệu với Supabase Cloud
   syncCloudData(false);
-  setupRealtimeListener();
 }
 
 function persistData() {
@@ -725,9 +723,9 @@ async function syncCloudData(notify = false) {
 
     persistData();
     updateCloudIndicator("connected", "Supabase Cloud");
-    renderCurrentView();
 
     if (notify) {
+      renderCurrentView();
       alert("✅ Đã kết nối và đồng bộ dữ liệu mới nhất từ Supabase Cloud!");
     }
   } catch (err) {
@@ -736,33 +734,6 @@ async function syncCloudData(notify = false) {
     if (notify) {
       alert("Lỗi kết nối Supabase Cloud. Vui lòng kiểm tra lại cấu hình và bảng dữ liệu.");
     }
-  }
-}
-
-let realtimeSubscribed = false;
-let realtimeDebounceTimer = null;
-
-function setupRealtimeListener() {
-  if (realtimeSubscribed) return;
-  const sb = getSupabase();
-  if (!sb || !sb.channel) return;
-  try {
-    const triggerDebouncedSync = () => {
-      clearTimeout(realtimeDebounceTimer);
-      realtimeDebounceTimer = setTimeout(() => {
-        syncCloudData(false);
-      }, 350);
-    };
-
-    sb.channel("eduproof_live_sync")
-      .on("postgres_changes", { event: "*", schema: "public", table: "eduproof_assignments" }, triggerDebouncedSync)
-      .on("postgres_changes", { event: "*", schema: "public", table: "eduproof_submissions" }, triggerDebouncedSync)
-      .on("postgres_changes", { event: "*", schema: "public", table: "eduproof_users" }, triggerDebouncedSync)
-      .subscribe();
-
-    realtimeSubscribed = true;
-  } catch (e) {
-    console.warn("Realtime listener không khả dụng:", e);
   }
 }
 
