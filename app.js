@@ -1907,13 +1907,13 @@ function renderStudentView() {
         : `<span class="badge-status status-pending">⏳ Cần nộp bài</span>`;
       actionBtn = `<button class="btn btn-primary btn-sm" onclick="openSubmitModal('${asg.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> ${isLate ? "Nộp bài muộn" : "Nộp bài tập"}</button>`;
     } else if (status === "resubmit") {
-      statusBadge = `<span class="badge-status status-resubmit">⚠️ Yêu cầu chụp lại</span>`;
+      statusBadge = `<span class="badge-status status-resubmit">⚠️ Cần nộp lại</span>`;
       actionBtn = `<button class="btn btn-danger btn-sm" onclick="openSubmitModal('${asg.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Chụp nộp lại</button>`;
     } else if (status === "submitted") {
-      statusBadge = `<span class="badge-status status-submitted">✅ Đã nộp (${sub.photos.length} trang)</span>`;
+      statusBadge = `<span class="badge-status status-submitted">✅ Đã nộp</span>`;
       actionBtn = `<button class="btn btn-secondary btn-sm" onclick="viewSubmissionSummary('${sub.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Xem bài đã gửi</button>`;
     } else if (status === "graded") {
-      statusBadge = `<span class="badge-status status-graded">✅ Đã kiểm tra (Đã làm)</span>`;
+      statusBadge = `<span class="badge-status status-graded">✅ Đã làm</span>`;
       actionBtn = `<button class="btn btn-secondary btn-sm" onclick="viewSubmissionSummary('${sub.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Xem bài & Nhận xét</button>`;
     }
 
@@ -2529,11 +2529,11 @@ function renderTeacherSubmissions(mySubmissionsList) {
 
     let statusBadge = "";
     if (sub.status === "submitted") {
-      statusBadge = `<span class="badge-status status-submitted">⏳ Đã nộp (Chờ xem)</span>`;
+      statusBadge = `<span class="badge-status status-submitted">⏳ Đã nộp</span>`;
     } else if (sub.status === "graded") {
-      statusBadge = `<span class="badge-status status-graded">✅ Đã kiểm tra (Đã làm)</span>`;
+      statusBadge = `<span class="badge-status status-graded">✅ Đã kiểm tra</span>`;
     } else if (sub.status === "resubmit_requested") {
-      statusBadge = `<span class="badge-status status-resubmit">⚠️ Đã yêu cầu nộp lại</span>`;
+      statusBadge = `<span class="badge-status status-resubmit">⚠️ Yêu cầu nộp lại</span>`;
     }
 
     const submittedDate = new Date(sub.submittedAt).toLocaleString("vi-VN", {
@@ -2543,6 +2543,9 @@ function renderTeacherSubmissions(mySubmissionsList) {
       month: "2-digit"
     });
 
+    const studentUser = users.find((u) => u.id === sub.studentId || u.name === sub.studentName);
+    const studentClass = studentUser && studentUser.class ? studentUser.class : (currentUser.class || "12A1");
+
     sub.photos = normalizePhotos(sub.photos);
     const firstPhotoObj = sub.photos && sub.photos[0] ? sub.photos[0] : null;
     const firstPhotoSrc = firstPhotoObj ? (firstPhotoObj.dataUrl || firstPhotoObj.url || "") : "";
@@ -2550,12 +2553,14 @@ function renderTeacherSubmissions(mySubmissionsList) {
 
     card.innerHTML = `
       <div>
-        <div class="card-top">
-          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-            <strong style="font-size: 0.95rem;">${sanitizeText(sub.studentName)}</strong>
+        <div class="card-top" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.65rem;">
+          <div style="display: flex; align-items: center; gap: 0.45rem; min-width: 0; flex: 1; flex-wrap: wrap;">
+            <strong style="font-size: 0.95rem; color: var(--text-main);">${sanitizeText(sub.studentName)}</strong>
             ${asg ? formatSubjectBadge(asg.subject) : ""}
           </div>
-          ${statusBadge}
+          <div style="flex-shrink: 0;">
+            ${statusBadge}
+          </div>
         </div>
         <div style="display: flex; gap: 0.75rem; align-items: flex-start; margin: 0.5rem 0;">
           ${firstPhotoSrc ? `
@@ -2576,7 +2581,7 @@ function renderTeacherSubmissions(mySubmissionsList) {
         </div>
       </div>
       <div class="card-footer">
-        <span style="font-size: 0.75rem; color: var(--text-muted);">Lớp: 12A1</span>
+        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Lớp: ${sanitizeText(studentClass)}</span>
         <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           ${sub.status === "graded" ? "Xem lại bài" : "Kiểm tra bài làm"}
