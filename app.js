@@ -2360,7 +2360,22 @@ async function deleteAssignment(assignmentId) {
   alert("Đã xóa bài tập thành công.");
 }
 
-// Student Accounts Management
+// Student Accounts Management & Instant Search
+function handleTeacherStudentSearch(query) {
+  const q = (query || "").trim().toLowerCase();
+  const myStudents = users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
+  if (!q) {
+    renderTeacherStudents(myStudents);
+    return;
+  }
+  const filtered = myStudents.filter((s) =>
+    (s.name && s.name.toLowerCase().includes(q)) ||
+    (s.username && s.username.toLowerCase().includes(q)) ||
+    (s.class && s.class.toLowerCase().includes(q))
+  );
+  renderTeacherStudents(filtered);
+}
+
 function renderTeacherStudents(myStudentsList) {
   const table = document.getElementById("studentAccountsTable");
   const studentUsers = myStudentsList || users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);

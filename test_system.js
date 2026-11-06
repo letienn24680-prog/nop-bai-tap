@@ -726,4 +726,29 @@ assert.strictEqual(computeAssignmentStatusBadge(futureDeadline, null), "PENDING"
 assert.strictEqual(computeAssignmentStatusBadge(pastDeadline, { status: "submitted" }), "SUBMITTED");
 console.log("✅ 23. Kiểm thử nhận diện quá hạn nộp bài tập (Overdue Deadline): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (23/23)!");
+// 24. Test: Student Instant Search Filter (by Name, Username, Class)
+function filterStudentsByQuery(students, query) {
+  const q = (query || "").trim().toLowerCase();
+  if (!q) return students;
+  return students.filter(
+    (s) =>
+      (s.name && s.name.toLowerCase().includes(q)) ||
+      (s.username && s.username.toLowerCase().includes(q)) ||
+      (s.class && s.class.toLowerCase().includes(q))
+  );
+}
+
+const sampleClass = [
+  { id: "hs_1", name: "Nguyễn Văn An", username: "an_12a1", class: "12A1" },
+  { id: "hs_2", name: "Trần Thị Bình", username: "binh_12a1", class: "12A1" },
+  { id: "hs_3", name: "Lê Hoàng Cường", username: "cuong_12a2", class: "12A2" }
+];
+
+assert.strictEqual(filterStudentsByQuery(sampleClass, "").length, 3, "Rỗng trả về đủ 3");
+assert.strictEqual(filterStudentsByQuery(sampleClass, "bình").length, 1, "Tìm theo tên tiếng Việt");
+assert.strictEqual(filterStudentsByQuery(sampleClass, "12a2").length, 1, "Tìm theo lớp");
+assert.strictEqual(filterStudentsByQuery(sampleClass, "an_12").length, 1, "Tìm theo username");
+assert.strictEqual(filterStudentsByQuery(sampleClass, "không_tồn_tại").length, 0);
+console.log("✅ 24. Kiểm thử tìm kiếm tức thì danh sách học sinh (Instant Search): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (24/24)!");
