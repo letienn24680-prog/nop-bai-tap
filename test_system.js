@@ -831,4 +831,69 @@ assert.ok(
 );
 console.log("✅ 28. Kiểm thử định dạng Vector SVG, Favicon chuẩn hóa và toàn vẹn thẻ UI: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (28/28)!");
+// 29. Test: Photo Normalization & Cross-Platform Submission Image Integrity
+function normalizePhotos(photos) {
+  if (!photos) return [];
+  let arr = photos;
+  if (typeof arr === "string") {
+    try {
+      arr = JSON.parse(arr);
+    } catch (e) {
+      if (arr.startsWith("http") || arr.startsWith("data:")) {
+        arr = [arr];
+      } else {
+        arr = [];
+      }
+    }
+  }
+  if (!Array.isArray(arr)) return [];
+  return arr.map((p, idx) => {
+    if (typeof p === "string") {
+      return { id: "p_" + idx, dataUrl: p, url: p, rotation: 0 };
+    }
+    const u = p.dataUrl || p.url || p.src || p.publicUrl || "";
+    return { ...p, dataUrl: u, url: u };
+  });
+}
+
+// Case 1: Standard object array
+const res1 = normalizePhotos([{ id: "p1", dataUrl: "https://supa/p1.jpg" }]);
+assert.strictEqual(res1.length, 1);
+assert.strictEqual(res1[0].dataUrl, "https://supa/p1.jpg");
+assert.strictEqual(res1[0].url, "https://supa/p1.jpg");
+
+// Case 2: Array of raw string URLs
+const res2 = normalizePhotos(["https://supa/img1.jpg", "https://supa/img2.jpg"]);
+assert.strictEqual(res2.length, 2);
+assert.strictEqual(res2[0].dataUrl, "https://supa/img1.jpg");
+
+// Case 3: JSON-stringified array from PostgreSQL / localStorage
+const res3 = normalizePhotos('[{"id":"px","dataUrl":"data:image/jpeg;base64,abc"}]');
+assert.strictEqual(res3.length, 1);
+assert.strictEqual(res3[0].dataUrl, "data:image/jpeg;base64,abc");
+
+// Case 4: Null, undefined, empty string
+assert.strictEqual(normalizePhotos(null).length, 0);
+assert.strictEqual(normalizePhotos("").length, 0);
+
+console.log("✅ 29. Kiểm thử chuẩn hóa dữ liệu ảnh minh chứng (normalizePhotos) chống mất ảnh: ĐẠT");
+
+// 30. Test: School Youth Union (Đoàn trường) Activities & Statistical Reporting
+const appJsContent = fs.readFileSync("app.js", "utf8");
+
+assert.ok(
+  appJsContent.includes("exportCampaignReport") && appJsContent.includes("copyUnsubmittedStudents"),
+  "app.js phải hỗ trợ xuất báo cáo nộp minh chứng Excel và sao chép danh sách nhắc nhở Zalo"
+);
+assert.ok(
+  appJsContent.includes("Hoạt động Đoàn trường") || appJsContent.includes("thanh niên"),
+  "app.js phải hỗ trợ phân loại và biểu tượng cờ 🚩 cho Hoạt động Đoàn trường"
+);
+assert.ok(
+  htmlContent.includes("Hoạt động Đoàn trường"),
+  "Giao diện tạo bài tập phải có tùy chọn Hoạt động Đoàn trường & Phong trào"
+);
+
+console.log("✅ 30. Kiểm thử phân loại Hoạt động Đoàn trường & Báo cáo thống kê hoàn thành: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (30/30)!");

@@ -625,33 +625,48 @@
 
   <!-- ==================== MODAL 4: CREATE ASSIGNMENT MODAL ==================== -->
   <div id="createAssignmentModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content" style="max-width: 520px;">
+    <div class="modal-content" style="max-width: 540px;">
       <div class="modal-header">
-        <h3 style="font-size: 1.1rem; font-weight: 700;">Tạo bài tập mới</h3>
+        <h3 style="font-size: 1.1rem; font-weight: 700;">Tạo đợt Bài tập / Hoạt động Đoàn trường</h3>
         <button class="tool-icon-btn" onclick="closeCreateAssignmentModal()">✕</button>
       </div>
 
       <div class="modal-body">
         <div class="form-group">
-          <label class="form-label">Tiêu đề bài tập:</label>
-          <input type="text" id="newTitleInput" class="form-input" placeholder="Ví dụ: Ôn tập Hình học không gian - Tiết 14">
+          <label class="form-label">Tiêu đề bài tập / Hoạt động:</label>
+          <input type="text" id="newTitleInput" class="form-input" placeholder="Ví dụ: Nộp minh chứng Cuộc thi trực tuyến Đoàn trường / Ôn tập Tiết 14">
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+        <div style="grid-template-columns: 1fr 1fr; gap: 0.75rem; display: grid;">
           <div class="form-group">
-            <label class="form-label">Môn học:</label>
-            <select id="newSubjectInput" class="form-select">
-              <option value="Toán học">Toán học</option>
-              <option value="Vật lý">Vật lý</option>
-              <option value="Hóa học">Hóa học</option>
-              <option value="Tiếng Anh">Tiếng Anh</option>
-              <option value="Ngữ văn">Ngữ văn</option>
-              <option value="Tin học">Tin học</option>
+            <label class="form-label">Phân loại môn / Hoạt động:</label>
+            <select id="newSubjectInput" class="form-select" onchange="handleSubjectSelectChange(this.value)">
+              <optgroup label="🚩 Hoạt động Đoàn trường & Phong trào">
+                <option value="Hoạt động Đoàn trường" selected>🚩 Hoạt động Đoàn trường</option>
+                <option value="Phong trào Thanh niên">🎯 Phong trào Thanh niên</option>
+                <option value="Cuộc thi trực tuyến">🏆 Cuộc thi trực tuyến</option>
+                <option value="Lao động tình nguyện">🌱 Lao động tình nguyện</option>
+                <option value="Kế hoạch nhỏ & Xã hội">📦 Kế hoạch nhỏ & Xã hội</option>
+              </optgroup>
+              <optgroup label="📚 Môn học văn hóa">
+                <option value="Toán học">📐 Toán học</option>
+                <option value="Ngữ văn">📖 Ngữ văn</option>
+                <option value="Tiếng Anh">🇬🇧 Tiếng Anh</option>
+                <option value="Vật lý">⚡ Vật lý</option>
+                <option value="Hóa học">🧪 Hóa học</option>
+                <option value="Sinh học">🧬 Sinh học</option>
+                <option value="Lịch sử">🏛️ Lịch sử</option>
+                <option value="Địa lí">🌍 Địa lí</option>
+                <option value="Tin học">💻 Tin học</option>
+                <option value="GDCD">⚖️ GDCD / Kinh tế & Pháp luật</option>
+              </optgroup>
+              <option value="custom">✏️ Hoạt động khác (Tự nhập...)</option>
             </select>
+            <input type="text" id="newCustomSubjectInput" class="form-input" placeholder="Nhập tên hoạt động / phân loại khác..." style="display: none; margin-top: 0.4rem;">
           </div>
 
           <div class="form-group">
-            <label class="form-label">Hạn nộp:</label>
+            <label class="form-label">Hạn nộp minh chứng:</label>
             <input type="datetime-local" id="newDeadlineInput" class="form-input">
           </div>
         </div>
@@ -659,21 +674,21 @@
         <div class="form-group">
           <label class="form-label">Yêu cầu minh chứng:</label>
           <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.82rem;">
-            <label><input type="checkbox" id="reqPhotoCheck" checked disabled> Bắt buộc chụp ảnh vở (tối thiểu 1 trang)</label>
-            <label><input type="checkbox" id="reqLinkCheck" checked> Cho phép đính kèm link dự án / video</label>
+            <label><input type="checkbox" id="reqPhotoCheck" checked disabled> Bắt buộc chụp ảnh (vở ghi / ảnh chụp màn hình minh chứng)</label>
+            <label><input type="checkbox" id="reqLinkCheck" checked> Cho phép đính kèm link dự án / link bài thi</label>
             <label><input type="checkbox" id="reqNoteCheck" checked> Cho phép ghi chú tự nhận xét</label>
           </div>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Hướng dẫn làm bài:</label>
-          <textarea id="newDescInput" class="form-textarea" rows="3" placeholder="Làm các bài tập 1, 2, 3 trang 45 SGK. Trình bày chi tiết từng bước..."></textarea>
+          <label class="form-label">Hướng dẫn làm bài / Yêu cầu nộp:</label>
+          <textarea id="newDescInput" class="form-textarea" rows="3" placeholder="Chụp ảnh giấy chứng nhận, màn hình kết quả cuộc thi Đoàn trường hoặc vở ghi chép gửi vào đây..."></textarea>
         </div>
       </div>
 
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeCreateAssignmentModal()">Hủy</button>
-        <button class="btn btn-primary" onclick="confirmCreateAssignment()">Tạo bài tập</button>
+        <button class="btn btn-primary" onclick="confirmCreateAssignment()">Tạo đợt giao</button>
       </div>
     </div>
   </div>

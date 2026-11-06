@@ -28,11 +28,41 @@ function sanitizeUrl(url) {
   return "#";
 }
 
+// Chuẩn hóa cấu trúc danh sách ảnh minh chứng (chống mất ảnh khi lưu dạng chuỗi JSON hoặc đối tượng URL)
+function normalizePhotos(photos) {
+  if (!photos) return [];
+  let arr = photos;
+  if (typeof arr === "string") {
+    try {
+      arr = JSON.parse(arr);
+    } catch (e) {
+      if (arr.startsWith("http") || arr.startsWith("data:")) {
+        arr = [arr];
+      } else {
+        arr = [];
+      }
+    }
+  }
+  if (!Array.isArray(arr)) return [];
+  return arr.map((p, idx) => {
+    if (typeof p === "string") {
+      return { id: "p_" + idx, dataUrl: p, url: p, rotation: 0 };
+    }
+    const u = p.dataUrl || p.url || p.src || p.publicUrl || "";
+    return { ...p, dataUrl: u, url: u };
+  });
+}
+
 function formatSubjectBadge(subject) {
   const s = (subject || "").trim();
   const lower = s.toLowerCase();
   let icon = "📚";
-  if (lower.includes("toán")) icon = "📐";
+  if (lower.includes("đoàn") || lower.includes("thanh niên")) icon = "🚩";
+  else if (lower.includes("phong trào") || lower.includes("ngoại khóa")) icon = "🎯";
+  else if (lower.includes("cuộc thi") || lower.includes("hội thi") || lower.includes("tuyên truyền")) icon = "🏆";
+  else if (lower.includes("lao động") || lower.includes("tình nguyện")) icon = "🌱";
+  else if (lower.includes("kế hoạch")) icon = "📦";
+  else if (lower.includes("toán")) icon = "📐";
   else if (lower.includes("văn")) icon = "📖";
   else if (lower.includes("anh")) icon = "🇬🇧";
   else if (lower.includes("lý") || lower.includes("vật lí")) icon = "⚡";
@@ -53,6 +83,7 @@ let submissions = [];
 let studentFilter = "all";
 let teacherActiveTab = "submissions";
 let selectedCampaignId = null;
+let campaignStudentFilter = "all";
 
 // Submission Modal State (Student)
 let activeSubmittingAssignmentId = null;
@@ -252,6 +283,11 @@ function initData() {
     try {
       assignments = JSON.parse(savedAssignments);
       submissions = JSON.parse(savedSubmissions);
+      if (Array.isArray(submissions)) {
+        submissions.forEach((s) => {
+          s.photos = normalizePhotos(s.photos);
+        });
+      }
       assignments.forEach((a) => {
         if (!a.teacherId) a.teacherId = "gvcn_ngo_ha";
       });
@@ -393,9 +429,14 @@ function initData() {
 }
 
 function persistData() {
-  localStorage.setItem(DB_KEY_USERS, JSON.stringify(users));
-  localStorage.setItem(DB_KEY_ASSIGNMENTS, JSON.stringify(assignments));
-  localStorage.setItem(DB_KEY_SUBMISSIONS, JSON.stringify(submissions));
+  try {
+    localStorage.setItem(DB_KEY_USERS, JSON.stringify(users));
+    localStorage.setItem(DB_KEY_ASSIGNMENTS, JSON.stringify(assignments));
+    localStorage.setItem(DB_KEY_SUBMISSIONS, JSON.stringify(submissions));
+  } catch (err) {
+    console.warn("localStorage quota cảnh báo (dữ liệu lớn, tiếp tục dùng Supabase Cloud):", err);
+  }
+
   if (currentUser) {
     localStorage.setItem(DB_KEY_AUTH, JSON.stringify(currentUser));
     sessionStorage.setItem(DB_KEY_AUTH, JSON.stringify(currentUser));
@@ -551,7 +592,7 @@ async function syncCloudData(notify = false) {
         studentName: s.student_name,
         submittedAt: s.submitted_at,
         status: s.status,
-        photos: s.photos || [],
+        photos: normalizePhotos(s.photos),
         linkProof: s.link_proof || "",
         studentNote: s.student_note || "",
         annotations: s.annotations || {},
@@ -2209,12 +2250,20 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
           </h2>
           <p style="font-size: 0.85rem; color: var(--text-muted);">${currentAsg.description}</p>
         </div>
-        <div style="display: flex; gap: 0.5rem;">
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="exportCampaignReport('${currentAsg.id}')" title="Xuất file Excel báo cáo tiến độ nộp minh chứng cho Đoàn trường / BGH">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+            Xuất báo cáo Excel
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="copyUnsubmittedStudents('${currentAsg.id}')" title="Sao chép danh sách học sinh chưa nộp để gửi vào nhóm Zalo">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Nhắc Zalo (${notSubmittedCount})
+          </button>
           <button class="btn btn-secondary btn-sm" onclick="copyAssignmentShareLink('${currentAsg.id}')">
             🔗 Link nộp bài
           </button>
           <button class="btn btn-danger btn-sm" onclick="deleteAssignment('${currentAsg.id}')">
-            🗑️ Xóa bài tập
+            🗑️ Xóa đợt này
           </button>
         </div>
       </div>
@@ -2240,9 +2289,22 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
     </div>
 
     <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); overflow-x: auto; padding: 1.25rem;">
-      <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 0.75rem;">
-        Danh sách học sinh lớp (${studentsList.length} học sinh)
-      </h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.85rem;">
+        <h3 style="font-size: 1.05rem; font-weight: 700;">
+          Danh sách học sinh (${studentsList.length} học sinh)
+        </h3>
+        <div class="filter-tabs" style="margin-bottom: 0; padding-bottom: 0;">
+          <button class="tab-btn ${campaignStudentFilter === 'all' ? 'active' : ''}" onclick="filterCampaignStudents('all')">
+            Tất cả (${studentsList.length})
+          </button>
+          <button class="tab-btn ${campaignStudentFilter === 'submitted' ? 'active' : ''}" onclick="filterCampaignStudents('submitted')">
+            ✅ Đã nộp (${submittedCount})
+          </button>
+          <button class="tab-btn ${campaignStudentFilter === 'unsubmitted' ? 'active' : ''}" onclick="filterCampaignStudents('unsubmitted')">
+            ❌ Chưa nộp (${notSubmittedCount})
+          </button>
+        </div>
+      </div>
 
       <table class="data-table">
         <thead>
@@ -2256,11 +2318,22 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
           </tr>
         </thead>
         <tbody>
-          ${studentsList.length === 0 ? `<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Bạn chưa tạo tài khoản học sinh nào. Hãy vào mục "Quản lý tài khoản học sinh" để cấp tài khoản.</td></tr>` : ""}
-          ${studentsList
-            .map((student) => {
+          ${(() => {
+            let displayed = studentsList;
+            if (campaignStudentFilter === "submitted") {
+              displayed = studentsList.filter((st) => asgSubmissions.some((s) => s.studentId === st.id));
+            } else if (campaignStudentFilter === "unsubmitted") {
+              displayed = studentsList.filter((st) => !asgSubmissions.some((s) => s.studentId === st.id));
+            }
+
+            if (displayed.length === 0) {
+              return `<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Không có học sinh nào thỏa mãn bộ lọc hiện tại.</td></tr>`;
+            }
+
+            return displayed.map((student) => {
               const sub = asgSubmissions.find((s) => s.studentId === student.id);
               if (sub) {
+                sub.photos = normalizePhotos(sub.photos);
                 let badge = "";
                 if (sub.status === "graded") badge = `<span class="badge-status status-graded">🎯 Đã chấm</span>`;
                 else if (sub.status === "resubmit_requested") badge = `<span class="badge-status status-resubmit">⚠️ Cần nộp lại</span>`;
@@ -2291,7 +2364,7 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
                 return `
                   <tr>
                     <td><strong>${sanitizeText(student.name)}</strong> <span style="font-size: 0.75rem; color: var(--text-muted);">(${sanitizeText(student.username)})</span></td>
-                    <td><span class="badge-status status-pending">❌ Chưa nộp bài</span></td>
+                    <td><span class="badge-status status-resubmit">❌ Chưa nộp bài</span></td>
                     <td style="color: var(--text-muted);">—</td>
                     <td style="color: var(--text-muted);">0 trang</td>
                     <td style="color: var(--text-muted);">—</td>
@@ -2303,12 +2376,109 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
                   </tr>
                 `;
               }
-            })
-            .join("")}
+            }).join("");
+          })()}
         </tbody>
       </table>
     </div>
   `;
+}
+
+function filterCampaignStudents(mode) {
+  campaignStudentFilter = mode;
+  renderTeacherCampaignView();
+}
+
+function exportCampaignReport(assignmentId) {
+  const asg = assignments.find((a) => a.id === assignmentId);
+  if (!asg) return;
+
+  const studentsList = users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
+  const asgSubmissions = submissions.filter((s) => s.assignmentId === asg.id);
+
+  const rows = studentsList.map((st, idx) => {
+    const sub = asgSubmissions.find((s) => s.studentId === st.id);
+    let statusText = "Chưa nộp minh chứng";
+    let submitTime = "—";
+    let photoCount = 0;
+    let scoreText = "—";
+    let linkProof = "—";
+    let note = "—";
+
+    if (sub) {
+      sub.photos = normalizePhotos(sub.photos);
+      statusText = sub.status === "graded" ? `Đã chấm (${sub.grade}/10)` : "Đã nộp minh chứng";
+      submitTime = new Date(sub.submittedAt).toLocaleString("vi-VN");
+      photoCount = sub.photos.length;
+      scoreText = sub.grade !== null ? sub.grade : "Chờ chấm";
+      linkProof = sub.linkProof || "—";
+      note = sub.studentNote || "—";
+    }
+
+    return {
+      "STT": idx + 1,
+      "Họ và tên": st.name,
+      "Tên đăng nhập": st.username,
+      "Lớp": st.class || "12A1",
+      "Trạng thái": statusText,
+      "Thời gian nộp": submitTime,
+      "Số ảnh minh chứng": photoCount,
+      "Điểm số / Đánh giá": scoreText,
+      "Link đính kèm": linkProof,
+      "Ghi chú của học sinh": note
+    };
+  });
+
+  if (typeof XLSX !== "undefined") {
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Báo cáo nộp minh chứng");
+    const safeTitle = asg.title.replace(/[^a-zA-Z0-9_\u00C0-\u024F\u1EA0-\u1EF9]/g, "_");
+    XLSX.writeFile(wb, `Bao_Cao_${safeTitle}.xlsx`);
+  } else {
+    alert("Đang chuẩn bị dữ liệu xuất Excel...");
+  }
+}
+
+function copyUnsubmittedStudents(assignmentId) {
+  const asg = assignments.find((a) => a.id === assignmentId);
+  if (!asg) return;
+
+  const studentsList = users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
+  const asgSubmissions = submissions.filter((s) => s.assignmentId === asg.id);
+  const submittedIds = new Set(asgSubmissions.map((s) => s.studentId));
+
+  const unsubmitted = studentsList.filter((s) => !submittedIds.has(s.id));
+
+  if (unsubmitted.length === 0) {
+    alert("🎉 Tuyệt vời! 100% học sinh đã hoàn thành nộp bài/minh chứng.");
+    return;
+  }
+
+  const deadlineFormatted = new Date(asg.deadline).toLocaleString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit"
+  });
+
+  let message = `📢 [THÔNG BÁO NHẮC NHỞ HOÀN THÀNH HOẠT ĐỘNG / BÀI TẬP]\n`;
+  message += `📌 Hoạt động / Môn: ${asg.subject} - ${asg.title}\n`;
+  message += `⏰ Hạn chót: ${deadlineFormatted}\n`;
+  message += `📊 Tiến độ: Còn ${unsubmitted.length}/${studentsList.length} học sinh chưa nộp minh chứng:\n\n`;
+
+  unsubmitted.forEach((st, idx) => {
+    message += `${idx + 1}. ${st.name} (${st.class || "12A1"})\n`;
+  });
+
+  message += `\n👉 Các em khẩn trương hoàn thành bài làm và chụp ảnh nộp minh chứng lên hệ thống EduProof đúng hạn!`;
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(message);
+    alert(`📋 Đã sao chép danh sách ${unsubmitted.length} học sinh chưa nộp vào Clipboard!\nBạn có thể dán (Ctrl+V) ngay vào nhóm Zalo lớp để nhắc nhở.`);
+  } else {
+    prompt("Sao chép danh sách nhắc nhở dưới đây:", message);
+  }
 }
 
 function remindStudent(studentId, assignmentId) {
@@ -2544,8 +2714,14 @@ function openGradingStudio(submissionId, isReadOnly = false) {
   canvasUndoStack = [];
 
   const sub = submissions.find((s) => s.id === submissionId);
-  if (!sub || !sub.photos || sub.photos.length === 0) {
-    alert("Bài nộp này không có ảnh nào để hiển thị.");
+  if (!sub) {
+    alert("Không tìm thấy bài nộp.");
+    return;
+  }
+
+  sub.photos = normalizePhotos(sub.photos);
+  if (!sub.photos || sub.photos.length === 0) {
+    alert("Bài nộp này chưa có ảnh nào để hiển thị.");
     return;
   }
 
@@ -2558,7 +2734,18 @@ function openGradingStudio(submissionId, isReadOnly = false) {
 
   const proofsView = document.getElementById("studentAdditionalProofsView");
   const safeUrl = sanitizeUrl(sub.linkProof);
+
+  const directPhotoButtons = sub.photos
+    .map((p, idx) => {
+      const u = p.dataUrl || p.url;
+      if (!u) return "";
+      return `<a href="${u}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="margin-top: 0.3rem; font-size: 0.72rem; width: 100%; justify-content: flex-start; text-decoration: none;">🖼️ Mở ảnh trang ${idx + 1} (tab mới)</a>`;
+    })
+    .join("");
+
   proofsView.innerHTML = `
+    <strong>Ảnh minh chứng đã gửi (${sub.photos.length} trang):</strong>
+    <div style="margin: 0.35rem 0 0.65rem 0;">${directPhotoButtons}</div>
     <strong>Minh chứng khác:</strong><br>
     ${sub.linkProof && safeUrl !== "#" ? `🔗 <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); word-break: break-all;">${sanitizeText(sub.linkProof)}</a><br>` : "<em>Không có link đính kèm</em><br>"}
     ${sub.studentNote ? `✍️ <em>Ghi chú: "${sanitizeText(sub.studentNote)}"</em>` : ""}
@@ -2578,28 +2765,64 @@ function closeGradingStudio() {
 
 function loadGradingPage(pageIndex) {
   const sub = submissions.find((s) => s.id === activeGradingSubmissionId);
-  if (!sub || !sub.photos[pageIndex]) return;
+  if (!sub) return;
 
+  sub.photos = normalizePhotos(sub.photos);
+  if (!sub.photos || sub.photos.length === 0) return;
+
+  if (pageIndex < 0) pageIndex = 0;
+  if (pageIndex >= sub.photos.length) pageIndex = sub.photos.length - 1;
   activeGradingPageIndex = pageIndex;
+
   document.getElementById("pageNavIndicator").innerText =
     `Trang ${pageIndex + 1} / ${sub.photos.length}`;
 
   const canvas = document.getElementById("annotationCanvas");
   const ctx = canvas.getContext("2d");
   const photo = sub.photos[pageIndex];
+  const photoUrl = photo ? (photo.dataUrl || photo.url || "") : "";
+
+  if (!photoUrl) {
+    canvas.width = 800;
+    canvas.height = 600;
+    ctx.fillStyle = "#F8FAFC";
+    ctx.fillRect(0, 0, 800, 600);
+    ctx.fillStyle = "#EF4444";
+    ctx.font = "bold 18px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Không tìm thấy đường dẫn ảnh của trang này", 400, 300);
+    return;
+  }
+
+  // Draw loading state on canvas
+  canvas.width = 800;
+  canvas.height = 600;
+  ctx.fillStyle = "#1E293B";
+  ctx.fillRect(0, 0, 800, 600);
+  ctx.fillStyle = "#94A3B8";
+  ctx.font = "16px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("⏳ Đang tải ảnh bài nộp...", 400, 300);
 
   const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.onload = () => {
-    canvas.width = img.width;
-    canvas.height = img.height;
-    ctx.drawImage(img, 0, 0);
+  // ONLY set crossOrigin for external http/https URLs, NEVER for data: URIs!
+  if (photoUrl.startsWith("http://") || photoUrl.startsWith("https://")) {
+    img.crossOrigin = "anonymous";
+  }
+
+  const renderImageToCanvas = () => {
+    canvas.width = img.naturalWidth || img.width || 1200;
+    canvas.height = img.naturalHeight || img.height || 1600;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
     if (sub.annotations && sub.annotations[pageIndex]) {
       const savedDrawings = new Image();
-      savedDrawings.crossOrigin = "anonymous";
+      if (typeof sub.annotations[pageIndex] === "string" && sub.annotations[pageIndex].startsWith("http")) {
+        savedDrawings.crossOrigin = "anonymous";
+      }
       savedDrawings.onload = () => {
-        ctx.drawImage(savedDrawings, 0, 0);
+        ctx.drawImage(savedDrawings, 0, 0, canvas.width, canvas.height);
         saveCanvasState();
       };
       savedDrawings.src = sub.annotations[pageIndex];
@@ -2607,8 +2830,37 @@ function loadGradingPage(pageIndex) {
       saveCanvasState();
     }
   };
-  img.src = photo.dataUrl;
 
+  img.onload = renderImageToCanvas;
+
+  img.onerror = () => {
+    console.warn("Thử tải lại ảnh không dùng crossOrigin anonymous...");
+    if (img.crossOrigin) {
+      img.crossOrigin = null;
+      img.onload = renderImageToCanvas;
+      img.onerror = () => showCanvasError();
+      img.src = photoUrl;
+    } else {
+      showCanvasError();
+    }
+  };
+
+  function showCanvasError() {
+    canvas.width = 800;
+    canvas.height = 600;
+    ctx.fillStyle = "#F8FAFC";
+    ctx.fillRect(0, 0, 800, 600);
+    ctx.fillStyle = "#EF4444";
+    ctx.font = "bold 18px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("⚠️ Không thể tải ảnh trực tiếp trên Canvas", 400, 270);
+    ctx.fillStyle = "#4F46E5";
+    ctx.font = "14px sans-serif";
+    ctx.fillText("👉 Bấm vào đây để mở xem ảnh trong tab mới", 400, 310);
+    canvas.onclick = () => window.open(photoUrl, "_blank");
+  }
+
+  img.src = photoUrl;
   initCanvasEvents();
 }
 
@@ -2629,7 +2881,11 @@ function saveCurrentPageAnnotation() {
 
   const canvas = document.getElementById("annotationCanvas");
   if (!sub.annotations) sub.annotations = {};
-  sub.annotations[activeGradingPageIndex] = canvas.toDataURL("image/png");
+  try {
+    sub.annotations[activeGradingPageIndex] = canvas.toDataURL("image/png");
+  } catch (err) {
+    console.warn("Không thể lưu nét vẽ (canvas export restriction):", err);
+  }
 }
 
 function selectAnnotationTool(tool) {
@@ -2734,8 +2990,14 @@ function initCanvasEvents() {
 
 function saveCanvasState() {
   const canvas = document.getElementById("annotationCanvas");
-  canvasUndoStack.push(canvas.toDataURL("image/png"));
-  if (canvasUndoStack.length > 20) canvasUndoStack.shift();
+  if (!canvas) return;
+  try {
+    const data = canvas.toDataURL("image/png");
+    canvasUndoStack.push(data);
+    if (canvasUndoStack.length > 20) canvasUndoStack.shift();
+  } catch (err) {
+    console.warn("Canvas state save warning (CORS/export):", err);
+  }
 }
 
 function undoAnnotation() {
@@ -2847,16 +3109,27 @@ function closeCreateAssignmentModal() {
   document.getElementById("createAssignmentModal").style.display = "none";
 }
 
+function handleSubjectSelectChange(val) {
+  const customInput = document.getElementById("newCustomSubjectInput");
+  if (customInput) {
+    customInput.style.display = val === "custom" ? "block" : "none";
+    if (val === "custom") customInput.focus();
+  }
+}
+
 async function confirmCreateAssignment() {
   const title = document.getElementById("newTitleInput").value.trim();
-  const subject = document.getElementById("newSubjectInput").value;
+  let subject = document.getElementById("newSubjectInput").value;
+  if (subject === "custom") {
+    subject = (document.getElementById("newCustomSubjectInput").value || "").trim() || "Hoạt động Đoàn trường";
+  }
   const deadline = document.getElementById("newDeadlineInput").value;
   const description = document.getElementById("newDescInput").value.trim();
   const allowLink = document.getElementById("reqLinkCheck").checked;
   const allowNote = document.getElementById("reqNoteCheck").checked;
 
   if (!title) {
-    alert("Vui lòng nhập tiêu đề bài tập.");
+    alert("Vui lòng nhập tiêu đề bài tập hoặc tên hoạt động Đoàn trường.");
     return;
   }
 
