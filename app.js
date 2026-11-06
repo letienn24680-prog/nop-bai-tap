@@ -28,6 +28,22 @@ function sanitizeUrl(url) {
   return "#";
 }
 
+function formatSubjectBadge(subject) {
+  const s = (subject || "").trim();
+  const lower = s.toLowerCase();
+  let icon = "📚";
+  if (lower.includes("toán")) icon = "📐";
+  else if (lower.includes("văn")) icon = "📖";
+  else if (lower.includes("anh")) icon = "🇬🇧";
+  else if (lower.includes("lý") || lower.includes("vật lí")) icon = "⚡";
+  else if (lower.includes("hóa")) icon = "🧪";
+  else if (lower.includes("sinh")) icon = "🧬";
+  else if (lower.includes("sử")) icon = "🏛️";
+  else if (lower.includes("địa")) icon = "🌍";
+  else if (lower.includes("tin")) icon = "💻";
+  return `<span class="badge-subject">${icon} ${sanitizeText(s)}</span>`;
+}
+
 // In-Memory State
 let users = [];
 let currentUser = null;
@@ -1561,7 +1577,7 @@ function renderStudentView() {
     card.innerHTML = `
       <div>
         <div class="card-top">
-          <span class="badge-subject">${sanitizeText(asg.subject)}</span>
+          ${formatSubjectBadge(asg.subject)}
           ${statusBadge}
         </div>
         <h3 class="card-title">${sanitizeText(asg.title)}</h3>
@@ -2097,7 +2113,10 @@ function renderTeacherSubmissions(mySubmissionsList) {
     card.innerHTML = `
       <div>
         <div class="card-top">
-          <strong style="font-size: 0.95rem;">${sanitizeText(sub.studentName)}</strong>
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <strong style="font-size: 0.95rem;">${sanitizeText(sub.studentName)}</strong>
+            ${asg ? formatSubjectBadge(asg.subject) : ""}
+          </div>
           ${statusBadge}
         </div>
         <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.25rem;">
@@ -2183,7 +2202,7 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
     <div class="campaign-banner">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
         <div>
-          <span class="badge-subject" style="margin-bottom: 0.4rem; display: inline-block;">${currentAsg.subject}</span>
+          <div style="margin-bottom: 0.5rem;">${formatSubjectBadge(currentAsg.subject)}</div>
           <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">
             ${currentAsg.title}
           </h2>
@@ -2341,7 +2360,7 @@ function renderTeacherAssignments(myAssignmentsList) {
     card.innerHTML = `
       <div>
         <div class="card-top">
-          <span class="badge-subject">${sanitizeText(asg.subject)}</span>
+          ${formatSubjectBadge(asg.subject)}
           <span style="font-size: 0.75rem; color: var(--text-muted);">Đã nộp: ${subsForAsg.length}</span>
         </div>
         <h3 class="card-title">${sanitizeText(asg.title)}</h3>
