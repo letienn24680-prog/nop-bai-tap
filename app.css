@@ -775,8 +775,8 @@ body {
   color: var(--primary);
 }
 
-/* Responsive Rules */
-@media (max-width: 960px) {
+/* Responsive Rules - Sử dụng nhãn ngắn gọn & bọc dòng thông minh chống tràn tuyệt đối */
+@media (max-width: 1180px) {
   .tab-label-full {
     display: none !important;
   }
@@ -785,6 +785,8 @@ body {
   }
   .filter-tabs {
     gap: 0.4rem;
+    flex-wrap: wrap !important;
+    overflow: visible !important;
   }
   .tab-btn {
     padding: 0.4rem 0.75rem;

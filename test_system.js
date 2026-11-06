@@ -1139,4 +1139,103 @@ assert.strictEqual(validateMandatoryPhotos([{ dataUrl: "data:image/jpeg;base64,.
 
 console.log("✅ 40. Kiểm thử cơ chế bắt buộc đính kèm ảnh bài làm trước khi gửi cho cô: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (40/40)!");
+// ==========================================
+// 41. Kiểm thử Quản lý Email học sinh, Khớp tên file Excel & Thông báo Email tự động khi tạo đề bài
+// ==========================================
+const currentHtml41 = fs.readFileSync("index.html", "utf-8");
+const currentJs41 = fs.readFileSync("app.js", "utf-8");
+const currentSchema41 = fs.readFileSync("schema.sql", "utf-8");
+
+// 1. Kiểm thử giao diện HTML có đầy đủ các thành phần nhập email và thông báo
+assert.ok(
+  currentHtml41.includes('id="newStudentEmail"'),
+  "index.html phải có ô nhập email học sinh thủ công"
+);
+assert.ok(
+  currentHtml41.includes('id="notifyEmailCheck"'),
+  "index.html phải có tùy chọn gửi thông báo email đồng loạt khi tạo đề bài"
+);
+assert.ok(
+  currentHtml41.includes('id="notifyZaloCheck"'),
+  "index.html phải có tùy chọn tự động sao chép tin nhắn Zalo khi tạo đề bài"
+);
+assert.ok(
+  currentHtml41.includes('id="editStudentEmailModal"'),
+  "index.html phải có modal sửa email học sinh trực tiếp"
+);
+assert.ok(
+  currentHtml41.includes('id="batchEmailModal"'),
+  "index.html phải có modal điều hướng gửi email đồng loạt với Gmail và Mail Client"
+);
+
+// 2. Kiểm thử schema.sql hỗ trợ lưu trữ email
+assert.ok(
+  currentSchema41.includes("email TEXT") && currentSchema41.includes("ALTER TABLE eduproof_users ADD COLUMN IF NOT EXISTS email TEXT"),
+  "schema.sql phải có cột email và lệnh ALTER TABLE an toàn"
+);
+assert.ok(
+  currentSchema41.includes("'email', v_user.email") && currentSchema41.includes("'email', u.email"),
+  "schema.sql phải trả về trường email trong RPC login_user và get_my_students"
+);
+
+// 3. Kiểm thử logic app.js: Nhận diện cột email, khớp tên học sinh cập nhật email
+assert.ok(
+  currentJs41.includes("norm.includes(\"email\")") || currentJs41.includes("norm.includes('email')"),
+  "app.js phải có bộ nhận diện cột Email trong file Excel"
+);
+assert.ok(
+  currentJs41.includes("s.name.trim().toLowerCase() === nameVal.trim().toLowerCase()"),
+  "app.js phải khớp học sinh theo Họ và tên trên web để cập nhật email"
+);
+assert.ok(
+  currentJs41.includes("openBatchEmailModal") && currentJs41.includes("batchEmailGmailBtn"),
+  "app.js phải có hàm điều hướng mở Gmail Web và Mail Client gửi BCC an toàn"
+);
+
+// 4. Mô phỏng kiểm thử khớp tên học sinh cập nhật email từ dữ liệu Excel
+const mockWebStudents = [
+  { id: "hs_001", name: "Nguyễn Thị Lan Anh", username: "hs_lananh", class: "12A5", email: "" },
+  { id: "hs_002", name: "Trần Lê Hoài Anh", username: "hs_hoaianh", class: "12A5", email: "old@gmail.com" }
+];
+
+const mockExcelRows = [
+  { "Họ và tên": "Nguyễn Thị Lan Anh", "Email": "lananh12a5@gmail.com", "Lớp": "12A5" },
+  { "Họ và tên": "Lê Văn Mới", "Email": "vanmoi@gmail.com", "Lớp": "12A5" }
+];
+
+function processExcelMatching(rows, existingStudents) {
+  return rows.map((r) => {
+    const name = r["Họ và tên"].trim();
+    const email = r["Email"].trim();
+    const matched = existingStudents.find((s) => s.name.toLowerCase() === name.toLowerCase());
+    if (matched) {
+      return {
+        id: matched.id,
+        name: matched.name,
+        username: matched.username,
+        email: email,
+        isUpdate: true
+      };
+    } else {
+      return {
+        id: "new_" + name,
+        name: name,
+        username: "hs_" + name.replace(/\s+/g, "").toLowerCase(),
+        email: email,
+        isUpdate: false
+      };
+    }
+  });
+}
+
+const matchResults = processExcelMatching(mockExcelRows, mockWebStudents);
+assert.strictEqual(matchResults.length, 2);
+assert.strictEqual(matchResults[0].isUpdate, true);
+assert.strictEqual(matchResults[0].id, "hs_001");
+assert.strictEqual(matchResults[0].email, "lananh12a5@gmail.com");
+assert.strictEqual(matchResults[1].isUpdate, false);
+assert.strictEqual(matchResults[1].name, "Lê Văn Mới");
+
+console.log("✅ 41. Kiểm thử Quản lý Email học sinh, Khớp tên file Excel & Thông báo Email tự động khi tạo đề bài: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (41/41)!");

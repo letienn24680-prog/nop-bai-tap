@@ -12,8 +12,12 @@ CREATE TABLE IF NOT EXISTS eduproof_users (
   class TEXT,
   subject TEXT,
   teacher_id TEXT,
+  email TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Tự động thêm cột email nếu bảng đã tồn tại
+ALTER TABLE eduproof_users ADD COLUMN IF NOT EXISTS email TEXT;
 
 -- 2. Bảng bài tập
 CREATE TABLE IF NOT EXISTS eduproof_assignments (
@@ -303,7 +307,7 @@ AS $$
 DECLARE
   v_user RECORD;
 BEGIN
-  SELECT id, username, name, role, class, subject, teacher_id 
+  SELECT id, username, name, role, class, subject, teacher_id, email 
   INTO v_user 
   FROM eduproof_users 
   WHERE username = p_username AND password = p_password;
@@ -320,7 +324,8 @@ BEGIN
     'role', v_user.role,
     'class', v_user.class,
     'subject', v_user.subject,
-    'teacherId', v_user.teacher_id
+    'teacherId', v_user.teacher_id,
+    'email', v_user.email
   );
 END;
 $$;
@@ -354,7 +359,8 @@ BEGIN
       'role', u.role,
       'class', u.class,
       'subject', u.subject,
-      'teacherId', u.teacher_id
+      'teacherId', u.teacher_id,
+      'email', u.email
     )) INTO v_students FROM eduproof_users u;
   ELSE
     SELECT jsonb_agg(jsonb_build_object(
@@ -365,7 +371,8 @@ BEGIN
       'role', u.role,
       'class', u.class,
       'subject', u.subject,
-      'teacherId', u.teacher_id
+      'teacherId', u.teacher_id,
+      'email', u.email
     )) INTO v_students FROM eduproof_users u 
     WHERE u.teacher_id = p_teacher_id OR u.id = p_teacher_id;
   END IF;

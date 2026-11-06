@@ -617,7 +617,8 @@ async function syncCloudData(notify = false) {
             role: u.role,
             class: u.class,
             subject: u.subject,
-            teacherId: u.teacherId || u.teacher_id
+            teacherId: u.teacherId || u.teacher_id,
+            email: u.email || ""
           }));
         }
       } catch (e) {
@@ -635,7 +636,8 @@ async function syncCloudData(notify = false) {
           role: u.role,
           class: u.class,
           subject: u.subject,
-          teacherId: u.teacher_id
+          teacherId: u.teacher_id,
+          email: u.email || ""
         }));
       } else if (users.length > 0) {
         const userPayloads = users.map((u) => ({
@@ -646,7 +648,8 @@ async function syncCloudData(notify = false) {
           role: u.role,
           class: u.class || null,
           subject: u.subject || null,
-          teacher_id: u.teacherId || null
+          teacher_id: u.teacherId || null,
+          email: u.email || null
         }));
         await sb.from("eduproof_users").upsert(userPayloads);
       }
@@ -916,11 +919,73 @@ function openCreateStudentModal() {
   document.getElementById("newStudentUsername").value = "";
   document.getElementById("newStudentClass").value = "12A1";
   document.getElementById("newStudentPassword").value = "123456";
+  const emailEl = document.getElementById("newStudentEmail");
+  if (emailEl) emailEl.value = "";
   document.getElementById("createStudentModal").style.display = "flex";
 }
 
 function closeCreateStudentModal() {
   document.getElementById("createStudentModal").style.display = "none";
+}
+
+function openEditStudentEmailModal(studentId) {
+  const st = users.find((u) => u.id === studentId);
+  if (!st) return;
+
+  const idInput = document.getElementById("editEmailStudentId");
+  const nameEl = document.getElementById("editEmailStudentName");
+  const usernameEl = document.getElementById("editEmailStudentUsername");
+  const emailInput = document.getElementById("editEmailInput");
+
+  if (idInput) idInput.value = st.id;
+  if (nameEl) nameEl.innerText = st.name;
+  if (usernameEl) usernameEl.innerText = ` (${st.username})`;
+  if (emailInput) {
+    emailInput.value = st.email || "";
+    setTimeout(() => emailInput.focus(), 50);
+  }
+
+  const modal = document.getElementById("editStudentEmailModal");
+  if (modal) modal.style.display = "flex";
+}
+
+function closeEditStudentEmailModal() {
+  const modal = document.getElementById("editStudentEmailModal");
+  if (modal) modal.style.display = "none";
+}
+
+function confirmSaveStudentEmail() {
+  const idInput = document.getElementById("editEmailStudentId");
+  const emailInput = document.getElementById("editEmailInput");
+  if (!idInput || !emailInput) return;
+
+  const studentId = idInput.value;
+  const newEmail = emailInput.value.trim();
+
+  if (newEmail && (!newEmail.includes("@") || !newEmail.includes("."))) {
+    showNoticeModal("Vui lòng nhập địa chỉ email hợp lệ (ví dụ: hocsinh@gmail.com).", "Lưu ý", "⚠️");
+    return;
+  }
+
+  const st = users.find((u) => u.id === studentId);
+  if (!st) return;
+
+  st.email = newEmail;
+  persistData();
+
+  const sb = getSupabase();
+  if (sb) {
+    sb.from("eduproof_users")
+      .update({ email: newEmail || null })
+      .eq("id", studentId)
+      .then(({ error }) => {
+        if (error) console.warn("Lỗi cập nhật email lên Supabase:", error);
+      });
+  }
+
+  closeEditStudentEmailModal();
+  renderTeacherView();
+  showNoticeModal(`✅ Đã cập nhật email cho học sinh ${st.name} thành công!`, "Cập nhật thành công", "🎉");
 }
 
 function autoSuggestUsername(name) {
@@ -944,15 +1009,17 @@ function confirmCreateStudentAccount() {
   const username = document.getElementById("newStudentUsername").value.trim();
   const studentClass = document.getElementById("newStudentClass").value.trim() || "12A1";
   const password = document.getElementById("newStudentPassword").value.trim() || "123456";
+  const emailInput = document.getElementById("newStudentEmail");
+  const email = emailInput ? emailInput.value.trim() : "";
 
   if (!fullName || !username) {
-    alert("Vui lòng nhập đầy đủ họ tên và tên đăng nhập.");
+    showNoticeModal("Vui lòng nhập đầy đủ họ tên và tên đăng nhập.", "Thiếu thông tin", "⚠️");
     return;
   }
 
   // Check unique username
   if (users.some((u) => u.username === username)) {
-    alert("Tên đăng nhập này đã tồn tại. Vui lòng chọn tên khác (ví dụ thêm số phía sau).");
+    showNoticeModal("Tên đăng nhập này đã tồn tại. Vui lòng chọn tên khác (ví dụ thêm số phía sau).", "Trùng tên đăng nhập", "⚠️");
     return;
   }
 
@@ -963,7 +1030,8 @@ function confirmCreateStudentAccount() {
     name: fullName,
     role: "student",
     class: studentClass,
-    teacherId: currentUser.id
+    teacherId: currentUser.id,
+    email: email || ""
   };
 
   users.push(newStudent);
@@ -978,7 +1046,8 @@ function confirmCreateStudentAccount() {
       name: newStudent.name,
       role: newStudent.role,
       class: newStudent.class,
-      teacher_id: newStudent.teacherId
+      teacher_id: newStudent.teacherId,
+      email: newStudent.email || null
     }]).then();
   }
 
@@ -988,11 +1057,11 @@ function confirmCreateStudentAccount() {
   // Generate message to copy for student / parents
   const shareMsg = `Chào em ${fullName}! Thầy gửi tài khoản EduProof để nộp bài tập về nhà:\n- Tên đăng nhập: ${username}\n- Mật khẩu: ${password}\n- Lớp: ${studentClass}\n👉 Em đăng nhập để nộp bài tập đúng hạn nhé!`;
 
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(shareMsg);
-    alert(`Đã tạo tài khoản cho học sinh ${fullName} thành công!\n\n📋 ĐÃ TỰ ĐỘNG SAO CHÉP THÔNG TIN TÀI KHOẢN VÀO BỘ NHỚ TẠM:\n"${shareMsg}"\n\nThầy có thể dán (Ctrl+V) gửi ngay qua Zalo/tin nhắn cho học sinh.`);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(shareMsg).catch(() => {});
+    showNoticeModal(`Đã tạo tài khoản cho học sinh ${fullName} thành công!\n\n📋 ĐÃ TỰ ĐỘNG SAO CHÉP THÔNG TIN TÀI KHOẢN VÀO BỘ NHỚ TẠM:\n"${shareMsg}"\n\nThầy có thể dán (Ctrl+V) gửi ngay qua Zalo/tin nhắn cho học sinh.`, "Tạo tài khoản thành công", "🎉");
   } else {
-    alert(`Đã tạo tài khoản thành công!\nTên đăng nhập: ${username} | Mật khẩu: ${password}`);
+    showNoticeModal(`Đã tạo tài khoản thành công!\nTên đăng nhập: ${username} | Mật khẩu: ${password}`, "Tạo tài khoản thành công", "🎉");
   }
 }
 
@@ -1015,7 +1084,7 @@ function deleteStudentAccount(studentId) {
       }
 
       renderTeacherView();
-      alert("Đã xóa tài khoản học sinh thành công.");
+      showNoticeModal("Đã xóa tài khoản học sinh thành công.", "Đã xóa", "🗑️");
     },
     "Xác nhận xóa tài khoản",
     "Xóa học sinh",
@@ -1029,11 +1098,11 @@ function copyAccountInfo(username) {
 
   const msg = `Tài khoản nộp bài tập EduProof:\nHọc sinh: ${student.name}\n- Tên đăng nhập: ${student.username}\n- Mật khẩu: ${student.password}\n- Lớp: ${student.class || "12A1"}`;
 
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(msg);
-    alert(`Đã sao chép thông tin tài khoản của ${student.name}!\n\n${msg}\n\nThầy có thể dán vào Zalo gửi cho học sinh.`);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(msg).catch(() => {});
+    showNoticeModal(`Đã sao chép thông tin tài khoản của ${student.name}!\n\n${msg}\n\nThầy có thể dán vào Zalo gửi cho học sinh.`, "Đã sao chép tài khoản", "📋");
   } else {
-    alert(msg);
+    showNoticeModal(msg, "Thông tin tài khoản", "📋");
   }
 }
 
@@ -1045,7 +1114,7 @@ let pendingParsedStudents = [];
 
 function openExcelImportModal() {
   if (!currentUser || currentUser.role !== "teacher") {
-    alert("Chỉ giáo viên mới có quyền nhập danh sách học sinh.");
+    showNoticeModal("Chỉ giáo viên mới có quyền nhập danh sách học sinh.", "Phân quyền", "⚠️");
     return;
   }
   resetExcelImport();
@@ -1136,7 +1205,7 @@ function generateCleanUsername(name, existingUsernames) {
 
 function handleExcelFile(file) {
   if (typeof XLSX === "undefined") {
-    alert("Thư viện đọc Excel (SheetJS) chưa sẵn sàng. Vui lòng kiểm tra kết nối mạng!");
+    showNoticeModal("Thư viện đọc Excel (SheetJS) chưa sẵn sàng. Vui lòng kiểm tra kết nối mạng!", "Thông báo", "⚠️");
     return;
   }
 
@@ -1150,64 +1219,88 @@ function handleExcelFile(file) {
       const rows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
       if (!rows || rows.length === 0) {
-        alert("File Excel không có dữ liệu học sinh!");
+        showNoticeModal("File Excel không có dữ liệu học sinh!", "Lưu ý", "⚠️");
         return;
       }
 
       const defaultClass = currentUser.class || "12A1";
       const existingUsernames = new Set(users.map((u) => u.username));
+      const myStudents = users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
       const parsedList = [];
 
       rows.forEach((row, index) => {
         let nameVal = "";
+        let emailVal = "";
         let usernameVal = "";
         let classVal = "";
         let passwordVal = "";
 
         Object.keys(row).forEach((col) => {
           const norm = normalizeHeaderKey(col);
-          const val = (row[col] !== undefined && row[col] !== null) ? row[col].toString().trim() : "";
+          const rawVal = row[col] !== undefined && row[col] !== null ? row[col].toString().trim() : "";
 
-          if (norm.includes("tendangnhap") || norm.includes("dangnhap") || norm.includes("taikhoan") || norm.includes("username") || norm === "user" || norm.includes("mahs") || norm.includes("mssv")) {
-            if (!usernameVal) usernameVal = val;
+          if (norm.includes("email") || norm.includes("mail") || norm.includes("thudientu") || norm.includes("hopthu") || (rawVal.includes("@") && rawVal.includes("."))) {
+            if (!emailVal) emailVal = rawVal;
+          } else if (norm.includes("tendangnhap") || norm.includes("dangnhap") || norm.includes("taikhoan") || norm.includes("username") || norm === "user" || norm.includes("mahs") || norm.includes("mssv")) {
+            if (!usernameVal) usernameVal = rawVal;
           } else if (norm.includes("ten") || norm.includes("hoten") || norm.includes("hovaten") || norm.includes("fullname") || norm === "name" || norm.includes("hocsinh")) {
-            if (!nameVal) nameVal = val;
+            if (!nameVal) nameVal = rawVal;
           } else if (norm.includes("lop") || norm.includes("class") || norm.includes("grade")) {
-            if (!classVal) classVal = val;
+            if (!classVal) classVal = rawVal;
           } else if (norm.includes("matkhau") || norm.includes("password") || norm.includes("pass") || norm === "mk") {
-            if (!passwordVal) passwordVal = val;
+            if (!passwordVal) passwordVal = rawVal;
           }
         });
 
         if (!nameVal) return;
 
-        if (!usernameVal) {
-          usernameVal = generateCleanUsername(nameVal, existingUsernames);
+        // Khớp học sinh theo họ và tên trên web của giáo viên này
+        const matched = myStudents.find(
+          (s) => s.name.trim().toLowerCase() === nameVal.trim().toLowerCase()
+        );
+
+        if (matched) {
+          // Cập nhật thông tin / email cho học sinh đã có trên web
+          parsedList.push({
+            id: matched.id,
+            name: matched.name,
+            username: matched.username,
+            class: classVal || matched.class || defaultClass,
+            password: passwordVal || matched.password || "123456",
+            email: emailVal || matched.email || "",
+            role: "student",
+            teacherId: currentUser.id,
+            isUpdate: true
+          });
+        } else {
+          // Học sinh mới chưa có trong hệ thống
+          if (!usernameVal) {
+            usernameVal = generateCleanUsername(nameVal, existingUsernames);
+          }
+          if (!passwordVal) {
+            passwordVal = "123456";
+          }
+          if (!classVal) {
+            classVal = defaultClass;
+          }
+          existingUsernames.add(usernameVal);
+
+          parsedList.push({
+            id: "hs_" + Date.now() + "_" + index,
+            name: nameVal,
+            username: usernameVal,
+            class: classVal,
+            password: passwordVal,
+            email: emailVal,
+            role: "student",
+            teacherId: currentUser.id,
+            isUpdate: false
+          });
         }
-
-        if (!passwordVal) {
-          passwordVal = "123456";
-        }
-
-        if (!classVal) {
-          classVal = defaultClass;
-        }
-
-        existingUsernames.add(usernameVal);
-
-        parsedList.push({
-          id: "hs_" + Date.now() + "_" + index,
-          name: nameVal,
-          username: usernameVal,
-          class: classVal,
-          password: passwordVal,
-          role: "student",
-          teacherId: currentUser.id
-        });
       });
 
       if (parsedList.length === 0) {
-        alert("Không tìm thấy thông tin học sinh hợp lệ. Vui lòng tải file mẫu để xem định dạng chuẩn.");
+        showNoticeModal("Không tìm thấy thông tin học sinh hợp lệ. Vui lòng tải file mẫu để xem định dạng chuẩn.", "Lưu ý", "⚠️");
         return;
       }
 
@@ -1215,7 +1308,7 @@ function handleExcelFile(file) {
       displayExcelPreview(parsedList);
     } catch (err) {
       console.error("Lỗi đọc file Excel:", err);
-      alert("Không thể đọc file Excel này: " + err.message);
+      showNoticeModal("Không thể đọc file Excel này: " + err.message, "Lỗi", "⚠️");
     }
   };
 
@@ -1228,7 +1321,10 @@ function displayExcelPreview(list) {
   const tbody = document.getElementById("excelPreviewTableBody");
   const btnConfirm = document.getElementById("btnConfirmBatchCreate");
 
-  countText.innerText = `✅ Đã nhận diện ${list.length} học sinh sẵn sàng tạo tài khoản`;
+  const updateCount = list.filter((s) => s.isUpdate).length;
+  const newCount = list.filter((s) => !s.isUpdate).length;
+
+  countText.innerHTML = `✅ Nhận diện <strong>${list.length}</strong> học sinh: <strong>${updateCount}</strong> học sinh cập nhật Email • <strong>${newCount}</strong> tài khoản tạo mới`;
 
   tbody.innerHTML = list
     .map(
@@ -1236,9 +1332,14 @@ function displayExcelPreview(list) {
       <tr>
         <td>${idx + 1}</td>
         <td><strong>${sanitizeText(s.name)}</strong></td>
+        <td><span style="color: ${s.email ? '#059669' : '#94A3B8'}; font-size: 0.78rem; font-weight: ${s.email ? '600' : 'normal'};">${s.email ? sanitizeText(s.email) : '— Chưa có —'}</span></td>
         <td><code>${sanitizeText(s.username)}</code></td>
         <td>${sanitizeText(s.class)}</td>
-        <td><code>${sanitizeText(s.password)}</code></td>
+        <td>
+          ${s.isUpdate
+            ? '<span class="badge-status status-submitted" style="font-size: 0.72rem;">🔄 Cập nhật Email</span>'
+            : '<span class="badge-status status-graded" style="font-size: 0.72rem;">✨ Tài khoản mới</span>'}
+        </td>
       </tr>
     `
     )
@@ -1246,23 +1347,30 @@ function displayExcelPreview(list) {
 
   previewSection.style.display = "block";
   btnConfirm.disabled = false;
-  btnConfirm.innerText = `✅ Tạo ${list.length} tài khoản học sinh`;
+  btnConfirm.innerText = `✅ Xác nhận lưu thông tin (${list.length} học sinh)`;
 }
 
 async function confirmBatchCreateStudents() {
   if (!pendingParsedStudents || pendingParsedStudents.length === 0) {
-    alert("Không có danh sách học sinh để tạo.");
+    showNoticeModal("Không có danh sách học sinh để xử lý.", "Thông báo", "⚠️");
     return;
   }
 
   const btnConfirm = document.getElementById("btnConfirmBatchCreate");
   btnConfirm.disabled = true;
-  btnConfirm.innerText = "⏳ Đang tạo tài khoản...";
+  btnConfirm.innerText = "⏳ Đang lưu dữ liệu...";
+
+  const updateCount = pendingParsedStudents.filter((s) => s.isUpdate).length;
+  const newCount = pendingParsedStudents.filter((s) => !s.isUpdate).length;
 
   pendingParsedStudents.forEach((newS) => {
-    const existingIdx = users.findIndex((u) => u.username === newS.username);
+    const existingIdx = users.findIndex((u) => u.id === newS.id || u.username === newS.username);
     if (existingIdx >= 0) {
-      users[existingIdx] = newS;
+      users[existingIdx] = {
+        ...users[existingIdx],
+        ...newS,
+        email: newS.email || users[existingIdx].email || ""
+      };
     } else {
       users.push(newS);
     }
@@ -1280,7 +1388,8 @@ async function confirmBatchCreateStudents() {
         name: s.name,
         role: "student",
         class: s.class,
-        teacher_id: currentUser.id
+        teacher_id: currentUser.id,
+        email: s.email || null
       }));
 
       await sb.from("eduproof_users").upsert(payloads);
@@ -1289,42 +1398,45 @@ async function confirmBatchCreateStudents() {
     }
   }
 
-  const shareLines = pendingParsedStudents.map(
-    (s, idx) => `${idx + 1}. ${s.name} (Lớp ${s.class}): TK: ${s.username} | MK: ${s.password}`
-  );
-  const shareMsg = `📋 DANH SÁCH TÀI KHOẢN HỌC SINH NỘP BÀI TẬP EDUPROOF:\n${shareLines.join("\n")}\n\n👉 Các em học sinh đăng nhập vào hệ thống để nộp bài tập về nhà đúng hạn nhé!`;
-
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(shareMsg);
+  // Tự động tạo tin nhắn chia sẻ tài khoản mới (nếu có)
+  const newStudents = pendingParsedStudents.filter((s) => !s.isUpdate);
+  if (newStudents.length > 0 && navigator.clipboard && navigator.clipboard.writeText) {
+    const shareLines = newStudents.map(
+      (s, idx) => `${idx + 1}. ${s.name} (Lớp ${s.class}): TK: ${s.username} | MK: ${s.password}${s.email ? ` | Email: ${s.email}` : ""}`
+    );
+    const shareMsg = `📋 DANH SÁCH TÀI KHOẢN HỌC SINH NỘP BÀI TẬP EDUPROOF:\n${shareLines.join("\n")}\n\n👉 Các em học sinh đăng nhập vào hệ thống để nộp bài tập về nhà đúng hạn nhé!`;
+    navigator.clipboard.writeText(shareMsg).catch(() => {});
   }
 
-  const createdCount = pendingParsedStudents.length;
   closeExcelImportModal();
   renderTeacherView();
 
-  alert(
-    `🎉 ĐÃ TỰ ĐỘNG TẠO THÀNH CÔNG ${createdCount} TÀI KHOẢN HỌC SINH!\n\n` +
-    `📋 Danh sách tài khoản đã được tự động sao chép vào bộ nhớ tạm (Clipboard).\n` +
-    `Thầy/Cô có thể nhấn Ctrl+V dán ngay vào nhóm Zalo/Facebook của lớp.`
-  );
+  let msg = `🎉 XỬ LÝ FILE EXCEL THÀNH CÔNG!\n\n`;
+  if (updateCount > 0) {
+    msg += `• Đã cập nhật Email cho ${updateCount} học sinh hiện có trong danh sách.\n`;
+  }
+  if (newCount > 0) {
+    msg += `• Đã tạo mới ${newCount} tài khoản học sinh (Thông tin đăng nhập đã được sao chép vào bộ nhớ tạm để gửi Zalo).\n`;
+  }
+  showNoticeModal(msg, "Hoàn thành xử lý", "🎉");
 }
 
 function downloadStudentTemplateExcel() {
   if (typeof XLSX === "undefined") {
-    alert("Thư viện Excel đang tải, vui lòng kiểm tra kết nối mạng và thử lại sau.");
+    showNoticeModal("Thư viện Excel đang tải, vui lòng kiểm tra kết nối mạng và thử lại sau.", "Thông báo", "⚠️");
     return;
   }
 
   const sampleData = [
-    { "Họ và tên": "Nguyễn Văn An", "Tên đăng nhập": "hs_an", "Lớp": "12A1", "Mật khẩu": "123456" },
-    { "Họ và tên": "Trần Thị Mai", "Tên đăng nhập": "hs_mai", "Lớp": "12A1", "Mật khẩu": "123456" },
-    { "Họ và tên": "Lê Hoàng Nam", "Tên đăng nhập": "hs_nam", "Lớp": "12A1", "Mật khẩu": "123456" },
-    { "Họ và tên": "Phạm Thu Hà", "Tên đăng nhập": "hs_ha", "Lớp": "12A1", "Mật khẩu": "123456" },
-    { "Họ và tên": "Đỗ Quang Minh", "Tên đăng nhập": "hs_minh", "Lớp": "12A1", "Mật khẩu": "123456" }
+    { "Họ và tên": "Nguyễn Văn An", "Email": "vanan.nguyen@gmail.com", "Tên đăng nhập": "hs_an", "Lớp": "12A1", "Mật khẩu": "123456" },
+    { "Họ và tên": "Trần Thị Mai", "Email": "thimai.tran@gmail.com", "Tên đăng nhập": "hs_mai", "Lớp": "12A1", "Mật khẩu": "123456" },
+    { "Họ và tên": "Lê Hoàng Nam", "Email": "hoangnam.le@gmail.com", "Tên đăng nhập": "hs_nam", "Lớp": "12A1", "Mật khẩu": "123456" },
+    { "Họ và tên": "Phạm Thu Hà", "Email": "thuha.pham@gmail.com", "Tên đăng nhập": "hs_ha", "Lớp": "12A1", "Mật khẩu": "123456" },
+    { "Họ và tên": "Đỗ Quang Minh", "Email": "quangminh.do@gmail.com", "Tên đăng nhập": "hs_minh", "Lớp": "12A1", "Mật khẩu": "123456" }
   ];
 
   const ws = XLSX.utils.json_to_sheet(sampleData);
-  ws["!cols"] = [{ wch: 22 }, { wch: 18 }, { wch: 10 }, { wch: 14 }];
+  ws["!cols"] = [{ wch: 22 }, { wch: 26 }, { wch: 18 }, { wch: 10 }, { wch: 14 }];
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "DanhSachHocSinh");
@@ -1334,20 +1446,20 @@ function downloadStudentTemplateExcel() {
 function copyAllStudentAccounts() {
   const myStudents = users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
   if (myStudents.length === 0) {
-    alert("Chưa có tài khoản học sinh nào trong danh sách.");
+    showNoticeModal("Chưa có tài khoản học sinh nào trong danh sách.", "Thông báo", "⚠️");
     return;
   }
 
   const lines = myStudents.map(
-    (s, idx) => `${idx + 1}. ${s.name} - Lớp ${s.class || ""}\n   👉 Tên đăng nhập: ${s.username} | Mật khẩu: ${s.password}`
+    (s, idx) => `${idx + 1}. ${s.name} - Lớp ${s.class || ""}\n   👉 Tên đăng nhập: ${s.username} | Mật khẩu: ${s.password}${s.email ? ` | Email: ${s.email}` : ""}`
   );
   const text = `📋 DANH SÁCH TÀI KHOẢN NỘP BÀI TẬP EDUPROOF (${currentUser.name}):\n\n${lines.join("\n\n")}\n\n👉 Các em học sinh đăng nhập vào hệ thống để nhận đề và nộp bài đúng hạn nhé!`;
 
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(text);
-    alert(`Đã sao chép danh sách ${myStudents.length} tài khoản học sinh!\nThầy/Cô có thể dán (Ctrl+V) gửi ngay vào nhóm Zalo lớp.`);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(() => {});
+    showNoticeModal(`Đã sao chép danh sách ${myStudents.length} tài khoản học sinh!\n\nThầy/Cô có thể nhấn Ctrl+V dán ngay vào nhóm Zalo lớp.`, "Đã sao chép danh sách", "📋");
   } else {
-    alert(text);
+    showNoticeModal(text, "Danh sách tài khoản học sinh", "📋");
   }
 }
 
@@ -2841,11 +2953,11 @@ function copyUnsubmittedStudents(assignmentId) {
 
   message += `\n👉 Các em khẩn trương hoàn thành bài làm và chụp ảnh nộp minh chứng lên hệ thống EduProof đúng hạn!`;
 
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(message);
-    alert(`📋 Đã sao chép danh sách ${unsubmitted.length} học sinh chưa nộp vào Clipboard!\nBạn có thể dán (Ctrl+V) ngay vào nhóm Zalo lớp để nhắc nhở.`);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(message).catch(() => {});
+    showNoticeModal(`📋 Đã sao chép danh sách ${unsubmitted.length} học sinh chưa nộp vào Clipboard!\n\nThầy/Cô có thể nhấn Ctrl+V dán ngay vào nhóm Zalo lớp để nhắc nhở.`, "Đã sao chép danh sách nhắc nhở", "📋");
   } else {
-    prompt("Sao chép danh sách nhắc nhở dưới đây:", message);
+    showNoticeModal(message, "Danh sách nhắc nhở nộp bài", "📢");
   }
 }
 
@@ -2856,25 +2968,25 @@ function remindStudent(studentId, assignmentId) {
 
   const msg = `📢 Nhắc nhở học tập: Em ${student.name} ơi, bài tập "${asg.title}" sắp đến hạn nộp. Em nhớ chụp ảnh vở bài làm và nộp lên EduProof nhé!`;
 
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(msg);
-    alert(`Đã sao chép tin nhắn nhắc nhở cho học sinh ${student.name}!\n\n"${msg}"\n\nThầy/Cô có thể dán gửi Zalo cho phụ huynh hoặc học sinh.`);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(msg).catch(() => {});
+    showNoticeModal(`Đã sao chép tin nhắn nhắc nhở cho học sinh ${student.name}!\n\n"${msg}"\n\nThầy/Cô có thể dán gửi Zalo cho phụ huynh hoặc học sinh.`, "Đã sao chép tin nhắc nhở", "💬");
   } else {
-    alert(msg);
+    showNoticeModal(msg, "Tin nhắn nhắc nhở học sinh", "💬");
   }
 }
 
 function copyAssignmentShareLink(assignmentId) {
   const asg = assignments.find((a) => a.id === assignmentId);
   if (!asg) return;
-  const msg = `📌 BÀI TẬP VỀ NHÀ: ${asg.title}\n- Hạn nộp: ${new Date(asg.deadline).toLocaleString("vi-VN")}\n- Yêu cầu: Chụp ảnh vở bài làm gửi lên EduProof.\n👉 Cả lớp đăng nhập vào nộp bài trước hạn nhé!`;
+  const appUrl = window.location.origin + window.location.pathname;
+  const deadlineStr = new Date(asg.deadline).toLocaleString("vi-VN");
+  const msg = `📌 BÀI TẬP VỀ NHÀ: ${asg.title}\n- Hạn nộp: ${deadlineStr}\n- Yêu cầu: Chụp ảnh vở bài làm gửi lên EduProof.\n👉 Cả lớp đăng nhập vào nộp bài trước hạn nhé!\n${appUrl}`;
 
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(msg);
-    alert(`Đã sao chép link và thông báo bài tập!\n\n"${msg}"\n\nThầy/Cô có thể dán vào nhóm Zalo lớp.`);
-  } else {
-    alert(msg);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(msg).catch(() => {});
   }
+  showNoticeModal(`Đã sao chép link và thông báo bài tập!\n\n"${msg}"\n\nThầy/Cô có thể dán vào nhóm Zalo lớp.`, "Đã sao chép thông báo bài tập", "📋");
 }
 
 // Assignments Management
@@ -2991,6 +3103,7 @@ function renderTeacherStudents(myStudentsList) {
       <thead>
         <tr>
           <th>Họ và tên</th>
+          <th>Email nhận thông báo</th>
           <th>Tên đăng nhập</th>
           <th>Mật khẩu</th>
           <th>Lớp</th>
@@ -2999,13 +3112,25 @@ function renderTeacherStudents(myStudentsList) {
         </tr>
       </thead>
       <tbody>
-        ${studentUsers.length === 0 ? `<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Bạn chưa tạo tài khoản học sinh nào. Hãy bấm "Cấp tài khoản mới" ở trên để tạo.</td></tr>` : ""}
+        ${studentUsers.length === 0 ? `<tr><td colspan="7" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Bạn chưa tạo tài khoản học sinh nào. Hãy bấm "Cấp tài khoản mới" ở trên để tạo.</td></tr>` : ""}
         ${studentUsers
           .map((st) => {
             const count = submissions.filter((s) => s.studentId === st.id).length;
             return `
               <tr>
                 <td><strong>${sanitizeText(st.name)}</strong></td>
+                <td>
+                  ${st.email ? `
+                    <div style="display: flex; align-items: center; gap: 0.35rem;">
+                      <span style="color: #4338CA; font-weight: 600; font-size: 0.82rem;">${sanitizeText(st.email)}</span>
+                      <button class="tool-icon-btn" style="font-size: 0.72rem; padding: 2px 4px;" title="Sửa email" onclick="openEditStudentEmailModal('${sanitizeText(st.id)}')">✏️</button>
+                    </div>
+                  ` : `
+                    <button class="btn btn-secondary btn-sm" style="font-size: 0.72rem; padding: 0.2rem 0.55rem; color: #64748B;" onclick="openEditStudentEmailModal('${sanitizeText(st.id)}')">
+                      ✉️ + Thêm Email
+                    </button>
+                  `}
+                </td>
                 <td><code>${sanitizeText(st.username)}</code></td>
                 <td><code>${sanitizeText(st.password)}</code></td>
                 <td>${sanitizeText(st.class || "12A1")}</td>
@@ -3038,10 +3163,18 @@ function renderTeacherStudents(myStudentsList) {
                   <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${sanitizeText(st.name)}</div>
                   <div style="font-size: 0.74rem; color: var(--text-muted);">Lớp: ${sanitizeText(st.class || "12A1")} • Đã nộp ${count} bài</div>
                 </div>
+                <button class="btn btn-secondary btn-sm" style="font-size: 0.72rem; padding: 0.2rem 0.5rem;" onclick="openEditStudentEmailModal('${sanitizeText(st.id)}')">
+                  ${st.email ? "✏️ Sửa Email" : "✉️ Thêm Email"}
+                </button>
               </div>
-              <div style="background: #F8FAFC; padding: 0.4rem 0.6rem; border-radius: 6px; font-size: 0.78rem; margin-bottom: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center; border: 1px solid #F1F5F9;">
-                <span>TK: <code>${sanitizeText(st.username)}</code></span>
-                <span>MK: <code>${sanitizeText(st.password)}</code></span>
+              <div style="background: #F8FAFC; padding: 0.4rem 0.6rem; border-radius: 6px; font-size: 0.78rem; margin-bottom: 0.5rem; display: flex; flex-direction: column; gap: 0.35rem; border: 1px solid #F1F5F9;">
+                <div style="display: flex; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
+                  <span>TK: <code>${sanitizeText(st.username)}</code></span>
+                  <span>MK: <code>${sanitizeText(st.password)}</code></span>
+                </div>
+                <div style="font-size: 0.75rem; color: #4338CA;">
+                  📧 Email: ${st.email ? `<strong>${sanitizeText(st.email)}</strong>` : `<em style="color: var(--text-muted);">Chưa cài đặt</em>`}
+                </div>
               </div>
               <div style="display: flex; gap: 0.4rem;">
                 <button class="btn btn-secondary btn-sm" style="flex: 1; justify-content: center; padding: 0.45rem;" onclick="copyAccountInfo('${sanitizeText(st.username)}')">
@@ -4018,6 +4151,102 @@ function handleSubjectSelectChange(val) {
   }
 }
 
+let currentBatchEmailData = null;
+
+function openBatchEmailModal(assignment, recipientStudents) {
+  currentBatchEmailData = { assignment, recipientStudents };
+  const modal = document.getElementById("batchEmailModal");
+  if (!modal) return;
+
+  const modalTitle = document.getElementById("batchEmailModalTitle");
+  const summaryBox = document.getElementById("batchEmailSummaryBox");
+  const chipsContainer = document.getElementById("batchEmailRecipientChips");
+  const bodyPreview = document.getElementById("batchEmailBodyPreview");
+  const gmailBtn = document.getElementById("batchEmailGmailBtn");
+  const clientBtn = document.getElementById("batchEmailClientBtn");
+
+  const count = recipientStudents.length;
+  const deadlineStr = new Date(assignment.deadline).toLocaleString("vi-VN");
+  const appUrl = window.location.origin + window.location.pathname;
+
+  if (modalTitle) {
+    modalTitle.innerText = `Thông báo Email: ${assignment.title}`;
+  }
+
+  if (summaryBox) {
+    summaryBox.innerHTML = `
+      <div><strong>Đề bài:</strong> ${sanitizeText(assignment.title)} (${sanitizeText(assignment.subject)})</div>
+      <div style="margin-top: 0.2rem; color: #4F46E5;">
+        📢 Đã tìm thấy <strong>${count}</strong> học sinh trong lớp có địa chỉ Email nhận thông báo.
+      </div>
+      <div style="font-size: 0.74rem; color: #64748B; margin-top: 0.25rem;">
+        Hệ thống tự động đưa toàn bộ email vào trường <strong>BCC (Blind Carbon Copy)</strong> để bảo mật thông tin cá nhân của các học sinh.
+      </div>
+    `;
+  }
+
+  const emailsList = recipientStudents.map((s) => s.email.trim());
+  const bccString = emailsList.join(",");
+
+  if (chipsContainer) {
+    chipsContainer.innerHTML = recipientStudents
+      .map(
+        (s) => `
+        <span style="display: inline-flex; align-items: center; background: #EEF2FF; color: #3730A3; padding: 2px 8px; border-radius: 9999px; margin: 2px; font-weight: 500; border: 1px solid #C7D2FE;">
+          ${sanitizeText(s.name)} &lt;${sanitizeText(s.email)}&gt;
+        </span>
+      `
+      )
+      .join("");
+  }
+
+  const emailSubject = `[EduProof] Bài tập mới: ${assignment.title} - Môn ${assignment.subject}`;
+  const emailBody = `Chào các em học sinh,\n\nThầy/Cô ${currentUser.name} vừa giao bài tập mới trên hệ thống EduProof:\n\n📌 Tiêu đề bài tập: ${assignment.title}\n📚 Môn học: ${assignment.subject}\n⏰ Hạn nộp: ${deadlineStr}\n📝 Hướng dẫn: ${assignment.description || "Làm bài tập đầy đủ và chụp ảnh vở bài làm nộp lên EduProof."}\n\n👉 Các em hãy đăng nhập vào hệ thống để nộp bài đúng hạn nhé:\n${appUrl}\n\nChúc các em làm bài tốt!\nThân ái,\n${currentUser.name}`;
+
+  if (bodyPreview) {
+    bodyPreview.value = emailBody;
+  }
+
+  // Cấu hình link mở Gmail Web trực tiếp
+  if (gmailBtn) {
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&bcc=${encodeURIComponent(bccString)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    gmailBtn.href = gmailUrl;
+  }
+
+  // Cấu hình link mở Mail Client mặc định (Outlook, Apple Mail, Thunderbird,...)
+  if (clientBtn) {
+    const mailtoUrl = `mailto:?bcc=${encodeURIComponent(bccString)}&subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    clientBtn.href = mailtoUrl;
+  }
+
+  modal.style.display = "flex";
+}
+
+function closeBatchEmailModal() {
+  const modal = document.getElementById("batchEmailModal");
+  if (modal) modal.style.display = "none";
+}
+
+function copyBatchEmailList() {
+  if (!currentBatchEmailData || !currentBatchEmailData.recipientStudents) return;
+  const emails = currentBatchEmailData.recipientStudents.map((s) => s.email.trim()).join(", ");
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(emails).then(() => {
+      showNoticeModal(`Đã sao chép danh sách ${currentBatchEmailData.recipientStudents.length} email học sinh vào bộ nhớ tạm!`, "Đã sao chép Email", "📋");
+    });
+  }
+}
+
+function copyBatchEmailContent() {
+  const preview = document.getElementById("batchEmailBodyPreview");
+  if (!preview) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(preview.value).then(() => {
+      showNoticeModal("Đã sao chép toàn bộ nội dung thư thông báo bài tập vào bộ nhớ tạm!", "Đã sao chép thư", "📋");
+    });
+  }
+}
+
 async function confirmCreateAssignment() {
   const title = document.getElementById("newTitleInput").value.trim();
   let subject = document.getElementById("newSubjectInput").value;
@@ -4028,9 +4257,11 @@ async function confirmCreateAssignment() {
   const description = document.getElementById("newDescInput").value.trim();
   const allowLink = document.getElementById("reqLinkCheck").checked;
   const allowNote = document.getElementById("reqNoteCheck").checked;
+  const notifyEmail = document.getElementById("notifyEmailCheck") ? document.getElementById("notifyEmailCheck").checked : false;
+  const notifyZalo = document.getElementById("notifyZaloCheck") ? document.getElementById("notifyZaloCheck").checked : false;
 
   if (!title) {
-    alert("Vui lòng nhập tiêu đề bài tập hoặc tên hoạt động Đoàn trường.");
+    showNoticeModal("Vui lòng nhập tiêu đề bài tập hoặc tên hoạt động Đoàn trường.", "Lưu ý", "⚠️");
     return;
   }
 
@@ -4080,7 +4311,30 @@ async function confirmCreateAssignment() {
 
   closeCreateAssignmentModal();
   renderCurrentView();
-  alert("🎉 Đã tạo bài tập mới và đồng bộ thành công lên hệ thống!");
+
+  const myStudents = users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
+  const emailStudents = myStudents.filter((s) => s.email && s.email.includes("@") && s.email.includes("."));
+
+  if (notifyZalo) {
+    const deadlineStr = new Date(newAsg.deadline).toLocaleString("vi-VN");
+    const zaloMsg = `📌 BÀI TẬP VỀ NHÀ: ${newAsg.title}\n- Hạn nộp: ${deadlineStr}\n- Yêu cầu: Chụp ảnh vở bài làm gửi lên EduProof.\n👉 Cả lớp đăng nhập vào nộp bài trước hạn nhé!\n${window.location.origin + window.location.pathname}`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(zaloMsg).catch(() => {});
+    }
+  }
+
+  if (notifyEmail && emailStudents.length > 0) {
+    openBatchEmailModal(newAsg, emailStudents);
+  } else {
+    let successNote = `🎉 Đã tạo bài tập "${newAsg.title}" và đồng bộ thành công lên hệ thống!`;
+    if (notifyZalo) {
+      successNote += `\n\n📋 Nội dung thông báo bài tập đã được tự động sao chép vào bộ nhớ tạm (Thầy/Cô có thể dán ngay vào nhóm Zalo lớp).`;
+    }
+    if (notifyEmail && emailStudents.length === 0) {
+      successNote += `\n\n💡 Lưu ý: Lớp chưa có học sinh nào cài địa chỉ Email. Thầy/Cô có thể cập nhật email ở mục "Quản lý học sinh" hoặc nhập file Excel để gửi email tự động.`;
+    }
+    showNoticeModal(successNote, "Tạo bài tập thành công", "🎉");
+  }
 }
 
 window.addEventListener("DOMContentLoaded", initData);

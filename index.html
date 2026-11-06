@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#4F46E5">
   <title>EduProof - Nộp & Chấm Bài Tập Minh Chứng</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234F46E5'/%3E%3Cpath d='M16 5L4 11.5L16 18L28 11.5L16 5Z' fill='white'/%3E%3Cpath d='M8 14.5V20.5C8 24 11.5 26.5 16 26.5C20.5 26.5 24 24 24 20.5V14.5L16 19L8 14.5Z' fill='white' fill-opacity='0.85'/%3E%3Cpath d='M26 13.5V22' stroke='%23FDE047' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='26' cy='22.5' r='1.5' fill='%23FDE047'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="app.css?v=20261106_2130">
   <script>
     // Ghi đè alert của trình duyệt sang popup trong trang web ngay lập tức
     window.alert = function(msg) {
@@ -485,6 +485,14 @@
         </div>
 
         <div class="form-group">
+          <label class="form-label">Email học sinh (Để nhận thông báo đề mới tự động):</label>
+          <input type="email" id="newStudentEmail" class="form-input" placeholder="Ví dụ: phamthuha@gmail.com">
+          <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">
+            Thầy/Cô có thể nhập ngay hoặc bổ sung sau bằng file Excel / sửa thủ công.
+          </div>
+        </div>
+
+        <div class="form-group">
           <label class="form-label">Mật khẩu khởi tạo:</label>
           <input type="text" id="newStudentPassword" class="form-input" value="123456">
           <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">
@@ -721,6 +729,21 @@
           <label class="form-label">Hướng dẫn làm bài / Yêu cầu nộp:</label>
           <textarea id="newDescInput" class="form-textarea" rows="3" placeholder="Chụp ảnh giấy chứng nhận, màn hình kết quả cuộc thi Đoàn trường hoặc vở ghi chép gửi vào đây..."></textarea>
         </div>
+
+        <!-- Thông báo tự động qua Email và Nhóm Zalo -->
+        <div class="form-group" style="background: #F8FAFC; padding: 0.75rem 0.9rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-top: 0.5rem;">
+          <label class="form-label" style="margin-bottom: 0.4rem; color: #4338CA; font-weight: 700;">📢 Thông báo khi tạo bài:</label>
+          <div style="display: flex; flex-direction: column; gap: 0.45rem; font-size: 0.82rem;">
+            <label style="display: flex; align-items: center; gap: 0.45rem; font-weight: 600; cursor: pointer;">
+              <input type="checkbox" id="notifyEmailCheck" checked>
+              📧 Gửi email thông báo tự động đồng loạt cho học sinh có email
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.45rem; font-weight: 600; cursor: pointer;">
+              <input type="checkbox" id="notifyZaloCheck" checked>
+              💬 Tự động tạo tin nhắn sao chép gửi nhóm Zalo lớp
+            </label>
+          </div>
+        </div>
       </div>
 
       <div class="modal-footer">
@@ -739,12 +762,16 @@
       </div>
 
       <div class="modal-body">
-        <div style="margin-bottom: 1rem; font-size: 0.82rem; color: var(--text-muted);">
-          Hệ thống hỗ trợ file <strong>.xlsx, .xls, .csv</strong>. Các cột chuẩn trong file: 
+        <div style="margin-bottom: 1rem; font-size: 0.82rem; color: var(--text-muted); line-height: 1.5;">
+          Hệ thống hỗ trợ file <strong>.xlsx, .xls, .csv</strong>. Các cột nhận diện: 
           <code style="background: #EEF2FF; padding: 2px 6px; border-radius: 4px; color: var(--primary);">Họ và tên</code>, 
+          <code style="background: #ECFDF5; padding: 2px 6px; border-radius: 4px; color: #047857; font-weight: 700;">Email</code>, 
           <code style="background: #EEF2FF; padding: 2px 6px; border-radius: 4px; color: var(--primary);">Tên đăng nhập</code>, 
           <code style="background: #EEF2FF; padding: 2px 6px; border-radius: 4px; color: var(--primary);">Lớp</code>, 
           <code style="background: #EEF2FF; padding: 2px 6px; border-radius: 4px; color: var(--primary);">Mật khẩu</code>.
+          <div style="margin-top: 0.35rem; color: #4338CA; font-weight: 600;">
+            💡 Thầy/Cô có thể nhập file Excel chỉ gồm <strong>Họ và tên</strong> và <strong>Email</strong> để cập nhật tự động email cho học sinh đã có trong danh sách!
+          </div>
         </div>
 
         <!-- Drag & Drop Zone -->
@@ -778,9 +805,10 @@
                 <tr>
                   <th>#</th>
                   <th>Họ và tên</th>
+                  <th>Email</th>
                   <th>Tên đăng nhập</th>
                   <th>Lớp</th>
-                  <th>Mật khẩu</th>
+                  <th>Thao tác nhận diện</th>
                 </tr>
               </thead>
               <tbody id="excelPreviewTableBody">
@@ -800,7 +828,76 @@
     </div>
   </div>
 
-  <!-- ==================== MODAL 7: IN-APP NOTICE / DIALOG POPUP ==================== -->
+  <!-- ==================== MODAL 6: EDIT STUDENT EMAIL MODAL ==================== -->
+  <div id="editStudentEmailModal" class="modal-overlay" style="display: none; z-index: 9998;" onclick="if (event.target === this) closeEditStudentEmailModal()">
+    <div class="modal-content" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700;">Cập nhật Email học sinh</h3>
+        <button class="tool-icon-btn" onclick="closeEditStudentEmailModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size: 0.85rem; margin-bottom: 0.75rem;">
+          Học sinh: <strong id="editEmailStudentName" style="color: #4338CA;"></strong>
+          <span style="font-size: 0.75rem; color: var(--text-muted);" id="editEmailStudentUsername"></span>
+        </div>
+        <input type="hidden" id="editEmailStudentId">
+        <div class="form-group">
+          <label class="form-label">Địa chỉ Email:</label>
+          <input type="email" id="editEmailInput" class="form-input" placeholder="ví dụ: hocsinh@gmail.com">
+          <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.35rem; line-height: 1.4;">
+            Email này sẽ tự động nhận thông báo bài tập kèm link nộp bài mỗi khi thầy/cô giao đề mới.
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeEditStudentEmailModal()">Hủy</button>
+        <button class="btn btn-primary" onclick="confirmSaveStudentEmail()">Lưu Email</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 7: BATCH EMAIL DISPATCH MODAL ==================== -->
+  <div id="batchEmailModal" class="modal-overlay" style="display: none; z-index: 9998;" onclick="if (event.target === this) closeBatchEmailModal()">
+    <div class="modal-content" style="max-width: 580px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 1.25rem;">📧</span>
+          <h3 style="font-size: 1.05rem; font-weight: 700;" id="batchEmailModalTitle">Thông báo Email giao bài tập</h3>
+        </div>
+        <button class="tool-icon-btn" onclick="closeBatchEmailModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="batchEmailSummaryBox" style="background: #EEF2FF; border: 1px solid #C7D2FE; padding: 0.75rem 0.9rem; border-radius: 8px; margin-bottom: 0.85rem; font-size: 0.82rem; line-height: 1.5; color: #1E1B4B;">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0.75rem;">
+          <label class="form-label" style="font-size: 0.78rem;">Danh sách Email học sinh nhận tin (Gửi BCC bảo mật):</label>
+          <div id="batchEmailRecipientChips" style="max-height: 90px; overflow-y: auto; background: #F8FAFC; border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 6px; font-size: 0.75rem; word-break: break-all; line-height: 1.6;">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" style="font-size: 0.78rem;">Nội dung thư thông báo gửi học sinh:</label>
+          <textarea id="batchEmailBodyPreview" class="form-textarea" rows="6" readonly style="font-size: 0.78rem; background: #FFF; font-family: inherit; line-height: 1.5;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer" style="flex-wrap: wrap; gap: 0.5rem;">
+        <button class="btn btn-secondary" onclick="closeBatchEmailModal()">Đóng</button>
+        <button class="btn btn-secondary" onclick="copyBatchEmailList()">📋 Sao chép Email</button>
+        <button class="btn btn-secondary" onclick="copyBatchEmailContent()">📋 Sao chép Thư</button>
+        <a id="batchEmailGmailBtn" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="text-decoration: none;">
+          🚀 Mở Gmail Web
+        </a>
+        <a id="batchEmailClientBtn" href="#" class="btn btn-primary" style="text-decoration: none; background: #4338CA;">
+          ✉️ Mở Mail Client
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 8: IN-APP NOTICE / DIALOG POPUP ==================== -->
   <div id="noticeModal" class="modal-overlay" style="display: none; z-index: 9999;" onclick="if (event.target === this) closeNoticeModal()">
     <div class="modal-content" style="max-width: 440px; padding: 0; border-radius: 18px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.25); border: 1px solid #C7D2FE;">
       <div style="background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%); padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #C7D2FE;">
@@ -853,6 +950,6 @@
   <script src="supabase-config.js"></script>
 
   <!-- Core App Logic -->
-  <script src="app.js"></script>
+  <script src="app.js?v=20261106_2130"></script>
 </body>
 </html>
