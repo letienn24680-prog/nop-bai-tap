@@ -10,7 +10,7 @@
   <meta http-equiv="Expires" content="0">
   <title>EduProof - Nộp & Chấm Bài Tập Minh Chứng</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234F46E5'/%3E%3Cpath d='M16 5L4 11.5L16 18L28 11.5L16 5Z' fill='white'/%3E%3Cpath d='M8 14.5V20.5C8 24 11.5 26.5 16 26.5C20.5 26.5 24 24 24 20.5V14.5L16 19L8 14.5Z' fill='white' fill-opacity='0.85'/%3E%3Cpath d='M26 13.5V22' stroke='%23FDE047' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='26' cy='22.5' r='1.5' fill='%23FDE047'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="app.css?v=20261106_2255">
+  <link rel="stylesheet" href="app.css?v=20261106_2300">
   <script>
     // Ghi đè alert của trình duyệt sang popup trong trang web ngay lập tức
     window.alert = function(msg) {
@@ -438,6 +438,80 @@
           Tạo tài khoản & Sao chép gửi GV
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: ADMIN EDIT USER (TEACHER / STUDENT) ==================== -->
+  <div id="adminEditUserModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 id="adminEditUserModalTitle" style="font-size: 1.1rem; font-weight: 700;">Chỉnh sửa tài khoản</h3>
+        <button class="tool-icon-btn" onclick="closeAdminEditUserModal()">✕</button>
+      </div>
+
+      <form id="adminEditUserForm" onsubmit="handleAdminEditUserSubmit(event)">
+        <input type="hidden" id="adminEditUserId">
+        <input type="hidden" id="adminEditUserRole">
+
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Họ và tên:</label>
+            <input type="text" id="adminEditUserName" class="form-input" required placeholder="Họ và tên đầy đủ">
+          </div>
+
+          <div class="form-grid-2col">
+            <div class="form-group">
+              <label class="form-label">Tên đăng nhập (username):</label>
+              <input type="text" id="adminEditUserUsername" class="form-input" required placeholder="Tên đăng nhập">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mật khẩu:</label>
+              <input type="text" id="adminEditUserPassword" class="form-input" required placeholder="Mật khẩu đăng nhập">
+            </div>
+          </div>
+
+          <!-- Student specific fields -->
+          <div id="adminEditStudentFields" style="display: none;">
+            <div class="form-grid-2col">
+              <div class="form-group">
+                <label class="form-label">Lớp học:</label>
+                <input type="text" id="adminEditStudentClass" class="form-input" placeholder="Ví dụ: 12A1">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Giáo viên quản lý:</label>
+                <select id="adminEditStudentTeacher" class="form-select"></select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Teacher specific fields -->
+          <div id="adminEditTeacherFields" style="display: none;">
+            <div class="form-grid-2col">
+              <div class="form-group">
+                <label class="form-label">Bộ môn giảng dạy:</label>
+                <input type="text" id="adminEditTeacherSubject" class="form-input" placeholder="Ví dụ: Ngữ văn">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Lớp chủ nhiệm:</label>
+                <input type="text" id="adminEditTeacherClass" class="form-input" placeholder="Ví dụ: 12A1">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Địa chỉ Email:</label>
+            <input type="email" id="adminEditUserEmail" class="form-input" placeholder="email@example.com">
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">
+              Dùng để gửi thông báo bài tập mới và nhận phản hồi ảnh bài làm.
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeAdminEditUserModal()">Hủy</button>
+          <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -976,9 +1050,9 @@
 
   <!-- Supabase Cloud SDK & Configuration -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js?v=20261106_2255"></script>
+  <script src="supabase-config.js?v=20261106_2300"></script>
 
   <!-- Core App Logic -->
-  <script src="app.js?v=20261106_2255"></script>
+  <script src="app.js?v=20261106_2300"></script>
 </body>
 </html>

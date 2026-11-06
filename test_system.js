@@ -1450,4 +1450,124 @@ assert.ok(
 
 console.log("✅ 46. Kiểm thử Hàng chờ Bài nộp (Tự động rời hàng chờ khi Từ chối ảnh hoặc Đã kiểm tra): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (46/46)!");
+// 47. Test: Admin có thể chỉnh sửa thông tin tài khoản Giáo viên và Học sinh
+const html47 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+const js47 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+
+// 1. Kiểm tra index.html có đầy đủ modal chỉnh sửa tài khoản và các trường nhập liệu tương ứng
+assert.ok(
+  html47.includes('id="adminEditUserModal"') &&
+  html47.includes('id="adminEditUserName"') &&
+  html47.includes('id="adminEditUserUsername"') &&
+  html47.includes('id="adminEditUserPassword"') &&
+  html47.includes('id="adminEditStudentFields"') &&
+  html47.includes('id="adminEditTeacherFields"') &&
+  html47.includes('id="adminEditUserEmail"'),
+  "index.html phải có modal adminEditUserModal và các trường chỉnh sửa tài khoản cho cả GV và HS"
+);
+
+// 2. Kiểm tra app.js có các hàm điều khiển modal và nút chỉnh sửa trên cả bảng và thẻ di động
+assert.ok(
+  js47.includes("function openAdminEditUserModal(") &&
+  js47.includes("function closeAdminEditUserModal(") &&
+  js47.includes("function handleAdminEditUserSubmit("),
+  "app.js phải cài đặt đầy đủ openAdminEditUserModal, closeAdminEditUserModal, handleAdminEditUserSubmit"
+);
+
+assert.ok(
+  js47.includes("openAdminEditUserModal('${sanitizeText(t.id)}')") &&
+  js47.includes("openAdminEditUserModal('${sanitizeText(s.id)}')"),
+  "app.js phải gắn nút Sửa tài khoản trên danh sách Giáo viên và cây Học sinh của Admin"
+);
+
+// 3. Kiểm thử logic mô phỏng cập nhật tài khoản Giáo viên và Học sinh
+const mockUsers47 = [
+  { id: "admin_root", username: "admin", name: "Quản trị viên", role: "admin" },
+  { id: "gv_01", username: "gv_mai", name: "Cô Mai", role: "teacher", subject: "Toán", class: "12A1" },
+  { id: "gv_02", username: "gv_hung", name: "Thầy Hùng", role: "teacher", subject: "Lý", class: "12A2" },
+  { id: "hs_01", username: "hs_nam", name: "Trần Nam", role: "student", class: "12A1", teacherId: "gv_01", email: "" }
+];
+
+const mockSubmissions47 = [
+  { id: "sub_1", studentId: "hs_01", studentName: "Trần Nam", className: "12A1" }
+];
+
+function mockAdminUpdateUser(userId, updateData, userList, subList) {
+  const target = userList.find((u) => u.id === userId);
+  if (!target) throw new Error("User not found");
+
+  // Kiểm tra trùng username
+  if (updateData.username) {
+    const isDup = userList.some((u) => u.id !== userId && u.username.toLowerCase() === updateData.username.toLowerCase());
+    if (isDup) throw new Error("Username already exists");
+    target.username = updateData.username;
+  }
+
+  if (updateData.name) target.name = updateData.name;
+  if (updateData.password) target.password = updateData.password;
+  if (updateData.email !== undefined) target.email = updateData.email;
+
+  if (target.role === "teacher") {
+    if (updateData.subject) target.subject = updateData.subject;
+    if (updateData.class !== undefined) target.class = updateData.class;
+  } else if (target.role === "student") {
+    if (updateData.class) target.class = updateData.class;
+    if (updateData.teacherId) target.teacherId = updateData.teacherId;
+
+    // Đồng bộ tên và lớp học sinh trong các bài nộp đã có
+    subList.forEach((s) => {
+      if (s.studentId === target.id) {
+        s.studentName = target.name;
+        s.className = target.class;
+      }
+    });
+  }
+
+  return target;
+}
+
+// Case A: Chặn trùng username
+assert.throws(() => {
+  mockAdminUpdateUser("hs_01", { username: "gv_mai" }, mockUsers47, mockSubmissions47);
+}, /Username already exists/);
+
+// Case B: Chỉnh sửa tài khoản Giáo viên
+mockAdminUpdateUser("gv_01", {
+  name: "Cô Hoàng Thị Mai",
+  username: "gv_mai_toan",
+  password: "newpass_gv1",
+  subject: "Toán Nâng Cao",
+  email: "co.mai@eduproof.vn"
+}, mockUsers47, mockSubmissions47);
+
+const updatedTeacher = mockUsers47.find((u) => u.id === "gv_01");
+assert.strictEqual(updatedTeacher.name, "Cô Hoàng Thị Mai");
+assert.strictEqual(updatedTeacher.username, "gv_mai_toan");
+assert.strictEqual(updatedTeacher.password, "newpass_gv1");
+assert.strictEqual(updatedTeacher.subject, "Toán Nâng Cao");
+assert.strictEqual(updatedTeacher.email, "co.mai@eduproof.vn");
+
+// Case C: Chỉnh sửa tài khoản Học sinh (đổi tên, chuyển lớp, chuyển giáo viên quản lý)
+mockAdminUpdateUser("hs_01", {
+  name: "Trần Hải Nam",
+  username: "hs_nam_pro",
+  password: "hs_password_99",
+  class: "12A2",
+  teacherId: "gv_02",
+  email: "nam.tran@gmail.com"
+}, mockUsers47, mockSubmissions47);
+
+const updatedStudent = mockUsers47.find((u) => u.id === "hs_01");
+assert.strictEqual(updatedStudent.name, "Trần Hải Nam");
+assert.strictEqual(updatedStudent.username, "hs_nam_pro");
+assert.strictEqual(updatedStudent.class, "12A2");
+assert.strictEqual(updatedStudent.teacherId, "gv_02");
+assert.strictEqual(updatedStudent.email, "nam.tran@gmail.com");
+
+// Kiểm tra bài nộp của học sinh được tự động đồng bộ tên và lớp mới
+assert.strictEqual(mockSubmissions47[0].studentName, "Trần Hải Nam");
+assert.strictEqual(mockSubmissions47[0].className, "12A2");
+
+console.log("✅ 47. Kiểm thử Admin Quản trị & Chỉnh sửa Thông tin Tài khoản Giáo viên và Học sinh: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (47/47)!");

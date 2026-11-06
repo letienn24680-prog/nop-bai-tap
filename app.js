@@ -1083,7 +1083,11 @@ function deleteStudentAccount(studentId) {
         sb.from("eduproof_submissions").delete().eq("student_id", studentId).then();
       }
 
-      renderTeacherView();
+      if (currentUser && currentUser.role === "admin") {
+        renderAdminView();
+      } else {
+        renderTeacherView();
+      }
       showNoticeModal("Đã xóa tài khoản học sinh thành công.", "Đã xóa", "🗑️");
     },
     "Xác nhận xóa tài khoản",
@@ -1587,6 +1591,163 @@ function deleteTeacherAccount(teacherId) {
   );
 }
 
+function openAdminEditUserModal(userId) {
+  const u = users.find((x) => x.id === userId);
+  if (!u) {
+    alert("Không tìm thấy thông tin tài khoản người dùng!");
+    return;
+  }
+
+  const modal = document.getElementById("adminEditUserModal");
+  const modalTitle = document.getElementById("adminEditUserModalTitle");
+  const idInput = document.getElementById("adminEditUserId");
+  const roleInput = document.getElementById("adminEditUserRole");
+  const nameInput = document.getElementById("adminEditUserName");
+  const usernameInput = document.getElementById("adminEditUserUsername");
+  const passwordInput = document.getElementById("adminEditUserPassword");
+  const emailInput = document.getElementById("adminEditUserEmail");
+
+  const studentFields = document.getElementById("adminEditStudentFields");
+  const teacherFields = document.getElementById("adminEditTeacherFields");
+  const studentClassInput = document.getElementById("adminEditStudentClass");
+  const studentTeacherSelect = document.getElementById("adminEditStudentTeacher");
+  const teacherSubjectInput = document.getElementById("adminEditTeacherSubject");
+  const teacherClassInput = document.getElementById("adminEditTeacherClass");
+
+  if (!modal) return;
+
+  idInput.value = u.id;
+  roleInput.value = u.role;
+  nameInput.value = u.name || "";
+  usernameInput.value = u.username || "";
+  passwordInput.value = u.password || "";
+  emailInput.value = u.email || "";
+
+  if (u.role === "student") {
+    modalTitle.textContent = `Chỉnh sửa Học sinh: ${u.name}`;
+    if (studentFields) studentFields.style.display = "block";
+    if (teacherFields) teacherFields.style.display = "none";
+
+    if (studentClassInput) studentClassInput.value = u.class || "12A1";
+    if (studentTeacherSelect) {
+      const teachers = users.filter((t) => t.role === "teacher");
+      studentTeacherSelect.innerHTML = teachers
+        .map((t) => `<option value="${t.id}" ${t.id === u.teacherId ? "selected" : ""}>${t.name} (${t.username} - ${t.subject || "GV"})</option>`)
+        .join("");
+      if (!teachers.some((t) => t.id === u.teacherId) && teachers.length > 0) {
+        studentTeacherSelect.value = teachers[0].id;
+      }
+    }
+  } else if (u.role === "teacher") {
+    modalTitle.textContent = `Chỉnh sửa Giáo viên: ${u.name}`;
+    if (studentFields) studentFields.style.display = "none";
+    if (teacherFields) teacherFields.style.display = "block";
+
+    if (teacherSubjectInput) teacherSubjectInput.value = u.subject || "";
+    if (teacherClassInput) teacherClassInput.value = u.class || "";
+  } else {
+    modalTitle.textContent = `Chỉnh sửa Tài khoản: ${u.name}`;
+    if (studentFields) studentFields.style.display = "none";
+    if (teacherFields) teacherFields.style.display = "none";
+  }
+
+  modal.style.display = "flex";
+}
+
+function closeAdminEditUserModal() {
+  const modal = document.getElementById("adminEditUserModal");
+  if (modal) modal.style.display = "none";
+}
+
+function handleAdminEditUserSubmit(e) {
+  if (e) e.preventDefault();
+
+  const id = document.getElementById("adminEditUserId").value;
+  const role = document.getElementById("adminEditUserRole").value;
+  const name = document.getElementById("adminEditUserName").value.trim();
+  const username = document.getElementById("adminEditUserUsername").value.trim();
+  const password = document.getElementById("adminEditUserPassword").value.trim();
+  const email = document.getElementById("adminEditUserEmail").value.trim();
+
+  if (!name || !username || !password) {
+    alert("Vui lòng điền đầy đủ Họ tên, Tên đăng nhập và Mật khẩu.");
+    return;
+  }
+
+  const user = users.find((u) => u.id === id);
+  if (!user) {
+    alert("Không tìm thấy tài khoản cần cập nhật.");
+    return;
+  }
+
+  // Check username collision with other users
+  const isDuplicate = users.some((u) => u.id !== id && u.username.toLowerCase() === username.toLowerCase());
+  if (isDuplicate) {
+    alert(`Tên đăng nhập "${username}" đã tồn tại trên hệ thống. Vui lòng chọn tên đăng nhập khác.`);
+    return;
+  }
+
+  // Update memory
+  user.name = name;
+  user.username = username;
+  user.password = password;
+  user.email = email;
+
+  const updatePayload = {
+    name: name,
+    username: username,
+    password: password,
+    email: email || null
+  };
+
+  if (role === "student") {
+    const studentClass = (document.getElementById("adminEditStudentClass").value || "").trim() || "12A1";
+    const teacherId = document.getElementById("adminEditStudentTeacher").value;
+
+    user.class = studentClass;
+    user.teacherId = teacherId;
+
+    updatePayload.class = studentClass;
+    updatePayload.teacher_id = teacherId;
+
+    // Synchronize student name and class in memory submissions
+    submissions.forEach((s) => {
+      if (s.studentId === id) {
+        s.studentName = name;
+        s.className = studentClass;
+      }
+    });
+  } else if (role === "teacher") {
+    const subject = (document.getElementById("adminEditTeacherSubject").value || "").trim() || "Bộ môn";
+    const teacherClass = (document.getElementById("adminEditTeacherClass").value || "").trim() || "";
+
+    user.subject = subject;
+    user.class = teacherClass;
+
+    updatePayload.subject = subject;
+    updatePayload.class = teacherClass || null;
+  }
+
+  persistData();
+
+  // Sync to Supabase Cloud
+  const sb = getSupabase();
+  if (sb) {
+    sb.from("eduproof_users")
+      .update(updatePayload)
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error) {
+          console.error("Lỗi cập nhật người dùng trên Supabase:", error);
+        }
+      });
+  }
+
+  closeAdminEditUserModal();
+  renderCurrentView();
+  showNoticeModal(`Đã cập nhật thông tin tài khoản "${name}" thành công!`, "Thành công", "✅");
+}
+
 function renderAdminView() {
   const teacherUsers = users.filter((u) => u.role === "teacher");
   const studentUsers = users.filter((u) => u.role === "student");
@@ -1649,6 +1810,9 @@ function renderAdminTeachersTable() {
                   <button class="btn btn-secondary btn-sm" onclick="filterAdminTreeForTeacher('${sanitizeText(t.id)}')">
                     👥 Xem học sinh
                   </button>
+                  <button class="btn btn-secondary btn-sm" onclick="openAdminEditUserModal('${sanitizeText(t.id)}')">
+                    ✏️ Sửa
+                  </button>
                   <button class="btn btn-secondary btn-sm" onclick="copyTeacherInfo('${sanitizeText(t.username)}')">
                     📋 Sao chép
                   </button>
@@ -1684,9 +1848,12 @@ function renderAdminTeachersTable() {
                 <span>MK: <code>${sanitizeText(t.password)}</code></span>
                 <span>Đã giao: <strong>${asgCount} bài</strong></span>
               </div>
-              <div style="display: flex; gap: 0.4rem;">
-                <button class="btn btn-secondary btn-sm" style="flex: 1; justify-content: center; padding: 0.45rem;" onclick="filterAdminTreeForTeacher('${sanitizeText(t.id)}')">
+              <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                <button class="btn btn-secondary btn-sm" style="flex: 1; min-width: 110px; justify-content: center; padding: 0.45rem;" onclick="filterAdminTreeForTeacher('${sanitizeText(t.id)}')">
                   👥 Xem học sinh
+                </button>
+                <button class="btn btn-secondary btn-sm" style="padding: 0.45rem 0.65rem;" onclick="openAdminEditUserModal('${sanitizeText(t.id)}')">
+                  ✏️ Sửa
                 </button>
                 <button class="btn btn-secondary btn-sm" style="padding: 0.45rem 0.65rem;" onclick="copyTeacherInfo('${sanitizeText(t.username)}')">
                   📋 Sao chép
@@ -1748,10 +1915,11 @@ function renderAdminStudentsTree(selectedTeacherId) {
           <th>Lớp</th>
           <th>Giáo viên Quản lý trực tiếp</th>
           <th>Số bài đã nộp</th>
+          <th>Thao tác</th>
         </tr>
       </thead>
       <tbody>
-        ${studentUsers.length === 0 ? `<tr><td colspan="6" style="text-align:center; color: var(--text-muted); padding: 1.5rem;">Chưa có học sinh nào thuộc giáo viên này.</td></tr>` : ""}
+        ${studentUsers.length === 0 ? `<tr><td colspan="7" style="text-align:center; color: var(--text-muted); padding: 1.5rem;">Chưa có học sinh nào thuộc giáo viên này.</td></tr>` : ""}
         ${studentUsers
           .map((s) => {
             const teacher = users.find((u) => u.id === s.teacherId);
@@ -1765,6 +1933,17 @@ function renderAdminStudentsTree(selectedTeacherId) {
                 <td>${sanitizeText(s.class || "12A1")}</td>
                 <td><span class="badge-status status-graded">${teacherName}</span></td>
                 <td><strong>${subCount} bài</strong></td>
+                <td>
+                  <button class="btn btn-secondary btn-sm" onclick="openAdminEditUserModal('${sanitizeText(s.id)}')">
+                    ✏️ Sửa
+                  </button>
+                  <button class="btn btn-secondary btn-sm" onclick="copyAccountInfo('${sanitizeText(s.username)}')">
+                    📋 Chép
+                  </button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteStudentAccount('${sanitizeText(s.id)}')">
+                    🗑️ Xóa
+                  </button>
+                </td>
               </tr>
             `;
           })
@@ -1792,8 +1971,19 @@ function renderAdminStudentsTree(selectedTeacherId) {
                 <span>TK: <code>${sanitizeText(s.username)}</code></span>
                 <span>MK: <code>${sanitizeText(s.password)}</code></span>
               </div>
-              <div style="font-size: 0.75rem; color: var(--primary); font-weight: 600;">
+              <div style="font-size: 0.75rem; color: var(--primary); font-weight: 600; margin-bottom: 0.5rem;">
                 GV quản lý: ${teacherName}
+              </div>
+              <div style="display: flex; gap: 0.4rem;">
+                <button class="btn btn-secondary btn-sm" style="flex: 1; justify-content: center; padding: 0.45rem;" onclick="openAdminEditUserModal('${sanitizeText(s.id)}')">
+                  ✏️ Sửa
+                </button>
+                <button class="btn btn-secondary btn-sm" style="padding: 0.45rem 0.65rem;" onclick="copyAccountInfo('${sanitizeText(s.username)}')">
+                  📋 Chép
+                </button>
+                <button class="btn btn-danger btn-sm" style="padding: 0.45rem 0.65rem;" onclick="deleteStudentAccount('${sanitizeText(s.id)}')">
+                  🗑️ Xóa
+                </button>
               </div>
             </div>
           `;
@@ -3161,7 +3351,11 @@ async function deleteAssignment(assignmentId) {
         }
       }
 
-      renderTeacherView();
+      if (currentUser && currentUser.role === "admin") {
+        renderAdminView();
+      } else {
+        renderTeacherView();
+      }
       alert("Đã xóa bài tập thành công.");
     },
     "Xác nhận xóa bài tập",
