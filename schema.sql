@@ -181,6 +181,21 @@ CREATE TRIGGER trg_submission_integrity
 -- ========================================================
 -- RPC FUNCTIONS: XÁC THỰC DANH TÍNH BẢO VỆ NỘP BÀI & CHẤM ĐIỂM
 -- ========================================================
+-- Tự động dọn dẹp các overload cũ của hàm (tránh lỗi 42725: function name is not unique)
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN (
+    SELECT oid::regprocedure AS func_sig 
+    FROM pg_proc 
+    WHERE proname IN ('submit_homework', 'grade_submission', 'login_user', 'get_my_students')
+      AND pronamespace = 'public'::regnamespace
+  ) LOOP
+    EXECUTE 'DROP FUNCTION IF EXISTS ' || r.func_sig || ' CASCADE;';
+  END LOOP;
+END $$;
+
 -- 1. Hàm nộp bài: Bắt buộc xác thực mật khẩu học sinh (chống nộp thay / mạo danh bạn)
 CREATE OR REPLACE FUNCTION submit_homework(
   p_student_id TEXT,
@@ -381,10 +396,10 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION submit_homework TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION grade_submission TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION login_user TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION get_my_students TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION submit_homework(TEXT, TEXT, TEXT, JSONB, TEXT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION grade_submission(TEXT, TEXT, TEXT, NUMERIC, TEXT, JSONB, BOOLEAN) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION login_user(TEXT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_my_students(TEXT, TEXT) TO anon, authenticated;
 
 -- Khởi tạo sẵn tài khoản Admin và Giáo viên mẫu nếu chưa có
 INSERT INTO eduproof_users (id, username, password, name, role, class, subject, teacher_id)
