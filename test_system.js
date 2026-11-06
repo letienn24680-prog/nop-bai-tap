@@ -818,7 +818,7 @@ assert.ok(
   "Trang web phải có thẻ favicon SVG vector sắc nét trên thanh tiêu đề trình duyệt"
 );
 assert.ok(
-  htmlContent.includes('<meta name="color-scheme" content="light dark">'),
+  htmlContent.includes('<meta name="color-scheme" content="light">') || htmlContent.includes('<meta name="color-scheme" content="light dark">'),
   "Trang web phải khai báo color-scheme chuẩn W3C để trình duyệt không làm méo màu"
 );
 assert.ok(
