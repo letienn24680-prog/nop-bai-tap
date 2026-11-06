@@ -963,4 +963,23 @@ assert.ok(
 
 console.log("✅ 34. Kiểm thử cô lập toàn diện chống tràn trang & thẻ di động trên tất cả các tab: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (34/34)!");
+// 35. Test: Resilient Photo Fallback (Never Show Broken Image or "Lỗi ảnh")
+const latestJs = fs.readFileSync("app.js", "utf8");
+const latestSchema = fs.readFileSync("schema.sql", "utf8");
+
+assert.ok(
+  latestJs.includes("FALLBACK_PHOTO_SVG") && latestJs.includes("handlePhotoError"),
+  "app.js phải có hàm handlePhotoError và SVG FALLBACK_PHOTO_SVG để chống hoàn toàn lỗi hiển thị ảnh vỡ"
+);
+assert.ok(
+  !latestJs.includes("this.alt='Lỗi ảnh'"),
+  "app.js không được phép gán text thô 'Lỗi ảnh' làm hỏng trải nghiệm người dùng"
+);
+assert.ok(
+  latestSchema.includes("Allow Update Proofs"),
+  "schema.sql phải có chính sách Allow Update Proofs cho Supabase Storage"
+);
+
+console.log("✅ 35. Kiểm thử cơ chế cứu hộ ảnh minh chứng (Resilient Photo Fallback): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (35/35)!");

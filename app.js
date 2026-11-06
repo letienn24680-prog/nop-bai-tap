@@ -28,6 +28,20 @@ function sanitizeUrl(url) {
   return "#";
 }
 
+const FALLBACK_PHOTO_SVG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' fill='none'%3E%3Crect width='48' height='48' rx='8' fill='%23EEF2FF'/%3E%3Cpath d='M14 18C14 16.8954 14.8954 16 16 16H20L22 13H26L28 16H32C33.1046 16 34 16.8954 34 18V32C34 33.1046 33.1046 34 32 34H16C14.8954 34 14 33.1046 14 32V18Z' stroke='%234F46E5' stroke-width='2.2' stroke-linejoin='round'/%3E%3Ccircle cx='24' cy='25' r='5' stroke='%234F46E5' stroke-width='2.2'/%3E%3C/svg%3E";
+
+function handlePhotoError(imgEl) {
+  if (!imgEl) return;
+  imgEl.onerror = null;
+  const backup = imgEl.getAttribute("data-backup");
+  if (backup && backup !== "" && backup !== "undefined" && imgEl.src !== backup) {
+    imgEl.src = backup;
+    return;
+  }
+  imgEl.src = FALLBACK_PHOTO_SVG;
+  imgEl.alt = "Ảnh minh chứng";
+}
+
 // Chuẩn hóa cấu trúc danh sách ảnh minh chứng (chống mất ảnh khi lưu dạng chuỗi JSON hoặc đối tượng URL)
 function normalizePhotos(photos) {
   if (!photos) return [];
@@ -46,10 +60,11 @@ function normalizePhotos(photos) {
   if (!Array.isArray(arr)) return [];
   return arr.map((p, idx) => {
     if (typeof p === "string") {
-      return { id: "p_" + idx, dataUrl: p, url: p, rotation: 0 };
+      return { id: "p_" + idx, dataUrl: p, url: p, backupDataUrl: p, rotation: 0 };
     }
     const u = p.dataUrl || p.url || p.src || p.publicUrl || "";
-    return { ...p, dataUrl: u, url: u };
+    const backup = p.backupDataUrl || (typeof u === "string" && u.startsWith("data:") ? u : "");
+    return { ...p, dataUrl: u, url: u, backupDataUrl: backup };
   });
 }
 
@@ -1739,11 +1754,13 @@ function renderStudentView() {
     let studentPhotoPreview = "";
     if (sub && sub.photos) {
       sub.photos = normalizePhotos(sub.photos);
-      const firstPhoto = sub.photos[0] ? (sub.photos[0].dataUrl || sub.photos[0].url || "") : "";
-      if (firstPhoto) {
+      const firstPhotoObj = sub.photos[0];
+      const firstPhotoSrc = firstPhotoObj ? (firstPhotoObj.dataUrl || firstPhotoObj.url || "") : "";
+      const backupSrc = firstPhotoObj ? (firstPhotoObj.backupDataUrl || (firstPhotoSrc.startsWith("data:") ? firstPhotoSrc : "")) : "";
+      if (firstPhotoSrc) {
         studentPhotoPreview = `
           <div style="display: flex; align-items: center; gap: 0.6rem; margin: 0.5rem 0; padding: 0.45rem; background: #EEF2FF; border-radius: 8px; border: 1px solid #C7D2FE; cursor: pointer;" onclick="viewSubmissionSummary('${sub.id}')" title="Bấm để xem lại bài nộp">
-            <img src="${firstPhoto}" alt="Ảnh đã nộp" style="width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid #A5B4FC;" onerror="this.onerror=null;this.src='';this.alt='Lỗi ảnh';" />
+            <img src="${firstPhotoSrc}" data-backup="${sanitizeText(backupSrc)}" alt="Ảnh đã nộp" style="width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid #A5B4FC; background: #FFF;" onerror="handlePhotoError(this)" />
             <div style="font-size: 0.74rem; color: #4338CA;">
               <strong style="color: #1E1B4B;">Đã gửi ${sub.photos.length} ảnh minh chứng</strong><br>
               <span style="color: #4F46E5;">Nộp: ${new Date(sub.submittedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}</span>
@@ -2116,7 +2133,9 @@ async function confirmSubmitAssignment() {
             const path = `submissions/${asg.id}/${currentUser.id}/${photo.id || "page_" + i}.jpg`;
             const storageUrl = await uploadPhotoToStorage(sb, photo.dataUrl, path);
             if (storageUrl) {
-              photo.dataUrl = storageUrl;
+              photo.url = storageUrl;
+              photo.storageUrl = storageUrl;
+              photo.backupDataUrl = photo.dataUrl;
             }
           }
         })
@@ -2325,7 +2344,9 @@ function renderTeacherSubmissions(mySubmissionsList) {
     });
 
     sub.photos = normalizePhotos(sub.photos);
-    const firstPhoto = sub.photos && sub.photos[0] ? (sub.photos[0].dataUrl || sub.photos[0].url || "") : "";
+    const firstPhotoObj = sub.photos && sub.photos[0] ? sub.photos[0] : null;
+    const firstPhotoSrc = firstPhotoObj ? (firstPhotoObj.dataUrl || firstPhotoObj.url || "") : "";
+    const backupSrc = firstPhotoObj ? (firstPhotoObj.backupDataUrl || (firstPhotoSrc.startsWith("data:") ? firstPhotoSrc : "")) : "";
 
     card.innerHTML = `
       <div>
@@ -2337,9 +2358,9 @@ function renderTeacherSubmissions(mySubmissionsList) {
           ${statusBadge}
         </div>
         <div style="display: flex; gap: 0.75rem; align-items: flex-start; margin: 0.5rem 0;">
-          ${firstPhoto ? `
-            <div style="position: relative; width: 68px; height: 68px; flex-shrink: 0; cursor: pointer; border-radius: 8px; overflow: hidden; border: 1.5px solid #C7D2FE; box-shadow: 0 2px 5px rgba(0,0,0,0.08);" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)" title="Bấm để chấm bài trên ảnh">
-              <img src="${firstPhoto}" alt="Ảnh vở bài làm" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.onerror=null;this.src='';this.alt='Lỗi ảnh';" />
+          ${firstPhotoSrc ? `
+            <div style="position: relative; width: 68px; height: 68px; flex-shrink: 0; cursor: pointer; border-radius: 8px; overflow: hidden; border: 1.5px solid #C7D2FE; box-shadow: 0 2px 5px rgba(0,0,0,0.08); background: #EEF2FF;" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)" title="Bấm để chấm bài trên ảnh">
+              <img src="${firstPhotoSrc}" data-backup="${sanitizeText(backupSrc)}" alt="Ảnh vở bài làm" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="handlePhotoError(this)" />
               <span style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(15,23,42,0.75); color: #FFF; font-size: 0.62rem; text-align: center; font-weight: 600; padding: 1px 0;">${sub.photos.length} trang</span>
             </div>
           ` : ""}
@@ -3121,6 +3142,7 @@ function loadGradingPage(pageIndex) {
   const ctx = canvas.getContext("2d");
   const photo = sub.photos[pageIndex];
   const photoUrl = photo ? (photo.dataUrl || photo.url || "") : "";
+  const photoBackup = photo ? (photo.backupDataUrl || "") : "";
 
   if (!photoUrl) {
     canvas.width = 800;
@@ -3174,6 +3196,13 @@ function loadGradingPage(pageIndex) {
   img.onload = renderImageToCanvas;
 
   img.onerror = () => {
+    if (photoBackup && img.src !== photoBackup) {
+      console.warn("Chuyển sang ảnh dự phòng Base64...");
+      img.crossOrigin = null;
+      img.onload = renderImageToCanvas;
+      img.src = photoBackup;
+      return;
+    }
     console.warn("Thử tải lại ảnh không dùng crossOrigin anonymous...");
     if (img.crossOrigin) {
       img.crossOrigin = null;

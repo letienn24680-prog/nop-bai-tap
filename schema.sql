@@ -133,6 +133,7 @@ ON CONFLICT (id) DO UPDATE SET
 -- Phân quyền Storage: Cho phép đọc công khai và upload ảnh minh chứng
 DROP POLICY IF EXISTS "Public Read Proofs" ON storage.objects;
 DROP POLICY IF EXISTS "Allow Upload Proofs" ON storage.objects;
+DROP POLICY IF EXISTS "Allow Update Proofs" ON storage.objects;
 DROP POLICY IF EXISTS "Allow Delete Proofs" ON storage.objects;
 
 CREATE POLICY "Public Read Proofs" ON storage.objects FOR SELECT TO anon, authenticated
@@ -140,6 +141,9 @@ USING (bucket_id = 'proofs');
 
 CREATE POLICY "Allow Upload Proofs" ON storage.objects FOR INSERT TO anon, authenticated
 WITH CHECK (bucket_id = 'proofs');
+
+CREATE POLICY "Allow Update Proofs" ON storage.objects FOR UPDATE TO anon, authenticated
+USING (bucket_id = 'proofs') WITH CHECK (bucket_id = 'proofs');
 
 CREATE POLICY "Allow Delete Proofs" ON storage.objects FOR DELETE TO anon, authenticated
 USING (bucket_id = 'proofs');
