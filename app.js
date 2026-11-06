@@ -2082,14 +2082,42 @@ function removePhoto(index) {
 function renderPhotoPreviews() {
   const grid = document.getElementById("photosPreviewGrid");
   const notice = document.getElementById("photoCountNotice");
-  grid.innerHTML = "";
+  const submitBtn = document.getElementById("confirmSubmitBtn");
+  if (grid) grid.innerHTML = "";
 
   if (currentUploadedPhotos.length === 0) {
-    notice.innerText = "Chưa có ảnh nào được thêm. Hãy bấm Bật Camera hoặc Chọn ảnh.";
+    if (notice) {
+      notice.innerHTML = `
+        <div style="color: #DC2626; font-size: 0.8rem; font-weight: 600; background: #FEF2F2; padding: 0.55rem 0.85rem; border-radius: 8px; border: 1.5px dashed #FCA5A5; display: flex; align-items: center; gap: 0.45rem;">
+          <span>⚠️</span>
+          <span><strong>Bắt buộc đính kèm ảnh:</strong> Em cần chụp hoặc tải lên ít nhất 1 ảnh bài làm mới gửi bài cho cô được nhé!</span>
+        </div>
+      `;
+    }
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = "0.55";
+      submitBtn.style.cursor = "not-allowed";
+      submitBtn.innerHTML = "📷 Cần đính kèm ảnh để nộp bài";
+    }
     return;
   }
 
-  notice.innerText = `Đã sẵn sàng ${currentUploadedPhotos.length} trang ảnh bài làm. Bạn có thể bấm xoay hoặc đổi thứ tự trang.`;
+  if (notice) {
+    notice.innerHTML = `
+      <div style="color: #065F46; font-size: 0.8rem; font-weight: 600; background: #ECFDF5; padding: 0.55rem 0.85rem; border-radius: 8px; border: 1px solid #A7F3D0; display: flex; align-items: center; gap: 0.45rem;">
+        <span>✅</span>
+        <span>Đã đính kèm <strong>${currentUploadedPhotos.length} trang ảnh bài làm</strong>. Em có thể bấm gửi bài cho cô!</span>
+      </div>
+    `;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = false;
+    submitBtn.style.opacity = "1";
+    submitBtn.style.cursor = "pointer";
+    submitBtn.innerHTML = `🚀 Gửi bài cho cô (${currentUploadedPhotos.length} ảnh)`;
+  }
 
   currentUploadedPhotos.forEach((photo, idx) => {
     const card = document.createElement("div");
@@ -2111,7 +2139,7 @@ function renderPhotoPreviews() {
         <button class="tool-icon-btn" style="color: var(--danger);" title="Xóa ảnh" onclick="removePhoto(${idx})">🗑️</button>
       </div>
     `;
-    grid.appendChild(card);
+    if (grid) grid.appendChild(card);
   });
 }
 
@@ -2164,8 +2192,14 @@ async function confirmSubmitAssignment() {
   const asg = assignments.find((a) => a.id === activeSubmittingAssignmentId);
   if (!asg) return;
 
-  if (currentUploadedPhotos.length < (asg.minPhotos || 1)) {
-    alert(`Bài tập này yêu cầu tối thiểu ${asg.minPhotos || 1} ảnh chụp vở bài làm. Vui lòng thêm đủ ảnh trước khi nộp.`);
+  if (!currentUploadedPhotos || currentUploadedPhotos.length === 0) {
+    alert("⚠️ Em bắt buộc phải đính kèm ít nhất 1 ảnh chụp bài làm mới gửi bài cho cô được nhé!\n\nHãy bấm 'Chụp ảnh bài làm' hoặc 'Chọn ảnh từ thiết bị'.");
+    return;
+  }
+
+  const minRequired = asg.minPhotos && asg.minPhotos > 1 ? asg.minPhotos : 1;
+  if (currentUploadedPhotos.length < minRequired) {
+    alert(`Bài tập này yêu cầu tối thiểu ${minRequired} ảnh chụp bài làm. Hiện tại em mới có ${currentUploadedPhotos.length} ảnh, vui lòng đính kèm thêm trước khi gửi nhé!`);
     return;
   }
 

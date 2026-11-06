@@ -204,7 +204,12 @@ BEGIN
     RAISE EXCEPTION 'Xác thực không thành công: Mã học sinh hoặc mật khẩu không chính xác.';
   END IF;
 
-  -- 2. Kiểm tra bài tập tồn tại
+  -- 2. Kiểm tra bắt buộc phải đính kèm ít nhất 1 ảnh chụp bài làm mới gửi bài cho cô
+  IF p_photos IS NULL OR jsonb_array_length(p_photos) = 0 THEN
+    RAISE EXCEPTION 'Em phải đính kèm ít nhất 1 ảnh chụp bài làm mới gửi bài cho cô được nhé!';
+  END IF;
+
+  -- 3. Kiểm tra bài tập tồn tại
   SELECT * INTO v_assignment FROM eduproof_assignments WHERE id = p_assignment_id;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Bài tập không tồn tại hoặc đã bị giáo viên xóa.';

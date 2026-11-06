@@ -1097,4 +1097,46 @@ assert.strictEqual(mockSubCheck.feedback, "Ảnh mờ trang 2, em chụp lại r
 
 console.log("✅ 39. Kiểm thử xác nhận học sinh đã làm bài (Không chấm điểm số) & Yêu cầu nộp lại: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (39/39)!");
+// 40. Test: Mandatory Photo Attachment Before Submitting Homework
+const currentJs40 = fs.readFileSync("app.js", "utf8");
+const currentSchema40 = fs.readFileSync("schema.sql", "utf8");
+
+// 1. Kiểm tra app.js ràng buộc bắt buộc phải có ảnh mới được nộp
+assert.ok(
+  currentJs40.includes("Em bắt buộc phải đính kèm ít nhất 1 ảnh chụp bài làm mới gửi bài cho cô được nhé") ||
+  currentJs40.includes("Chưa có ảnh bài làm: <strong>Bắt buộc phải đính kèm ảnh chụp bài làm</strong>"),
+  "app.js phải có thông báo và cơ chế bắt buộc đính kèm ảnh trước khi gửi bài cho cô"
+);
+
+assert.ok(
+  currentJs40.includes("submitBtn.disabled = true") && currentJs40.includes("Cần đính kèm ảnh để nộp bài"),
+  "app.js phải tự động khóa nút nộp bài khi học sinh chưa đính kèm ảnh"
+);
+
+// 2. Kiểm tra schema.sql có điều kiện chặn ở tầng cơ sở dữ liệu
+assert.ok(
+  currentSchema40.includes("p_photos IS NULL OR jsonb_array_length(p_photos) = 0"),
+  "schema.sql phải kiểm tra p_photos không được rỗng trong RPC submit_homework"
+);
+
+// 3. Mô phỏng kiểm tra logic chặn nộp bài nếu không có ảnh
+function validateMandatoryPhotos(photos) {
+  if (!photos || !Array.isArray(photos) || photos.length === 0) {
+    throw new Error("Em phải đính kèm ít nhất 1 ảnh chụp bài làm mới gửi bài cho cô được nhé!");
+  }
+  return true;
+}
+
+assert.throws(() => {
+  validateMandatoryPhotos([]);
+}, /đính kèm ít nhất 1 ảnh/);
+
+assert.throws(() => {
+  validateMandatoryPhotos(null);
+}, /đính kèm ít nhất 1 ảnh/);
+
+assert.strictEqual(validateMandatoryPhotos([{ dataUrl: "data:image/jpeg;base64,..." }]), true);
+
+console.log("✅ 40. Kiểm thử cơ chế bắt buộc đính kèm ảnh bài làm trước khi gửi cho cô: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (40/40)!");
