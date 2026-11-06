@@ -1040,4 +1040,61 @@ assert.ok(
 
 console.log("✅ 38. Kiểm thử Sổ điểm theo từng đề bài độc lập & Thống kê song song PC/Điện thoại: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (38/38)!");
+// 39. Test: Homework Completion Verification without Numerical Grading & Resubmission Request
+const currentJs39 = fs.readFileSync("app.js", "utf8");
+const currentHtml39 = fs.readFileSync("index.html", "utf8");
+
+// Kiểm tra index.html đã xóa hoàn toàn ô nhập điểm và bảng đánh giá điểm số
+assert.ok(
+  !currentHtml39.includes('id="gradeScoreInput"'),
+  "index.html phải loại bỏ hoàn toàn ô nhập điểm số gradeScoreInput"
+);
+assert.ok(
+  currentHtml39.includes('id="saveGradeBtn"') && currentHtml39.includes("toggleResubmitCheckbox"),
+  "index.html phải có nút xác nhận học sinh đã làm bài và toggle yêu cầu nộp lại"
+);
+
+// Kiểm tra app.js xử lý xác nhận học sinh đã làm bài không còn ràng buộc điểm số 0-10
+assert.ok(
+  !currentJs39.includes('alert("Vui lòng nhập điểm hợp lệ từ 0 đến 10.")'),
+  "app.js không được phép chặn giáo viên bởi yêu cầu nhập điểm số"
+);
+assert.ok(
+  currentJs39.includes("toggleResubmitCheckbox") && currentJs39.includes("resubmitNoteInput"),
+  "app.js phải hỗ trợ chức năng yêu cầu chụp nộp lại kèm ghi chú lý do"
+);
+
+// Mô phỏng logic xác nhận bài làm và yêu cầu nộp lại
+function verifyHomeworkCompletion(submission, isResubmit, reasonNote) {
+  if (isResubmit) {
+    submission.status = "resubmit_requested";
+    submission.resubmitRequested = true;
+    submission.grade = null;
+    submission.feedback = reasonNote || "Ảnh chụp bị mờ hoặc thiếu trang. Em vui lòng chụp lại bài làm nhé!";
+  } else {
+    submission.status = "graded";
+    submission.resubmitRequested = false;
+    submission.grade = null;
+    submission.feedback = reasonNote || "";
+  }
+  return submission;
+}
+
+const mockSubCheck = { id: "sub_test", status: "submitted", grade: null, resubmitRequested: false };
+
+// 1. Trường hợp giáo viên xem qua và bấm xác nhận học sinh đã làm bài
+verifyHomeworkCompletion(mockSubCheck, false, "");
+assert.strictEqual(mockSubCheck.status, "graded");
+assert.strictEqual(mockSubCheck.grade, null);
+assert.strictEqual(mockSubCheck.resubmitRequested, false);
+
+// 2. Trường hợp ảnh mờ / thiếu bài, giáo viên yêu cầu nộp lại
+verifyHomeworkCompletion(mockSubCheck, true, "Ảnh mờ trang 2, em chụp lại rõ nét hơn nhé");
+assert.strictEqual(mockSubCheck.status, "resubmit_requested");
+assert.strictEqual(mockSubCheck.grade, null);
+assert.strictEqual(mockSubCheck.resubmitRequested, true);
+assert.strictEqual(mockSubCheck.feedback, "Ảnh mờ trang 2, em chụp lại rõ nét hơn nhé");
+
+console.log("✅ 39. Kiểm thử xác nhận học sinh đã làm bài (Không chấm điểm số) & Yêu cầu nộp lại: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (39/39)!");

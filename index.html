@@ -219,8 +219,8 @@
         </button>
         <button class="tab-btn" onclick="filterStudentAssignments('graded', this)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          <span class="tab-label-full">Đã có điểm & Nhận xét</span>
-          <span class="tab-label-short">Có điểm</span>
+          <span class="tab-label-full">Đã kiểm tra & Nhận xét</span>
+          <span class="tab-label-short">Đã xem</span>
         </button>
       </div>
 
@@ -277,8 +277,8 @@
         </button>
         <button class="tab-btn" onclick="switchTeacherTab('gradebook', this)">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          <span class="tab-label-full">Sổ theo dõi chuyên cần & Điểm số</span>
-          <span class="tab-label-short">Sổ điểm</span>
+          <span class="tab-label-full">Sổ theo dõi chuyên cần & Làm bài</span>
+          <span class="tab-label-short">Sổ theo dõi</span>
         </button>
       </div>
 
@@ -381,14 +381,14 @@
         </div>
       </div>
 
-      <!-- Tab 5: Gradebook Tab Content (Sổ theo dõi & Điểm số theo từng đề bài) -->
+      <!-- Tab 5: Gradebook Tab Content (Sổ theo dõi làm bài theo từng đề bài) -->
       <div id="teacherGradebookTab" style="display: none;">
         <!-- Assignment Selector Header -->
         <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); padding: 1.15rem 1.25rem; margin-bottom: 1.15rem;">
           <div style="display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 0.85rem;">
             <div style="flex: 1; min-width: 260px;">
               <label for="gradebookAssignmentSelect" style="font-size: 0.82rem; font-weight: 700; color: #4338CA; display: block; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.03em;">
-                📖 Chọn đề bài để xem danh sách học sinh & điểm số:
+                📖 Chọn đề bài để xem danh sách học sinh & bài làm:
               </label>
               <select id="gradebookAssignmentSelect" class="form-select" style="width: 100%; max-width: 520px; font-weight: 600;" onchange="handleGradebookAssignmentChange(this.value)">
                 <!-- Options rendered dynamically -->
@@ -595,7 +595,7 @@
     <div class="modal-content grading-studio-modal">
       <div class="modal-header">
         <div>
-          <span style="font-weight: 700; font-size: 1.05rem;" id="gradingStudentName">Chấm bài: Nguyễn Văn An</span>
+          <span style="font-weight: 700; font-size: 1.05rem;" id="gradingStudentName">Kiểm tra bài làm: Nguyễn Văn An</span>
           <span class="badge-status status-submitted" style="margin-left: 0.5rem;" id="gradingSubmissionTime">Nộp đúng hạn</span>
         </div>
         <button class="tool-icon-btn" onclick="closeGradingStudio()">✕</button>
@@ -627,54 +627,32 @@
           </div>
         </div>
 
-        <!-- Right: Grade & Feedback Form -->
+        <!-- Right: Check & Review Sidebar (Kiểm tra xem học sinh đã làm chưa) -->
         <div class="grading-sidebar">
           <div>
-            <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.75rem;">Kết quả đánh giá</h4>
-
-            <!-- Grade Score -->
-            <div class="form-group">
-              <label class="form-label">Điểm số (Thang 10):</label>
-              <input type="number" id="gradeScoreInput" class="form-input" min="0" max="10" step="0.25" placeholder="8.5" style="font-size: 1.25rem; font-weight: 700; width: 100px;">
-            </div>
-
-            <!-- Quick Comment Chips -->
-            <div class="form-group">
-              <label class="form-label">Nhận xét nhanh:</label>
-              <div class="chip-container">
-                <span class="chip" onclick="addQuickComment('Trình bày rất sạch đẹp!')">✨ Trình bày sạch đẹp</span>
-                <span class="chip" onclick="addQuickComment('Lập luận chặt chẽ, điểm tốt.')">👍 Lập luận tốt</span>
-                <span class="chip" onclick="addQuickComment('Sai bước tính toán ở câu 2.')">⚠️ Sai tính toán câu 2</span>
-                <span class="chip" onclick="addQuickComment('Ảnh chụp hơi mờ, lần sau chụp rõ hơn.')">📸 Ảnh hơi mờ</span>
-              </div>
-            </div>
-
-            <!-- Detailed Feedback Textarea -->
-            <div class="form-group">
-              <label class="form-label">Lời phê của giáo viên:</label>
-              <textarea id="gradeFeedbackInput" class="form-textarea" rows="4" placeholder="Nhập lời phê chi tiết hoặc hướng dẫn sửa bài..."></textarea>
-            </div>
-
             <!-- Request Resubmission Option -->
-            <div style="background: var(--danger-light); padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid #FECACA; margin-bottom: 1rem;">
-              <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; font-weight: 600; color: var(--danger); cursor: pointer;">
-                <input type="checkbox" id="requestResubmitCheckbox">
-                Yêu cầu học sinh nộp lại bài
+            <div style="background: var(--danger-light); padding: 0.85rem; border-radius: var(--radius-sm); border: 1px solid #FECACA; margin-bottom: 1rem;">
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.84rem; font-weight: 700; color: var(--danger); cursor: pointer;">
+                <input type="checkbox" id="requestResubmitCheckbox" onchange="toggleResubmitCheckbox(this.checked)">
+                ⚠️ Yêu cầu học sinh nộp lại bài
               </label>
-              <div style="font-size: 0.72rem; color: #991B1B; margin-top: 0.25rem;">
-                Chọn mục này nếu ảnh chụp bị mất trang, quá mờ không đọc được hoặc bài làm chưa đạt yêu cầu tối thiểu.
+              <div style="font-size: 0.74rem; color: #991B1B; margin-top: 0.3rem; line-height: 1.4;">
+                Tích chọn nếu ảnh chụp bị mờ, thiếu trang hoặc chưa đạt yêu cầu cần chụp nộp lại.
+              </div>
+              <div id="resubmitNoteGroup" style="display: none; margin-top: 0.5rem;">
+                <input type="text" id="resubmitNoteInput" class="form-input" placeholder="Lý do nộp lại: (ví dụ: ảnh mờ, thiếu câu cuối...)" style="font-size: 0.78rem; background: #FFF;">
               </div>
             </div>
 
             <!-- Additional Proofs attached by Student -->
-            <div id="studentAdditionalProofsView" style="font-size: 0.78rem; background: #F8FAFC; padding: 0.6rem; border-radius: 4px; border: 1px solid var(--border-color);">
+            <div id="studentAdditionalProofsView" style="font-size: 0.78rem; background: #F8FAFC; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); line-height: 1.6;">
               <!-- Rendered dynamically -->
             </div>
           </div>
 
           <div style="padding-top: 1rem; border-top: 1px solid var(--border-color);">
-            <button class="btn btn-primary" style="width: 100%; justify-content: center; padding: 0.65rem;" onclick="saveAndReturnGrade()">
-              💾 Lưu điểm & Trả bài
+            <button id="saveGradeBtn" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 0.7rem; font-size: 0.88rem; font-weight: 700;" onclick="saveAndReturnGrade()">
+              ✅ Xác nhận học sinh đã làm bài
             </button>
           </div>
         </div>

@@ -32,12 +32,13 @@ const FALLBACK_PHOTO_SVG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2
 
 function handlePhotoError(imgEl) {
   if (!imgEl) return;
-  imgEl.onerror = null;
   const backup = imgEl.getAttribute("data-backup");
   if (backup && backup !== "" && backup !== "undefined" && imgEl.src !== backup) {
+    imgEl.setAttribute("data-backup", ""); // Tránh lặp vô hạn nếu backup cũng lỗi
     imgEl.src = backup;
     return;
   }
+  imgEl.onerror = null;
   imgEl.src = FALLBACK_PHOTO_SVG;
   imgEl.alt = "Ảnh minh chứng";
 }
@@ -1800,8 +1801,8 @@ function renderStudentView() {
       statusBadge = `<span class="badge-status status-submitted">✅ Đã nộp (${sub.photos.length} trang)</span>`;
       actionBtn = `<button class="btn btn-secondary btn-sm" onclick="viewSubmissionSummary('${sub.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Xem bài đã gửi</button>`;
     } else if (status === "graded") {
-      statusBadge = `<span class="badge-status status-graded">🎯 Điểm: ${sub.grade}/10</span>`;
-      actionBtn = `<button class="btn btn-secondary btn-sm" onclick="viewSubmissionSummary('${sub.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Lời phê & Bút đỏ</button>`;
+      statusBadge = `<span class="badge-status status-graded">✅ Đã kiểm tra (Đã làm)</span>`;
+      actionBtn = `<button class="btn btn-secondary btn-sm" onclick="viewSubmissionSummary('${sub.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Xem bài & Nhận xét</button>`;
     }
 
     let studentPhotoPreview = "";
@@ -2382,9 +2383,9 @@ function renderTeacherSubmissions(mySubmissionsList) {
 
     let statusBadge = "";
     if (sub.status === "submitted") {
-      statusBadge = `<span class="badge-status status-submitted">⏳ Chờ chấm</span>`;
+      statusBadge = `<span class="badge-status status-submitted">⏳ Đã nộp (Chờ xem)</span>`;
     } else if (sub.status === "graded") {
-      statusBadge = `<span class="badge-status status-graded">🎯 Đã chấm (${sub.grade}/10)</span>`;
+      statusBadge = `<span class="badge-status status-graded">✅ Đã kiểm tra (Đã làm)</span>`;
     } else if (sub.status === "resubmit_requested") {
       statusBadge = `<span class="badge-status status-resubmit">⚠️ Đã yêu cầu nộp lại</span>`;
     }
@@ -2432,7 +2433,7 @@ function renderTeacherSubmissions(mySubmissionsList) {
         <span style="font-size: 0.75rem; color: var(--text-muted);">Lớp: 12A1</span>
         <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-          ${sub.status === "graded" ? "Sửa điểm & Nhận xét" : "Mở chấm bài"}
+          ${sub.status === "graded" ? "Xem lại bài" : "Kiểm tra bài làm"}
         </button>
       </div>
     `;
@@ -2543,7 +2544,7 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
         </div>
         <div class="stat-box">
           <div class="stat-num" style="color: var(--success);">${gradedCount}</div>
-          <div class="stat-label">Đã chấm điểm</div>
+          <div class="stat-label">Đã kiểm tra (Đã làm)</div>
         </div>
       </div>
     </div>
@@ -2583,9 +2584,9 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
           if (sub) {
             sub.photos = normalizePhotos(sub.photos);
             let badge = "";
-            if (sub.status === "graded") badge = `<span class="badge-status status-graded">🎯 Đã chấm</span>`;
+            if (sub.status === "graded") badge = `<span class="badge-status status-graded">✅ Đã làm</span>`;
             else if (sub.status === "resubmit_requested") badge = `<span class="badge-status status-resubmit">⚠️ Cần nộp lại</span>`;
-            else badge = `<span class="badge-status status-submitted">⏳ Chờ chấm</span>`;
+            else badge = `<span class="badge-status status-submitted">⏳ Chờ xem</span>`;
 
             const timeStr = new Date(sub.submittedAt).toLocaleTimeString("vi-VN", {
               hour: "2-digit",
@@ -2600,10 +2601,10 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
                 <td>${badge}</td>
                 <td>${timeStr}</td>
                 <td>📷 ${sub.photos.length} trang</td>
-                <td><strong>${sub.grade !== null ? sub.grade + "/10" : "—"}</strong></td>
+                <td><strong style="color: #4338CA;">${sub.status === "graded" ? "✅ Đã hoàn thành" : "⏳ Chờ xem"}</strong></td>
                 <td>
                   <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
-                    ✍️ ${sub.status === "graded" ? "Sửa điểm" : "Chấm bài"}
+                    ✍️ ${sub.status === "graded" ? "Xem lại" : "Kiểm tra"}
                   </button>
                 </td>
               </tr>
@@ -2631,9 +2632,9 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
           if (sub) {
             sub.photos = normalizePhotos(sub.photos);
             let badge = "";
-            if (sub.status === "graded") badge = `<span class="badge-status status-graded">🎯 Đã chấm</span>`;
+            if (sub.status === "graded") badge = `<span class="badge-status status-graded">✅ Đã làm</span>`;
             else if (sub.status === "resubmit_requested") badge = `<span class="badge-status status-resubmit">⚠️ Cần nộp lại</span>`;
-            else badge = `<span class="badge-status status-submitted">⏳ Chờ chấm</span>`;
+            else badge = `<span class="badge-status status-submitted">⏳ Chờ xem</span>`;
 
             const timeStr = new Date(sub.submittedAt).toLocaleTimeString("vi-VN", {
               hour: "2-digit",
@@ -2655,11 +2656,11 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
                 <div style="display: flex; flex-wrap: wrap; gap: 0.55rem; font-size: 0.76rem; color: #475569; background: #F8FAFC; padding: 0.4rem 0.6rem; border-radius: 8px; margin-bottom: 0.5rem; align-items: center; border: 1px solid #F1F5F9;">
                   <span>🕒 ${timeStr}</span>
                   <span>📷 ${sub.photos.length} trang ảnh</span>
-                  <span>🎯 Điểm: <strong style="color: #4338CA;">${sub.grade !== null ? sub.grade + "/10" : "Chưa chấm"}</strong></span>
+                  <span>Trạng thái: <strong style="color: #4338CA;">${sub.status === "graded" ? "Đã làm" : "Chờ xem"}</strong></span>
                 </div>
 
                 <button class="btn btn-primary btn-sm" style="width: 100%; justify-content: center; padding: 0.45rem;" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
-                  ✍️ ${sub.status === "graded" ? "Sửa điểm & Lời phê" : "Mở chấm bài"}
+                  ✍️ ${sub.status === "graded" ? "Xem lại bài" : "Kiểm tra bài làm"}
                 </button>
               </div>
             `;
@@ -2697,7 +2698,7 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
                   <th>Trạng thái nộp</th>
                   <th>Thời gian nộp</th>
                   <th>Số trang ảnh</th>
-                  <th>Điểm số</th>
+                  <th>Trạng thái bài làm</th>
                   <th>Thao tác</th>
                 </tr>
               </thead>
@@ -3154,9 +3155,9 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
       if (sub) {
         sub.photos = normalizePhotos(sub.photos);
         let badge = "";
-        if (sub.status === "graded") badge = `<span class="badge-status status-graded">🎯 Đã chấm</span>`;
+        if (sub.status === "graded") badge = `<span class="badge-status status-graded">✅ Đã làm</span>`;
         else if (sub.status === "resubmit_requested") badge = `<span class="badge-status status-resubmit">⚠️ Cần nộp lại</span>`;
-        else badge = `<span class="badge-status status-submitted">⏳ Chờ chấm</span>`;
+        else badge = `<span class="badge-status status-submitted">⏳ Đã nộp</span>`;
 
         const timeStr = new Date(sub.submittedAt).toLocaleTimeString("vi-VN", {
           hour: "2-digit",
@@ -3165,9 +3166,9 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
           month: "2-digit"
         });
 
-        const scoreDisplay = sub.grade !== null
-          ? `<strong style="color: #4338CA; font-size: 0.95rem;">${sub.grade} / 10</strong>`
-          : `<span style="color: var(--text-muted); font-size: 0.8rem;">Chờ chấm</span>`;
+        const scoreDisplay = sub.status === "graded"
+          ? `<strong style="color: #059669; font-size: 0.85rem;">✅ Đã hoàn thành</strong>`
+          : `<span style="color: var(--text-muted); font-size: 0.8rem;">⏳ Chờ xem</span>`;
 
         return `
           <tr>
@@ -3181,7 +3182,7 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
             <td style="font-size: 0.78rem; color: #475569; max-width: 180px;">${sub.feedback ? `"${sanitizeText(sub.feedback)}"` : "—"}</td>
             <td>
               <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
-                ✏️ ${sub.status === "graded" ? "Sửa điểm" : "Chấm bài"}
+                ✏️ ${sub.status === "graded" ? "Xem lại bài" : "Kiểm tra bài"}
               </button>
             </td>
           </tr>
@@ -3213,9 +3214,9 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
       if (sub) {
         sub.photos = normalizePhotos(sub.photos);
         let badge = "";
-        if (sub.status === "graded") badge = `<span class="badge-status status-graded">🎯 Đã chấm</span>`;
+        if (sub.status === "graded") badge = `<span class="badge-status status-graded">✅ Đã làm</span>`;
         else if (sub.status === "resubmit_requested") badge = `<span class="badge-status status-resubmit">⚠️ Cần nộp lại</span>`;
-        else badge = `<span class="badge-status status-submitted">⏳ Chờ chấm</span>`;
+        else badge = `<span class="badge-status status-submitted">⏳ Đã nộp</span>`;
 
         const timeStr = new Date(sub.submittedAt).toLocaleTimeString("vi-VN", {
           hour: "2-digit",
@@ -3223,8 +3224,6 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
           day: "2-digit",
           month: "2-digit"
         });
-
-        const scoreText = sub.grade !== null ? sub.grade + "/10" : "Chờ chấm";
 
         return `
           <div class="campaign-student-card">
@@ -3239,13 +3238,13 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
             <div style="display: flex; flex-wrap: wrap; gap: 0.55rem; font-size: 0.76rem; color: #475569; background: #F8FAFC; padding: 0.4rem 0.6rem; border-radius: 8px; margin-bottom: 0.5rem; align-items: center; border: 1px solid #F1F5F9;">
               <span>🕒 ${timeStr}</span>
               <span>📷 ${sub.photos.length} trang ảnh</span>
-              <span>🎯 Điểm: <strong style="color: #4338CA;">${scoreText}</strong></span>
+              <span>Trạng thái: <strong style="color: ${sub.status === 'graded' ? '#059669' : '#4338CA'};">${sub.status === "graded" ? "Đã làm" : "Chờ xem"}</strong></span>
             </div>
 
             ${sub.feedback ? `<div style="font-size: 0.74rem; color: #4F46E5; margin-bottom: 0.45rem; font-style: italic;">✍️ Lời phê: "${sanitizeText(sub.feedback)}"</div>` : ""}
 
             <button class="btn btn-primary btn-sm" style="width: 100%; justify-content: center; padding: 0.45rem;" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
-              ✏️ ${sub.status === "graded" ? "Sửa điểm & Lời phê" : "Mở chấm bài"}
+              ✏️ ${sub.status === "graded" ? "Xem lại bài" : "Kiểm tra bài"}
             </button>
           </div>
         `;
@@ -3302,8 +3301,8 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
               <div class="stat-label">Chưa nộp bài</div>
             </div>
             <div class="stat-box">
-              <div class="stat-num" style="color: var(--success);">${avgScore}</div>
-              <div class="stat-label">Điểm TB đề này (${gradedCount} đã chấm)</div>
+              <div class="stat-num" style="color: var(--success);">${gradedCount}</div>
+              <div class="stat-label">Đã kiểm tra (Đã làm)</div>
             </div>
           </div>
         </div>
@@ -3321,7 +3320,7 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
                 Đã nộp (${submittedCount})
               </button>
               <button class="tab-btn ${gradebookStudentFilter === 'graded' ? 'active' : ''}" onclick="filterGradebookStudents('graded')">
-                Đã chấm (${gradedCount})
+                Đã làm (${gradedCount})
               </button>
               <button class="tab-btn ${gradebookStudentFilter === 'not_submitted' ? 'active' : ''}" onclick="filterGradebookStudents('not_submitted')">
                 Chưa nộp (${notSubmittedCount})
@@ -3339,7 +3338,7 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
                   <th>Trạng thái nộp</th>
                   <th>Thời gian nộp</th>
                   <th>Số trang ảnh</th>
-                  <th>Điểm số</th>
+                  <th>Trạng thái bài làm</th>
                   <th>Lời phê</th>
                   <th>Thao tác</th>
                 </tr>
@@ -3400,7 +3399,7 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
         <td><code>${sanitizeText(st.username)}</code></td>
         <td>${sanitizeText(st.class || "12A1")}</td>
         <td><strong>${stSubs.length} / ${myAssignments.length} bài</strong></td>
-        <td style="font-weight: 700; color: var(--primary); font-size: 0.95rem;">${avgScore}</td>
+        <td style="font-weight: 700; color: #059669; font-size: 0.95rem;">${myAssignments.length > 0 ? Math.round((stSubs.length / myAssignments.length) * 100) + "%" : "0%"}</td>
         <td>${attendanceBadge}</td>
       </tr>
     `;
@@ -3434,12 +3433,12 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
             </div>
           </div>
           <div style="text-align: right;">
-            <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700;">ĐIỂM TB</div>
-            <div style="font-size: 1.15rem; font-weight: 800; color: ${scoreColor};">${avgScore}</div>
+            <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700;">ĐÃ NỘP</div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: #4338CA;">${stSubs.length} / ${myAssignments.length}</div>
           </div>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.4rem; border-top: 1px solid #F1F5F9; font-size: 0.78rem;">
-          <span style="color: var(--text-muted);">Đã nộp: <strong>${stSubs.length} / ${myAssignments.length} bài</strong></span>
+          <span style="color: var(--text-muted);">Tỷ lệ: <strong>${myAssignments.length > 0 ? Math.round((stSubs.length / myAssignments.length) * 100) : 0}%</strong></span>
           <div>${attendanceBadge}</div>
         </div>
       </div>
@@ -3450,7 +3449,7 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
     detailContainer.innerHTML = `
       <div class="campaign-banner">
         <h2 style="font-size: 1.2rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">
-          📊 Bảng tổng hợp chuyên cần & Điểm trung bình toàn khóa
+          📊 Bảng tổng hợp chuyên cần & Tiến độ nộp bài toàn khóa
         </h2>
         <p style="font-size: 0.82rem; color: var(--text-muted);">
           Thống kê dữ liệu xuyên suốt tất cả ${myAssignments.length} đề bài đã giao
@@ -3470,8 +3469,8 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
             <div class="stat-label">Tỷ lệ nộp bài chung (${allMySubs.length} lượt)</div>
           </div>
           <div class="stat-box">
-            <div class="stat-num" style="color: var(--success);">${overallAvg}</div>
-            <div class="stat-label">Điểm TB toàn khóa (${allGradedSubs.length} đã chấm)</div>
+            <div class="stat-num" style="color: var(--success);">${allGradedSubs.length}</div>
+            <div class="stat-label">Đã kiểm tra xác nhận (${allGradedSubs.length} bài)</div>
           </div>
         </div>
       </div>
@@ -3490,7 +3489,7 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
                 <th>Tên đăng nhập</th>
                 <th>Lớp</th>
                 <th>Số bài đã nộp</th>
-                <th>Điểm TB</th>
+                <th>Tỷ lệ hoàn thành</th>
                 <th>Đánh giá chuyên cần</th>
               </tr>
             </thead>
@@ -3529,12 +3528,26 @@ function openGradingStudio(submissionId, isReadOnly = false) {
     return;
   }
 
-  document.getElementById("gradingStudentName").innerText = `${isReadOnly ? "Xem bài:" : "Chấm bài:"} ${sub.studentName}`;
+  document.getElementById("gradingStudentName").innerText = `${isReadOnly ? "Xem bài làm:" : "Kiểm tra bài làm:"} ${sub.studentName}`;
   document.getElementById("gradingSubmissionTime").innerText = `Nộp lúc: ${new Date(sub.submittedAt).toLocaleTimeString("vi-VN")}`;
 
-  document.getElementById("gradeScoreInput").value = sub.grade !== null ? sub.grade : "";
-  document.getElementById("gradeFeedbackInput").value = sub.feedback || "";
-  document.getElementById("requestResubmitCheckbox").checked = sub.status === "resubmit_requested";
+  const resubmitCb = document.getElementById("requestResubmitCheckbox");
+  if (resubmitCb) {
+    resubmitCb.checked = sub.status === "resubmit_requested";
+    resubmitCb.disabled = isReadOnly;
+    toggleResubmitCheckbox(resubmitCb.checked);
+  }
+
+  const resubmitNote = document.getElementById("resubmitNoteInput");
+  if (resubmitNote) {
+    resubmitNote.value = (sub.status === "resubmit_requested" && sub.feedback) ? sub.feedback : "";
+    resubmitNote.disabled = isReadOnly;
+  }
+
+  const saveBtn = document.getElementById("saveGradeBtn");
+  if (saveBtn) {
+    saveBtn.style.display = isReadOnly ? "none" : "flex";
+  }
 
   const proofsView = document.getElementById("studentAdditionalProofsView");
   const safeUrl = sanitizeUrl(sub.linkProof);
@@ -3555,12 +3568,25 @@ function openGradingStudio(submissionId, isReadOnly = false) {
     ${sub.studentNote ? `✍️ <em>Ghi chú: "${sanitizeText(sub.studentNote)}"</em>` : ""}
   `;
 
-  document.getElementById("gradeScoreInput").disabled = isReadOnly;
-  document.getElementById("gradeFeedbackInput").disabled = isReadOnly;
-  document.getElementById("requestResubmitCheckbox").disabled = isReadOnly;
-
   document.getElementById("gradingModal").style.display = "flex";
   loadGradingPage(activeGradingPageIndex);
+}
+
+function toggleResubmitCheckbox(checked) {
+  const noteGroup = document.getElementById("resubmitNoteGroup");
+  const saveBtn = document.getElementById("saveGradeBtn");
+  if (noteGroup) {
+    noteGroup.style.display = checked ? "block" : "none";
+  }
+  if (saveBtn) {
+    if (checked) {
+      saveBtn.className = "btn btn-danger";
+      saveBtn.innerHTML = "⚠️ Yêu cầu học sinh nộp lại bài";
+    } else {
+      saveBtn.className = "btn btn-primary";
+      saveBtn.innerHTML = "✅ Xác nhận học sinh đã làm bài";
+    }
+  }
 }
 
 function closeGradingStudio() {
@@ -3866,11 +3892,12 @@ function clearAnnotations() {
 }
 
 function addQuickComment(text) {
-  const feedbackInput = document.getElementById("gradeFeedbackInput");
-  if (feedbackInput.value.trim().length > 0) {
-    feedbackInput.value += " " + text;
+  const noteInput = document.getElementById("resubmitNoteInput");
+  if (!noteInput) return;
+  if (noteInput.value.trim().length > 0) {
+    noteInput.value += " " + text;
   } else {
-    feedbackInput.value = text;
+    noteInput.value = text;
   }
 }
 
@@ -3880,34 +3907,29 @@ function saveAndReturnGrade() {
 
   saveCurrentPageAnnotation();
 
-  const scoreVal = document.getElementById("gradeScoreInput").value;
-  const feedbackVal = document.getElementById("gradeFeedbackInput").value.trim();
-  const requestResubmit = document.getElementById("requestResubmitCheckbox").checked;
-
-  if (!requestResubmit && (scoreVal === "" || isNaN(scoreVal) || scoreVal < 0 || scoreVal > 10)) {
-    alert("Vui lòng nhập điểm hợp lệ từ 0 đến 10.");
-    return;
-  }
+  const resubmitCb = document.getElementById("requestResubmitCheckbox");
+  const requestResubmit = resubmitCb ? resubmitCb.checked : false;
+  const noteInput = document.getElementById("resubmitNoteInput");
+  const noteVal = noteInput ? noteInput.value.trim() : "";
 
   if (requestResubmit) {
     sub.status = "resubmit_requested";
     sub.resubmitRequested = true;
     sub.grade = null;
-    sub.feedback = feedbackVal || "Ảnh chụp bị mờ hoặc thiếu trang. Em vui lòng chụp lại bài làm nhé!";
+    sub.feedback = noteVal || "Ảnh chụp bị mờ hoặc thiếu trang. Em vui lòng chụp lại bài làm nhé!";
   } else {
     sub.status = "graded";
     sub.resubmitRequested = false;
-    sub.grade = parseFloat(scoreVal);
-    sub.feedback = feedbackVal;
+    sub.grade = null;
+    sub.feedback = noteVal;
   }
 
   persistData();
 
-  // Đồng bộ kết quả chấm bài lên Supabase Cloud
+  // Đồng bộ kết quả kiểm tra bài lên Supabase Cloud
   const sb = getSupabase();
   if (sb) {
     try {
-      // Ưu tiên gọi RPC grade_submission để xác thực giáo viên bằng mật khẩu (chống gian lận điểm)
       sb.rpc("grade_submission", {
         p_teacher_id: currentUser.id,
         p_password: currentUser.password,
@@ -3918,7 +3940,6 @@ function saveAndReturnGrade() {
         p_resubmit: sub.resubmitRequested
       }).then(({ error: rpcErr }) => {
         if (rpcErr) {
-          // Fallback lưu trực tiếp qua bảng nếu chưa cài RPC trên database
           sb.from("eduproof_submissions").update({
             status: sub.status,
             resubmit_requested: sub.resubmitRequested,
@@ -3926,18 +3947,18 @@ function saveAndReturnGrade() {
             feedback: sub.feedback,
             annotations: sub.annotations
           }).eq("id", sub.id).then(({ error }) => {
-            if (error) console.warn("Lỗi lưu điểm lên Supabase:", error);
+            if (error) console.warn("Lỗi lưu trạng thái lên Supabase:", error);
           });
         }
       });
     } catch (err) {
-      console.warn("Lỗi kết nối Supabase khi chấm bài:", err);
+      console.warn("Lỗi kết nối Supabase khi xác nhận bài:", err);
     }
   }
 
   closeGradingStudio();
   renderCurrentView();
-  alert(requestResubmit ? "Đã gửi thông báo yêu cầu học sinh chụp nộp lại!" : "Đã lưu điểm và trả bài thành công!");
+  alert(requestResubmit ? "Đã gửi thông báo yêu cầu học sinh chụp nộp lại!" : "✅ Đã xác nhận học sinh đã hoàn thành bài làm!");
 }
 
 // ==========================================
