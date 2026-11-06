@@ -1616,4 +1616,34 @@ assert.ok(
 
 console.log("✅ 49. Kiểm thử Loại bỏ Hoàn toàn Cơ chế Tự Động Reload Trang Web & Bảo tồn F5 Thủ công: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (49/49)!");
+// 50. Test: Hiệu ứng chuyển động mượt mà (Dynamic Animations & Micro-Interactions)
+const css50 = fs.readFileSync(path.join(__dirname, "app.css"), "utf8");
+
+// 1. Kiểm tra định nghĩa các keyframes chuyển động hiện đại
+assert.ok(
+  css50.includes("@keyframes fadeInUp") &&
+  css50.includes("@keyframes modalPopIn") &&
+  css50.includes("@keyframes gradientFlow") &&
+  css50.includes("@keyframes pulseSoft"),
+  "app.css phải định nghĩa các keyframes fadeInUp, modalPopIn, gradientFlow, pulseSoft"
+);
+
+// 2. Kiểm tra hiệu ứng áp dụng cho thẻ, thanh highlight dải màu, modal và nút bấm
+assert.ok(
+  css50.includes("animation: fadeInUp") &&
+  css50.includes("animation: modalPopIn") &&
+  css50.includes("animation: gradientFlow") &&
+  css50.includes(".btn:active") &&
+  css50.includes("transform: scale(0.97)"),
+  "app.css phải gán hiệu ứng fade-in thẻ, pop-in modal, gradient flow và phản hồi xúc giác khi bấm nút"
+);
+
+// 3. Đảm bảo tuân thủ tiêu chuẩn Accessibility chống chóng mặt (prefers-reduced-motion)
+assert.ok(
+  css50.includes("@media (prefers-reduced-motion: reduce)"),
+  "app.css phải hỗ trợ prefers-reduced-motion để bảo vệ trải nghiệm người dùng nhạy cảm với chuyển động"
+);
+
+console.log("✅ 50. Kiểm thử Hiệu ứng Chuyển động Mượt mà & Tương tác Xúc giác (Animations & Micro-Interactions): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (50/50)!");

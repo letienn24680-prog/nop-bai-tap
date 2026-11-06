@@ -1748,3 +1748,130 @@ body {
     border-color: #C7D2FE !important;
   }
 }
+
+/* ========================================================
+   MODERN DYNAMIC ANIMATIONS & MICRO-INTERACTIONS
+   ======================================================== */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modalPopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes gradientFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes pulseSoft {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.88;
+    transform: scale(1.02);
+  }
+}
+
+/* 1. Card & Content Fade-In */
+.assignment-card,
+.campaign-banner,
+.stat-box,
+.campaign-student-card,
+.login-card {
+  animation: fadeInUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 2. Fluid Rainbow Top Bar */
+.campaign-banner::before,
+.assignment-card::before,
+.modal-content::before,
+.login-card::before {
+  background-size: 200% 200% !important;
+  animation: gradientFlow 6s ease infinite !important;
+}
+
+/* 3. Modal Smooth Entrance */
+.modal-overlay {
+  animation: overlayFadeIn 0.2s ease both;
+}
+
+.modal-content {
+  animation: modalPopIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 4. Button & Tab Tactile Micro-Interactions */
+.btn {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn:active {
+  transform: scale(0.97) !important;
+}
+
+.tab-btn {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tab-btn:hover:not(.active) {
+  transform: translateY(-1px);
+}
+
+.tab-btn:active {
+  transform: scale(0.97);
+}
+
+/* 5. Breathing Badge for Review Queue */
+.badge-status.status-submitted {
+  animation: pulseSoft 2.4s ease-in-out infinite;
+}
+
+/* 6. Interactive Card Hover Polish */
+.campaign-student-card:hover {
+  transform: translateY(-2px);
+  border-color: #C7D2FE !important;
+  box-shadow: 0 8px 18px rgba(99, 102, 241, 0.1) !important;
+}
+
+/* 7. Accessibility: Honor prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
