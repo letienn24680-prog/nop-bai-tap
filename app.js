@@ -1551,6 +1551,9 @@ function deleteTeacherAccount(teacherId) {
         sb.from("eduproof_users").delete().eq("id", teacherId).then();
         sb.from("eduproof_users").delete().eq("teacher_id", teacherId).then();
         sb.from("eduproof_assignments").delete().eq("teacher_id", teacherId).then();
+        if (teacherAsgIds.size > 0) {
+          sb.from("eduproof_submissions").delete().in("assignment_id", Array.from(teacherAsgIds)).then();
+        }
       }
 
       renderAdminView();
@@ -1699,6 +1702,12 @@ function handleAdminEditUserSubmit(e) {
     updatePayload.class = teacherClass || null;
   }
 
+  // Đồng bộ phiên làm việc nếu Admin chỉnh sửa chính tài khoản đang đăng nhập
+  if (currentUser && currentUser.id === id) {
+    currentUser = { ...user };
+    localStorage.setItem("eduproof_user", JSON.stringify(currentUser));
+  }
+
   persistData();
 
   // Sync to Supabase Cloud
@@ -1712,6 +1721,13 @@ function handleAdminEditUserSubmit(e) {
           console.error("Lỗi cập nhật người dùng trên Supabase:", error);
         }
       });
+
+    if (role === "student") {
+      sb.from("eduproof_submissions")
+        .update({ student_name: name })
+        .eq("student_id", id)
+        .then();
+    }
   }
 
   closeAdminEditUserModal();
@@ -2346,6 +2362,11 @@ function compressImage(sourceDataUrl, maxDimension, quality, callback) {
     const sizeKb = Math.round((compressed.length * 3) / 4 / 1024);
     callback(compressed, sizeKb);
   };
+  img.onerror = () => {
+    console.warn("Lỗi nạp ảnh nén, sử dụng ảnh gốc làm fallback");
+    const sizeKb = Math.round((sourceDataUrl.length * 3) / 4 / 1024);
+    callback(sourceDataUrl, sizeKb);
+  };
   img.src = sourceDataUrl;
 }
 
@@ -2365,6 +2386,9 @@ function rotatePhoto(index) {
 
     item.dataUrl = canvas.toDataURL("image/jpeg", 0.85);
     renderPhotoPreviews();
+  };
+  img.onerror = () => {
+    console.warn("Không thể xoay ảnh này");
   };
   img.src = item.dataUrl;
 }
@@ -3326,6 +3350,28 @@ async function deleteAssignment(assignmentId) {
             sb.from("eduproof_assignments").delete().eq("id", assignmentId),
             sb.from("eduproof_submissions").delete().eq("assignment_id", assignmentId)
           ]);
+
+          // Dọn dẹp tệp ảnh lưu trong bucket Storage 'proofs' để chống tệp mồ côi
+          try {
+            const { data: files } = await sb.storage.from("proofs").list(`submissions/${assignmentId}`);
+            if (files && files.length > 0) {
+              const filePaths = [];
+              for (const item of files) {
+                const { data: subFiles } = await sb.storage.from("proofs").list(`submissions/${assignmentId}/${item.name}`);
+                if (subFiles && subFiles.length > 0) {
+                  subFiles.forEach((f) => filePaths.push(`submissions/${assignmentId}/${item.name}/${f.name}`));
+                } else {
+                  filePaths.push(`submissions/${assignmentId}/${item.name}`);
+                }
+              }
+              if (filePaths.length > 0) {
+                await sb.storage.from("proofs").remove(filePaths);
+              }
+            }
+          } catch (storageErr) {
+            console.warn("Dọn dẹp Storage thông báo:", storageErr);
+          }
+
           console.log("✅ Đã xóa bài tập trên Supabase Cloud:", assignmentId);
         } catch (err) {
           console.warn("Lỗi xóa bài tập trên Cloud:", err);

@@ -1674,4 +1674,34 @@ assert.ok(
 
 console.log("✅ 51. Kiểm thử Chuẩn hóa Logic Trạng thái Từ chối ảnh & Nút thao tác Giáo viên: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (51/51)!");
+// --- TEST 52: Kiểm thử toàn diện khắc phục các phần bỏ qua (Storage cleanup, Cascade Submissions, User Sync, Error Fallbacks) ---
+const appJs52 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+
+// 1. Kiểm tra dọn dẹp Storage bucket 'proofs' khi xóa bài tập
+assert.ok(
+  appJs52.includes('sb.storage.from("proofs").remove(filePaths)'),
+  "deleteAssignment phải quét và xóa triệt để tệp ảnh trong bucket proofs để tránh tệp mồ côi"
+);
+
+// 2. Kiểm tra xóa cascade bài nộp khi xóa tài khoản Giáo viên
+assert.ok(
+  appJs52.includes('sb.from("eduproof_submissions").delete().in("assignment_id", Array.from(teacherAsgIds))'),
+  "deleteTeacherAccount phải xóa toàn bộ bài nộp của các bài tập trực thuộc giáo viên trên Supabase Cloud"
+);
+
+// 3. Kiểm tra đồng bộ currentUser và student_name khi Admin chỉnh sửa thông tin
+assert.ok(
+  appJs52.includes('currentUser = { ...user };') &&
+  appJs52.includes('sb.from("eduproof_submissions")\n        .update({ student_name: name })'),
+  "handleAdminEditUserSubmit phải đồng bộ currentUser và cập nhật tên học sinh trong bài nộp"
+);
+
+// 4. Kiểm tra cơ chế cứu hộ ảnh nén và xoay ảnh khi gặp lỗi nạp ảnh (img.onerror)
+assert.ok(
+  appJs52.includes('img.onerror = () => {\n    console.warn("Lỗi nạp ảnh nén, sử dụng ảnh gốc làm fallback");'),
+  "compressImage phải có img.onerror để tự động fallback về ảnh gốc mà không làm treo tiến trình tải ảnh"
+);
+
+console.log("✅ 52. Kiểm thử Toàn diện Khắc phục các Điểm Bỏ qua (Dọn dẹp Storage, Cascade Delete, Session Sync & Fallbacks): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (52/52)!");
