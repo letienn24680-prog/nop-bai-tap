@@ -191,8 +191,19 @@ body {
   display: flex;
   gap: 0.5rem;
   overflow-x: auto;
-  padding-bottom: 0.5rem;
+  overflow-y: hidden;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE / Edge */
+  padding-bottom: 0.35rem;
   margin-bottom: 1.25rem;
+}
+
+.filter-tabs::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .tab-btn {
@@ -205,6 +216,9 @@ body {
   border-radius: var(--radius-sm);
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;
+  user-select: none;
+  transition: all 0.15s ease;
 }
 
 .tab-btn.active {
@@ -617,15 +631,294 @@ body {
   color: var(--primary);
 }
 
-/* Responsive */
+/* Responsive Rules */
 @media (max-width: 860px) {
   .grading-studio-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr 1fr;
+    grid-template-rows: 1fr auto;
   }
   .grading-sidebar {
     border-left: none;
     border-top: 1px solid var(--border-color);
+  }
+}
+
+/* Mobile Devices Optimization (<= 640px) */
+@media (max-width: 640px) {
+  /* 1. Topbar Navigation */
+  .topbar {
+    padding: 0.5rem 0.65rem;
+    gap: 0.4rem;
+  }
+
+  .brand {
+    gap: 0.45rem;
+  }
+
+  .brand-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 0.95rem;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+
+  .brand-title {
+    font-size: 0.95rem;
+    line-height: 1.1;
+  }
+
+  .brand-subtitle {
+    display: none !important; /* Hide long subtitle on mobile */
+  }
+
+  .topbar-actions {
+    gap: 0.35rem;
+  }
+
+  /* Compact Supabase Cloud Button */
+  #cloudSyncBtn {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.75rem;
+    gap: 0.3rem;
+  }
+  #cloudStatusText {
+    display: none; /* Only show dot & sync icon on mobile to save horizontal space */
+  }
+
+  /* Compact User Profile Badge */
+  .user-profile-badge {
+    padding: 0.25rem 0.45rem 0.25rem 0.3rem;
+    gap: 0.35rem;
+    max-width: 120px;
+  }
+  .avatar-circle {
+    width: 26px;
+    height: 26px;
+    font-size: 0.72rem;
+    flex-shrink: 0;
+  }
+  .user-profile-info strong {
+    font-size: 0.78rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 75px;
+    display: block;
+    line-height: 1.1;
+  }
+  #userRoleText {
+    display: none; /* Hide role label on mobile */
+  }
+
+  /* Compact Logout Button */
+  .logout-btn {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+  }
+  .logout-btn-text {
+    display: none; /* Only show icon on mobile */
+  }
+
+  /* 2. Main Layout Mobile */
+  .main-layout {
+    margin: 0.65rem auto;
+    padding: 0 0.65rem;
+  }
+
+  .view-header {
+    margin-bottom: 0.75rem;
+    gap: 0.5rem;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .view-title {
+    font-size: 1.15rem;
+  }
+
+  .view-desc {
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
+  #studentStatsBadge {
+    font-size: 0.72rem;
+    padding: 0.3rem 0.55rem;
+    width: 100%;
+    text-align: center;
+    box-sizing: border-box;
+  }
+
+  /* 3. Filter Tabs Mobile */
+  .filter-tabs {
+    gap: 0.35rem;
+    padding-bottom: 0.35rem;
+    margin-bottom: 0.85rem;
+  }
+  .tab-btn {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.78rem;
+    border-radius: 9999px;
+  }
+
+  /* 4. Assignment Card & Grid Mobile */
+  .assignment-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .assignment-card {
+    padding: 0.85rem;
+  }
+
+  .card-top {
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .card-title {
+    font-size: 1.02rem;
+    margin-bottom: 0.35rem;
+  }
+
+  .card-instructions {
+    font-size: 0.8rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .proof-requirements {
+    gap: 0.3rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .proof-tag {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.45rem;
+  }
+
+  .card-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding-top: 0.65rem;
+  }
+
+  .card-footer .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.55rem;
+    font-size: 0.85rem;
+  }
+
+  .deadline-text {
+    font-size: 0.75rem;
+    text-align: center;
+  }
+
+  /* 5. Modals Mobile */
+  .modal-overlay {
+    padding: 0.4rem;
+  }
+
+  .modal-content {
+    max-height: 96vh;
+    border-radius: var(--radius-md);
+  }
+
+  .modal-header {
+    padding: 0.75rem 0.85rem;
+  }
+
+  .modal-header h3 {
+    font-size: 1rem;
+  }
+
+  .modal-body {
+    padding: 0.75rem 0.85rem;
+  }
+
+  .modal-footer {
+    padding: 0.65rem 0.85rem;
+    flex-direction: column-reverse;
+    gap: 0.4rem;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .photo-actions-row {
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .photo-actions-row .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .photos-preview-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  /* 6. Teacher View Mobile */
+  .campaign-header-card {
+    padding: 0.85rem;
+  }
+
+  #campaignSelectBox {
+    min-width: 100% !important;
+    width: 100%;
+  }
+
+  .data-table {
+    font-size: 0.75rem;
+  }
+  .data-table th, .data-table td {
+    padding: 0.45rem 0.5rem;
+  }
+
+  /* 7. Grading Studio Mobile */
+  .grading-studio-modal {
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .grading-studio-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto;
+    height: calc(100vh - 54px);
+  }
+
+  .canvas-toolbar {
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    padding: 0.4rem 0.5rem;
+  }
+
+  .canvas-btn {
+    padding: 0.3rem 0.45rem;
+    font-size: 0.72rem;
+  }
+
+  .grading-sidebar {
+    max-height: 40vh;
+    padding: 0.75rem;
+  }
+
+  /* 8. Login Page Mobile */
+  .login-page {
+    padding: 0.75rem;
+  }
+  .login-card {
+    padding: 1.5rem 1.15rem;
   }
 }
 

@@ -57,14 +57,14 @@
       <!-- Active User Profile Display -->
       <div class="user-profile-badge" id="currentUserDisplay">
         <div class="avatar-circle" id="userAvatar">A</div>
-        <div>
+        <div class="user-profile-info">
           <strong id="userNameText" style="display: block; line-height: 1.1;">Nguyễn Văn An</strong>
           <span id="userRoleText" style="font-size: 0.72rem; color: var(--text-muted);">Học sinh (12A1)</span>
         </div>
       </div>
 
-      <button class="btn btn-secondary btn-sm" onclick="logout()">
-        🚪 Đăng xuất
+      <button class="btn btn-secondary btn-sm logout-btn" onclick="logout()" title="Đăng xuất khỏi hệ thống">
+        🚪 <span class="logout-btn-text">Đăng xuất</span>
       </button>
     </div>
   </header>
