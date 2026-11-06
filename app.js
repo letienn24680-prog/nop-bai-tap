@@ -2557,10 +2557,20 @@ function renderTeacherSubmissions(mySubmissionsList) {
 
   const myAssignments = assignments.filter((a) => a.teacherId === currentUser.id);
   const myAssignmentIds = new Set(myAssignments.map((a) => a.id));
-  const list = mySubmissionsList || submissions.filter((s) => myAssignmentIds.has(s.assignmentId));
+  const baseList = mySubmissionsList || submissions.filter((s) => myAssignmentIds.has(s.assignmentId));
+  // Hàng chờ bài nộp chỉ hiển thị các bài đang chờ giáo viên kiểm tra (status === 'submitted')
+  // Bài đã từ chối ảnh (resubmit_requested) hoặc đã kiểm tra (graded) sẽ tự động rời khỏi hàng chờ
+  const list = baseList.filter((s) => s.status === "submitted");
 
   if (list.length === 0) {
-    container.innerHTML = `<p style="color: var(--text-muted); font-size: 0.9rem;">Chưa có học sinh nào nộp bài cho lớp của bạn.</p>`;
+    container.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 3rem 1rem; background: #FFFFFF; border-radius: 16px; border: 1.5px dashed #CBD5E1; box-shadow: 0 4px 12px rgba(0,0,0,0.02);">
+        <div style="font-size: 2.4rem; margin-bottom: 0.5rem;">🎉</div>
+        <h4 style="font-size: 1.05rem; font-weight: 700; color: #1E293B; margin-bottom: 0.3rem;">Hàng chờ bài nộp trống!</h4>
+        <p style="color: var(--text-muted); font-size: 0.85rem; max-width: 460px; margin: 0 auto; line-height: 1.5;">
+          Không có bài nộp nào đang chờ bạn kiểm tra. Các bài đã từ chối ảnh sẽ chờ học sinh chụp nộp lại và tự động xuất hiện tại đây khi em gửi bài mới.
+        </p>
+      </div>`;
     return;
   }
 

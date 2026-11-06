@@ -1415,4 +1415,39 @@ assert.ok(
 
 console.log("✅ 45. Kiểm thử Khắc phục Lỗi Giao diện Ô chọn Đề bài (Chống tràn viền, Xóa viền cam, Đồng bộ icon & Hạn nộp): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (45/45)!");
+// 46. Test: Hàng chờ bài nộp (Queue) tự động loại bỏ bài đã từ chối ảnh hoặc đã kiểm tra
+const js46 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+
+// 1. Kiểm tra renderTeacherSubmissions lọc chính xác chỉ các bài status === 'submitted'
+assert.ok(
+  js46.includes('const list = baseList.filter((s) => s.status === "submitted");'),
+  "renderTeacherSubmissions phải lọc chỉ bài nộp có status === 'submitted' để đưa vào hàng chờ"
+);
+
+// 2. Kiểm thử logic mô phỏng: Bài bị từ chối (resubmit_requested) hoặc đã kiểm tra (graded) phải lập tức biến mất khỏi hàng chờ
+function mockFilterTeacherQueue(submissionsList) {
+  return submissionsList.filter((s) => s.status === "submitted");
+}
+
+const mockQueue = [
+  { id: "sub_1", studentName: "Lan Anh", status: "submitted" },
+  { id: "sub_2", studentName: "Hoàng Anh", status: "submitted" },
+  { id: "sub_3", studentName: "Hoài Anh", status: "graded" },
+  { id: "sub_4", studentName: "Ngọc Anh", status: "resubmit_requested" }
+];
+
+const pendingQueue = mockFilterTeacherQueue(mockQueue);
+assert.strictEqual(pendingQueue.length, 2, "Hàng chờ chỉ còn lại đúng 2 bài đang chờ");
+assert.ok(pendingQueue.every((s) => s.status === "submitted"), "Tất cả bài trong hàng chờ đều phải có status là submitted");
+assert.ok(!pendingQueue.some((s) => s.id === "sub_4"), "Bài sub_4 đã bị từ chối ảnh phải lập tức biến mất khỏi hàng chờ");
+assert.ok(!pendingQueue.some((s) => s.id === "sub_3"), "Bài sub_3 đã kiểm tra phải lập tức biến mất khỏi hàng chờ");
+
+// 3. Kiểm tra thông điệp khi hàng chờ trống
+assert.ok(
+  js46.includes("Hàng chờ bài nộp trống!"),
+  "app.js phải hiển thị giao diện thông báo trạng thái hàng chờ trống lịch sự, rõ ràng"
+);
+
+console.log("✅ 46. Kiểm thử Hàng chờ Bài nộp (Tự động rời hàng chờ khi Từ chối ảnh hoặc Đã kiểm tra): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (46/46)!");
