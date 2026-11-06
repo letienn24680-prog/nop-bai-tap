@@ -2353,7 +2353,7 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
       </div>
     </div>
 
-    <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); overflow-x: auto; padding: 1.25rem;">
+    <div class="campaign-list-container" style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); overflow-x: auto; padding: 1.25rem;">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.85rem;">
         <h3 style="font-size: 1.05rem; font-weight: 700;">
           Danh sách học sinh (${studentsList.length} học sinh)
@@ -2371,80 +2371,153 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
         </div>
       </div>
 
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Học sinh</th>
-            <th>Trạng thái nộp</th>
-            <th>Thời gian nộp</th>
-            <th>Số trang ảnh</th>
-            <th>Điểm số</th>
-            <th>Thao tác</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${(() => {
-            let displayed = studentsList;
-            if (campaignStudentFilter === "submitted") {
-              displayed = studentsList.filter((st) => asgSubmissions.some((s) => s.studentId === st.id));
-            } else if (campaignStudentFilter === "unsubmitted") {
-              displayed = studentsList.filter((st) => !asgSubmissions.some((s) => s.studentId === st.id));
-            }
+      ${(() => {
+        let displayed = studentsList;
+        if (campaignStudentFilter === "submitted") {
+          displayed = studentsList.filter((st) => asgSubmissions.some((s) => s.studentId === st.id));
+        } else if (campaignStudentFilter === "unsubmitted") {
+          displayed = studentsList.filter((st) => !asgSubmissions.some((s) => s.studentId === st.id));
+        }
 
-            if (displayed.length === 0) {
-              return `<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Không có học sinh nào thỏa mãn bộ lọc hiện tại.</td></tr>`;
-            }
+        if (displayed.length === 0) {
+          return `<div style="text-align:center; padding:1.5rem; color:var(--text-muted);">Không có học sinh nào thỏa mãn bộ lọc hiện tại.</div>`;
+        }
 
-            return displayed.map((student) => {
-              const sub = asgSubmissions.find((s) => s.studentId === student.id);
-              if (sub) {
-                sub.photos = normalizePhotos(sub.photos);
-                let badge = "";
-                if (sub.status === "graded") badge = `<span class="badge-status status-graded">🎯 Đã chấm</span>`;
-                else if (sub.status === "resubmit_requested") badge = `<span class="badge-status status-resubmit">⚠️ Cần nộp lại</span>`;
-                else badge = `<span class="badge-status status-submitted">⏳ Chờ chấm</span>`;
+        const tableRowsHtml = displayed.map((student) => {
+          const sub = asgSubmissions.find((s) => s.studentId === student.id);
+          if (sub) {
+            sub.photos = normalizePhotos(sub.photos);
+            let badge = "";
+            if (sub.status === "graded") badge = `<span class="badge-status status-graded">🎯 Đã chấm</span>`;
+            else if (sub.status === "resubmit_requested") badge = `<span class="badge-status status-resubmit">⚠️ Cần nộp lại</span>`;
+            else badge = `<span class="badge-status status-submitted">⏳ Chờ chấm</span>`;
 
-                const timeStr = new Date(sub.submittedAt).toLocaleTimeString("vi-VN", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  day: "2-digit",
-                  month: "2-digit"
-                });
+            const timeStr = new Date(sub.submittedAt).toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+              day: "2-digit",
+              month: "2-digit"
+            });
 
-                return `
-                  <tr>
-                    <td><strong>${sanitizeText(student.name)}</strong> <span style="font-size: 0.75rem; color: var(--text-muted);">(${sanitizeText(student.username)})</span></td>
-                    <td>${badge}</td>
-                    <td>${timeStr}</td>
-                    <td>📷 ${sub.photos.length} trang</td>
-                    <td><strong>${sub.grade !== null ? sub.grade + "/10" : "—"}</strong></td>
-                    <td>
-                      <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
-                        ✍️ ${sub.status === "graded" ? "Sửa điểm" : "Chấm bài"}
-                      </button>
-                    </td>
-                  </tr>
-                `;
-              } else {
-                return `
-                  <tr>
-                    <td><strong>${sanitizeText(student.name)}</strong> <span style="font-size: 0.75rem; color: var(--text-muted);">(${sanitizeText(student.username)})</span></td>
-                    <td><span class="badge-status status-resubmit">❌ Chưa nộp bài</span></td>
-                    <td style="color: var(--text-muted);">—</td>
-                    <td style="color: var(--text-muted);">0 trang</td>
-                    <td style="color: var(--text-muted);">—</td>
-                    <td>
-                      <button class="btn btn-secondary btn-sm" onclick="remindStudent('${student.id}', '${currentAsg.id}')">
-                        📢 Nhắc nộp bài
-                      </button>
-                    </td>
-                  </tr>
-                `;
-              }
-            }).join("");
-          })()}
-        </tbody>
-      </table>
+            return `
+              <tr>
+                <td><strong>${sanitizeText(student.name)}</strong> <span style="font-size: 0.75rem; color: var(--text-muted);">(${sanitizeText(student.username)})</span></td>
+                <td>${badge}</td>
+                <td>${timeStr}</td>
+                <td>📷 ${sub.photos.length} trang</td>
+                <td><strong>${sub.grade !== null ? sub.grade + "/10" : "—"}</strong></td>
+                <td>
+                  <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
+                    ✍️ ${sub.status === "graded" ? "Sửa điểm" : "Chấm bài"}
+                  </button>
+                </td>
+              </tr>
+            `;
+          } else {
+            return `
+              <tr>
+                <td><strong>${sanitizeText(student.name)}</strong> <span style="font-size: 0.75rem; color: var(--text-muted);">(${sanitizeText(student.username)})</span></td>
+                <td><span class="badge-status status-resubmit">❌ Chưa nộp bài</span></td>
+                <td style="color: var(--text-muted);">—</td>
+                <td style="color: var(--text-muted);">0 trang</td>
+                <td style="color: var(--text-muted);">—</td>
+                <td>
+                  <button class="btn btn-secondary btn-sm" onclick="remindStudent('${student.id}', '${currentAsg.id}')">
+                    📢 Nhắc nộp bài
+                  </button>
+                </td>
+              </tr>
+            `;
+          }
+        }).join("");
+
+        const mobileCardsHtml = displayed.map((student) => {
+          const sub = asgSubmissions.find((s) => s.studentId === student.id);
+          if (sub) {
+            sub.photos = normalizePhotos(sub.photos);
+            let badge = "";
+            if (sub.status === "graded") badge = `<span class="badge-status status-graded">🎯 Đã chấm</span>`;
+            else if (sub.status === "resubmit_requested") badge = `<span class="badge-status status-resubmit">⚠️ Cần nộp lại</span>`;
+            else badge = `<span class="badge-status status-submitted">⏳ Chờ chấm</span>`;
+
+            const timeStr = new Date(sub.submittedAt).toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+              day: "2-digit",
+              month: "2-digit"
+            });
+
+            return `
+              <div class="campaign-student-card">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.45rem;">
+                  <div>
+                    <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${sanitizeText(student.name)}</div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">${sanitizeText(student.username)}</div>
+                  </div>
+                  <div>${badge}</div>
+                </div>
+
+                <div style="display: flex; flex-wrap: wrap; gap: 0.55rem; font-size: 0.76rem; color: #475569; background: #F8FAFC; padding: 0.4rem 0.6rem; border-radius: 8px; margin-bottom: 0.5rem; align-items: center; border: 1px solid #F1F5F9;">
+                  <span>🕒 ${timeStr}</span>
+                  <span>📷 ${sub.photos.length} trang ảnh</span>
+                  <span>🎯 Điểm: <strong style="color: #4338CA;">${sub.grade !== null ? sub.grade + "/10" : "Chưa chấm"}</strong></span>
+                </div>
+
+                <button class="btn btn-primary btn-sm" style="width: 100%; justify-content: center; padding: 0.45rem;" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
+                  ✍️ ${sub.status === "graded" ? "Sửa điểm & Lời phê" : "Mở chấm bài"}
+                </button>
+              </div>
+            `;
+          } else {
+            return `
+              <div class="campaign-student-card">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.45rem;">
+                  <div>
+                    <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${sanitizeText(student.name)}</div>
+                    <div style="font-size: 0.74rem; color: var(--text-muted);">${sanitizeText(student.username)}</div>
+                  </div>
+                  <div><span class="badge-status status-resubmit">❌ Chưa nộp bài</span></div>
+                </div>
+
+                <div style="display: flex; gap: 0.6rem; font-size: 0.76rem; color: #64748B; background: #FFF1F2; padding: 0.4rem 0.6rem; border-radius: 8px; margin-bottom: 0.5rem; align-items: center; border: 1px solid #FFE4E6;">
+                  <span style="color: #E11D48; font-weight: 600;">⚠️ Chưa nộp bài tập</span>
+                  <span>• 0 trang ảnh</span>
+                </div>
+
+                <button class="btn btn-secondary btn-sm" style="width: 100%; justify-content: center; padding: 0.45rem;" onclick="remindStudent('${student.id}', '${currentAsg.id}')">
+                  📢 Nhắc nộp bài
+                </button>
+              </div>
+            `;
+          }
+        }).join("");
+
+        return `
+          <!-- 1. Bảng trên màn hình máy tính -->
+          <div class="campaign-desktop-view">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Học sinh</th>
+                  <th>Trạng thái nộp</th>
+                  <th>Thời gian nộp</th>
+                  <th>Số trang ảnh</th>
+                  <th>Điểm số</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${tableRowsHtml}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 2. Danh sách dạng thẻ tối ưu 100% cho màn hình điện thoại (Không cần kéo ngang) -->
+          <div class="campaign-mobile-view">
+            ${mobileCardsHtml}
+          </div>
+        `;
+      })()}
     </div>
   `;
 }
@@ -2676,45 +2749,78 @@ function handleTeacherStudentSearch(query) {
 
 function renderTeacherStudents(myStudentsList) {
   const table = document.getElementById("studentAccountsTable");
+  const cardsContainer = document.getElementById("studentAccountsCards");
   const studentUsers = myStudentsList || users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
 
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th>Họ và tên</th>
-        <th>Tên đăng nhập</th>
-        <th>Mật khẩu</th>
-        <th>Lớp</th>
-        <th>Bài đã nộp</th>
-        <th>Thao tác</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${studentUsers.length === 0 ? `<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Bạn chưa tạo tài khoản học sinh nào. Hãy bấm "Cấp tài khoản mới" ở trên để tạo.</td></tr>` : ""}
-      ${studentUsers
-        .map((st) => {
+  if (table) {
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>Họ và tên</th>
+          <th>Tên đăng nhập</th>
+          <th>Mật khẩu</th>
+          <th>Lớp</th>
+          <th>Bài đã nộp</th>
+          <th>Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${studentUsers.length === 0 ? `<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Bạn chưa tạo tài khoản học sinh nào. Hãy bấm "Cấp tài khoản mới" ở trên để tạo.</td></tr>` : ""}
+        ${studentUsers
+          .map((st) => {
+            const count = submissions.filter((s) => s.studentId === st.id).length;
+            return `
+              <tr>
+                <td><strong>${sanitizeText(st.name)}</strong></td>
+                <td><code>${sanitizeText(st.username)}</code></td>
+                <td><code>${sanitizeText(st.password)}</code></td>
+                <td>${sanitizeText(st.class || "12A1")}</td>
+                <td><strong>${count} bài</strong></td>
+                <td>
+                  <button class="btn btn-secondary btn-sm" onclick="copyAccountInfo('${sanitizeText(st.username)}')">
+                    📋 Sao chép gửi HS
+                  </button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteStudentAccount('${sanitizeText(st.id)}')">
+                    🗑️ Xóa
+                  </button>
+                </td>
+              </tr>
+            `;
+          })
+          .join("")}
+      </tbody>
+    `;
+  }
+
+  if (cardsContainer) {
+    cardsContainer.innerHTML = studentUsers.length === 0
+      ? `<div style="text-align:center; padding:1.5rem; color:var(--text-muted);">Bạn chưa tạo tài khoản học sinh nào. Hãy bấm "Cấp tài khoản mới" ở trên để tạo.</div>`
+      : studentUsers.map((st) => {
           const count = submissions.filter((s) => s.studentId === st.id).length;
           return `
-            <tr>
-              <td><strong>${sanitizeText(st.name)}</strong></td>
-              <td><code>${sanitizeText(st.username)}</code></td>
-              <td><code>${sanitizeText(st.password)}</code></td>
-              <td>${sanitizeText(st.class || "12A1")}</td>
-              <td><strong>${count} bài</strong></td>
-              <td>
-                <button class="btn btn-secondary btn-sm" onclick="copyAccountInfo('${sanitizeText(st.username)}')">
+            <div class="campaign-student-card">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.35rem;">
+                <div>
+                  <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${sanitizeText(st.name)}</div>
+                  <div style="font-size: 0.74rem; color: var(--text-muted);">Lớp: ${sanitizeText(st.class || "12A1")} • Đã nộp ${count} bài</div>
+                </div>
+              </div>
+              <div style="background: #F8FAFC; padding: 0.4rem 0.6rem; border-radius: 6px; font-size: 0.78rem; margin-bottom: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center; border: 1px solid #F1F5F9;">
+                <span>TK: <code>${sanitizeText(st.username)}</code></span>
+                <span>MK: <code>${sanitizeText(st.password)}</code></span>
+              </div>
+              <div style="display: flex; gap: 0.4rem;">
+                <button class="btn btn-secondary btn-sm" style="flex: 1; justify-content: center; padding: 0.45rem;" onclick="copyAccountInfo('${sanitizeText(st.username)}')">
                   📋 Sao chép gửi HS
                 </button>
-                <button class="btn btn-danger btn-sm" onclick="deleteStudentAccount('${sanitizeText(st.id)}')">
+                <button class="btn btn-danger btn-sm" style="padding: 0.45rem 0.75rem;" onclick="deleteStudentAccount('${sanitizeText(st.id)}')">
                   🗑️ Xóa
                 </button>
-              </td>
-            </tr>
+              </div>
+            </div>
           `;
-        })
-        .join("")}
-    </tbody>
-  `;
+        }).join("");
+  }
 }
 
 function renderTeacherGradebook(myStudentsList, myAssignmentsList) {

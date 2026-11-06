@@ -348,9 +348,14 @@
             <input type="text" id="teacherStudentSearchInput" class="form-input" placeholder="🔍 Tìm kiếm học sinh theo tên, lớp hoặc tên đăng nhập..." oninput="handleTeacherStudentSearch(this.value)" style="max-width: 380px;">
           </div>
 
-          <table class="data-table" id="studentAccountsTable">
+          <div class="campaign-desktop-view">
+            <table class="data-table" id="studentAccountsTable">
+              <!-- Rendered dynamically -->
+            </table>
+          </div>
+          <div class="campaign-mobile-view" id="studentAccountsCards">
             <!-- Rendered dynamically -->
-          </table>
+          </div>
         </div>
       </div>
 

@@ -1054,6 +1054,19 @@ body {
     width: 100%;
   }
 
+  .campaign-desktop-view {
+    display: none !important;
+  }
+  .campaign-mobile-view {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.65rem !important;
+  }
+  .campaign-list-container {
+    overflow-x: hidden !important;
+    padding: 0.75rem 0.5rem !important;
+  }
+
   .data-table {
     font-size: 0.75rem;
   }
@@ -1215,6 +1228,30 @@ body {
   font-weight: 600;
   color: #64748B;
   margin-top: 0.25rem;
+}
+
+/* Responsive Mobile Card View for Tables */
+.campaign-desktop-view {
+  display: block;
+}
+
+.campaign-mobile-view {
+  display: none;
+}
+
+.campaign-student-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+}
+
+.campaign-student-card:hover {
+  border-color: #C7D2FE;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
 }
 
 /* Data Tables */

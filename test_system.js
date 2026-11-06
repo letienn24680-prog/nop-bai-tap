@@ -913,4 +913,22 @@ assert.ok(
 
 console.log("✅ 31. Kiểm thử giao diện thẻ lọc di động (Segmented Tabs) & nạp ảnh Base64 an toàn: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (31/31)!");
+// 32. Test: Mobile Responsive No-Scroll Cards for Campaign & Students Table
+const currentAppJs = fs.readFileSync("app.js", "utf8");
+const currentAppHtml = fs.readFileSync("index.html", "utf8");
+assert.ok(
+  currentCss.includes("campaign-mobile-view") && currentCss.includes("campaign-desktop-view"),
+  "app.css phải có lớp phân chia hiển thị bảng máy tính và thẻ di động"
+);
+assert.ok(
+  currentAppJs.includes("campaign-mobile-view") && currentAppJs.includes("campaign-student-card"),
+  "app.js phải tạo thẻ danh sách học sinh theo đợt không cần kéo ngang trên điện thoại"
+);
+assert.ok(
+  currentAppHtml.includes("studentAccountsCards"),
+  "index.html phải có container hiển thị thẻ tài khoản học sinh trên điện thoại"
+);
+
+console.log("✅ 32. Kiểm thử hiển thị danh sách học sinh dạng thẻ trên điện thoại (Không cần kéo ngang): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (32/32)!");
