@@ -708,6 +708,10 @@ body {
   box-shadow: 0 10px 25px rgba(0,0,0,0.5);
   cursor: crosshair;
   max-width: 100%;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .grading-sidebar {

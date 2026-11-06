@@ -3339,8 +3339,19 @@ function initCanvasEvents() {
     };
   };
 
-  newCanvas.addEventListener("mousedown", (e) => {
-    const pos = getCanvasPos(e);
+  const getTouchPos = (evt) => {
+    if (!evt.touches || evt.touches.length === 0) return { x: lastX, y: lastY };
+    const touch = evt.touches[0];
+    const rect = newCanvas.getBoundingClientRect();
+    const scaleX = newCanvas.width / rect.width;
+    const scaleY = newCanvas.height / rect.height;
+    return {
+      x: (touch.clientX - rect.left) * scaleX,
+      y: (touch.clientY - rect.top) * scaleY
+    };
+  };
+
+  const handleDrawStart = (pos) => {
     isDrawing = true;
     lastX = pos.x;
     lastY = pos.y;
@@ -3369,11 +3380,10 @@ function initCanvasEvents() {
       }
       isDrawing = false;
     }
-  });
+  };
 
-  newCanvas.addEventListener("mousemove", (e) => {
+  const handleDrawMove = (pos) => {
     if (!isDrawing) return;
-    const pos = getCanvasPos(e);
     const ctx = newCanvas.getContext("2d");
 
     ctx.beginPath();
@@ -3395,14 +3405,38 @@ function initCanvasEvents() {
 
     lastX = pos.x;
     lastY = pos.y;
-  });
+  };
 
-  newCanvas.addEventListener("mouseup", () => {
+  const handleDrawEnd = () => {
     if (isDrawing) {
       isDrawing = false;
       saveCanvasState();
     }
-  });
+  };
+
+  // 1. Chuột cho PC / Laptop
+  newCanvas.addEventListener("mousedown", (e) => handleDrawStart(getCanvasPos(e)));
+  newCanvas.addEventListener("mousemove", (e) => handleDrawMove(getCanvasPos(e)));
+  newCanvas.addEventListener("mouseup", handleDrawEnd);
+  newCanvas.addEventListener("mouseleave", handleDrawEnd);
+
+  // 2. Chạm cảm ứng cho Điện thoại & Máy tính bảng (Touch Events)
+  newCanvas.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    handleDrawStart(getTouchPos(e));
+  }, { passive: false });
+
+  newCanvas.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+    handleDrawMove(getTouchPos(e));
+  }, { passive: false });
+
+  newCanvas.addEventListener("touchend", (e) => {
+    e.preventDefault();
+    handleDrawEnd();
+  }, { passive: false });
+
+  newCanvas.addEventListener("touchcancel", handleDrawEnd);
 }
 
 function saveCanvasState() {

@@ -1006,4 +1006,19 @@ assert.ok(
 
 console.log("✅ 36. Kiểm thử chuyển đổi thẻ di động mở rộng (920px) & Hộp thoại xác nhận nội bộ trong trang: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (36/36)!");
+// 37. Test: Parallel PC & Mobile Touch Feature Parity in Grading Studio
+const currentJs37 = fs.readFileSync("app.js", "utf8");
+const currentCss37 = fs.readFileSync("app.css", "utf8");
+
+assert.ok(
+  currentJs37.includes("touchstart") && currentJs37.includes("touchmove") && currentJs37.includes("touchend"),
+  "app.js phải hỗ trợ đầy đủ Touch Events cho phép chấm bài & vẽ bút đỏ trên điện thoại/máy tính bảng song song với chuột PC"
+);
+assert.ok(
+  currentCss37.includes("touch-action: none"),
+  "app.css phải thiết lập touch-action: none cho #annotationCanvas để chặn cuộn trang khi vẽ trên màn hình cảm ứng"
+);
+
+console.log("✅ 37. Kiểm thử tính năng song song PC và Điện thoại (Touch Events & Chấm bài trên Canvas): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (37/37)!");
