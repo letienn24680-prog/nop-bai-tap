@@ -240,7 +240,7 @@ BEGIN
 
   IF FOUND THEN
     IF v_existing.status = 'graded' THEN
-      RAISE EXCEPTION 'Bài nộp này đã được giáo viên chấm điểm. Không thể sửa hoặc nộp lại trừ khi có yêu cầu.';
+      RAISE EXCEPTION 'Bài nộp này đã được giáo viên xác nhận hoàn thành, em không thể gửi lại được nữa nhé!';
     END IF;
 
     -- Chống spam gửi bài liên tục (khoảng cách tối thiểu 3 giây giữa các lần nộp lại)
@@ -255,6 +255,7 @@ BEGIN
       photos = p_photos,
       link_proof = p_link_proof,
       student_note = p_student_note,
+      annotations = '{}'::jsonb,
       resubmit_requested = false
     WHERE id = v_existing.id;
     

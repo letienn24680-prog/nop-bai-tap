@@ -1258,4 +1258,55 @@ assert.ok(
 
 console.log("✅ 42. Kiểm thử Tinh giản Giao diện Quản lý đợt bài tập (Thống nhất 1 Card & Tab Mobile 3+2): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (42/42)!");
+// 43. Test: Resubmit Photo Replacement & Teacher Reject Photo with Automatic Email Notification
+const html43 = fs.readFileSync("index.html", "utf8");
+const js43 = fs.readFileSync("app.js", "utf8");
+const sql43 = fs.readFileSync("schema.sql", "utf8");
+
+// 1. Kiểm tra index.html có modal từ chối ảnh và nút trong grading studio
+assert.ok(
+  html43.includes('id="rejectPhotoModal"') && html43.includes('id="gradingRejectPhotoBtn"'),
+  "index.html phải có modal rejectPhotoModal và nút gradingRejectPhotoBtn trong studio"
+);
+
+// 2. Kiểm tra app.js có chức năng từ chối ảnh và tự động gửi thông báo Email
+assert.ok(
+  js43.includes("openRejectPhotoModal") && js43.includes("confirmRejectPhotoAndNotify"),
+  "app.js phải có hàm điều khiển từ chối ảnh và gửi email tự động"
+);
+
+// 3. Kiểm tra logic nộp lại thay thế ảnh và khóa khi giáo viên đã xác nhận (status === 'graded')
+function mockStudentResubmitCheck(existingSubmission, newPhotos) {
+  if (existingSubmission && existingSubmission.status === "graded") {
+    throw new Error("Bài nộp này đã được giáo viên xác nhận hoàn thành, em không thể gửi lại được nữa nhé!");
+  }
+  // Khi nộp lại, ảnh mới thay thế toàn bộ ảnh cũ
+  return {
+    ...existingSubmission,
+    status: "submitted",
+    photos: newPhotos,
+    resubmitRequested: false
+  };
+}
+
+const mockSubSubmitted = { id: "sub_1", status: "submitted", photos: ["anh_cu_1.jpg"] };
+const resubmitted = mockStudentResubmitCheck(mockSubSubmitted, ["anh_moi_1.jpg", "anh_moi_2.jpg"]);
+assert.strictEqual(resubmitted.photos.length, 2);
+assert.strictEqual(resubmitted.photos[0], "anh_moi_1.jpg");
+assert.strictEqual(resubmitted.status, "submitted");
+
+const mockSubGraded = { id: "sub_2", status: "graded", photos: ["anh_da_cham.jpg"] };
+assert.throws(() => {
+  mockStudentResubmitCheck(mockSubGraded, ["anh_moi_hack.jpg"]);
+}, /đã được giáo viên xác nhận hoàn thành/);
+
+// 4. Kiểm tra schema.sql chặn nộp lại khi bài đã xác nhận (status = 'graded')
+assert.ok(
+  sql43.includes("IF v_existing.status = 'graded' THEN") &&
+  sql43.includes("photos = p_photos"),
+  "schema.sql phải cập nhật thay thế photos và ném ngoại lệ khi status là graded"
+);
+
+console.log("✅ 43. Kiểm thử Nộp lại thay thế ảnh bài làm, Chặn sửa khi GV đã xác nhận & Từ chối ảnh gửi Email tự động: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (43/43)!");

@@ -1901,6 +1901,15 @@ function renderStudentView() {
 
     const isLate = new Date() > new Date(asg.deadline);
 
+    let resubmitReasonAlert = "";
+    if (sub && sub.status === "resubmit_requested" && sub.feedback) {
+      resubmitReasonAlert = `
+        <div style="background: #FEF2F2; border: 1px solid #FECACA; color: #991B1B; padding: 0.45rem 0.65rem; border-radius: 8px; font-size: 0.76rem; margin: 0.4rem 0; line-height: 1.4;">
+          <strong>⚠️ Cô từ chối ảnh & yêu cầu gửi lại:</strong> "${sanitizeText(sub.feedback)}"
+        </div>
+      `;
+    }
+
     if (status === "pending") {
       statusBadge = isLate
         ? `<span class="badge-status status-resubmit">⚠️ Đã quá hạn</span>`
@@ -1910,11 +1919,20 @@ function renderStudentView() {
       statusBadge = `<span class="badge-status status-resubmit">⚠️ Cần nộp lại</span>`;
       actionBtn = `<button class="btn btn-danger btn-sm" onclick="openSubmitModal('${asg.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Chụp nộp lại</button>`;
     } else if (status === "submitted") {
-      statusBadge = `<span class="badge-status status-submitted">✅ Đã nộp</span>`;
-      actionBtn = `<button class="btn btn-secondary btn-sm" onclick="viewSubmissionSummary('${sub.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Xem bài đã gửi</button>`;
+      statusBadge = `<span class="badge-status status-submitted">⏳ Đã nộp</span>`;
+      actionBtn = `
+        <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="viewSubmissionSummary('${sub.id}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Xem bài
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="openSubmitModal('${asg.id}')" title="Chụp/chọn ảnh mới để thay thế bài đã nộp">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Nộp lại bài
+          </button>
+        </div>
+      `;
     } else if (status === "graded") {
       statusBadge = `<span class="badge-status status-graded">✅ Đã làm</span>`;
-      actionBtn = `<button class="btn btn-secondary btn-sm" onclick="viewSubmissionSummary('${sub.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Xem bài & Nhận xét</button>`;
+      actionBtn = `<button class="btn btn-secondary btn-sm" onclick="viewSubmissionSummary('${sub.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Xem bài đã xác nhận</button>`;
     }
 
     let studentPhotoPreview = "";
@@ -1944,6 +1962,7 @@ function renderStudentView() {
         </div>
         <h3 class="card-title">${sanitizeText(asg.title)}</h3>
         <p class="card-instructions">${sanitizeText(asg.description)}</p>
+        ${resubmitReasonAlert}
         ${studentPhotoPreview}
         <div class="proof-requirements">
           <span class="proof-tag">📷 Vở ghi (≥${asg.minPhotos} trang)</span>
@@ -1970,17 +1989,29 @@ function openSubmitModal(assignmentId) {
   const asg = assignments.find((a) => a.id === assignmentId);
   if (!asg) return;
 
-  document.getElementById("submitModalTitle").innerText = `Nộp bài: ${asg.title}`;
-  document.getElementById("submitModalSubtitle").innerText =
-    `Môn: ${asg.subject} • Yêu cầu tối thiểu ${asg.minPhotos} ảnh chụp vở`;
-
   const existingSub = submissions.find(
     (s) => s.assignmentId === assignmentId && s.studentId === currentUser.id
   );
+  if (existingSub && existingSub.status === "graded") {
+    showNoticeModal(
+      "Giáo viên đã xác nhận bài làm của em rồi, em không thể gửi lại bài này được nữa nhé!",
+      "Đã được xác nhận",
+      "🔒"
+    );
+    return;
+  }
+
+  const isResubmitting = Boolean(existingSub && (existingSub.status === "submitted" || existingSub.status === "resubmit_requested"));
+
+  document.getElementById("submitModalTitle").innerText = isResubmitting
+    ? `Nộp lại bài: ${asg.title}`
+    : `Nộp bài: ${asg.title}`;
+  document.getElementById("submitModalSubtitle").innerText = isResubmitting
+    ? `Môn: ${asg.subject} • 💡 Ảnh chụp mới sẽ thay thế hoàn toàn ảnh đã nộp trước đó.`
+    : `Môn: ${asg.subject} • Yêu cầu tối thiểu ${asg.minPhotos} ảnh chụp vở`;
 
   currentUploadedPhotos = [];
-  if (existingSub && existingSub.photos) {
-    currentUploadedPhotos = JSON.parse(JSON.stringify(existingSub.photos));
+  if (existingSub) {
     document.getElementById("proofLinkInput").value = existingSub.linkProof || "";
     document.getElementById("studentNoteInput").value = existingSub.studentNote || "";
   } else {
@@ -2349,6 +2380,17 @@ async function confirmSubmitAssignment() {
       (s) => s.assignmentId === asg.id && s.studentId === currentUser.id
     );
 
+    if (subIndex >= 0 && submissions[subIndex].status === "graded") {
+      showNoticeModal(
+        "Giáo viên đã xác nhận bài làm của em rồi, em không thể gửi lại bài này được nữa nhé!",
+        "Đã được xác nhận",
+        "🔒"
+      );
+      return;
+    }
+
+    const isResubmitting = subIndex >= 0;
+
     const newSubData = {
       id: subIndex >= 0 ? submissions[subIndex].id : "sub_" + Date.now(),
       assignmentId: asg.id,
@@ -2359,7 +2401,7 @@ async function confirmSubmitAssignment() {
       photos: currentUploadedPhotos,
       linkProof: linkProof,
       studentNote: studentNote,
-      annotations: subIndex >= 0 ? submissions[subIndex].annotations : {},
+      annotations: {},
       grade: null,
       feedback: "",
       resubmitRequested: false
@@ -2417,7 +2459,7 @@ async function confirmSubmitAssignment() {
 
     closeSubmitModal();
     renderStudentView();
-    alert("🎉 Chúc mừng! Bạn đã nộp bài tập thành công.");
+    alert(isResubmitting ? "🎉 Chúc mừng! Bạn đã nộp lại bài tập thành công (Ảnh mới đã thay thế ảnh cũ)." : "🎉 Chúc mừng! Bạn đã nộp bài tập thành công.");
     syncCloudData(false);
   } finally {
     isSubmitting = false;
@@ -2580,12 +2622,17 @@ function renderTeacherSubmissions(mySubmissionsList) {
           </div>
         </div>
       </div>
-      <div class="card-footer">
+      <div class="card-footer" style="gap: 0.4rem; flex-wrap: wrap;">
         <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Lớp: ${sanitizeText(studentClass)}</span>
-        <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-          ${sub.status === "graded" ? "Xem lại bài" : "Kiểm tra bài làm"}
-        </button>
+        <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+          <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            ${sub.status === "graded" ? "Xem lại bài" : "Kiểm tra bài làm"}
+          </button>
+          <button class="btn btn-danger-outline btn-sm" onclick="openRejectPhotoModal('${sanitizeText(sub.id)}')" title="Từ chối ảnh bài làm và gửi email thông báo cho học sinh">
+            🚫 Từ chối ảnh
+          </button>
+        </div>
       </div>
     `;
 
@@ -2766,9 +2813,14 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
                 <td>📷 ${sub.photos.length} trang</td>
                 <td><strong style="color: #4338CA;">${sub.status === "graded" ? "✅ Đã hoàn thành" : "⏳ Chờ xem"}</strong></td>
                 <td>
-                  <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
-                    ✍️ ${sub.status === "graded" ? "Xem lại" : "Kiểm tra"}
-                  </button>
+                  <div style="display: flex; gap: 0.35rem; align-items: center;">
+                    <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
+                      ✍️ ${sub.status === "graded" ? "Xem lại" : "Kiểm tra"}
+                    </button>
+                    <button class="btn btn-danger-outline btn-sm" onclick="openRejectPhotoModal('${sanitizeText(sub.id)}')" title="Từ chối ảnh bài làm và gửi email thông báo cho học sinh">
+                      🚫 Từ chối ảnh
+                    </button>
+                  </div>
                 </td>
               </tr>
             `;
@@ -2822,9 +2874,14 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
                   <span>Trạng thái: <strong style="color: #4338CA;">${sub.status === "graded" ? "Đã làm" : "Chờ xem"}</strong></span>
                 </div>
 
-                <button class="btn btn-primary btn-sm" style="width: 100%; justify-content: center; padding: 0.45rem;" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
-                  ✍️ ${sub.status === "graded" ? "Xem lại bài" : "Kiểm tra bài làm"}
-                </button>
+                <div style="display: flex; gap: 0.35rem; margin-top: 0.45rem;">
+                  <button class="btn btn-primary btn-sm" style="flex: 1; justify-content: center; padding: 0.45rem;" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
+                    ✍️ ${sub.status === "graded" ? "Xem lại bài" : "Kiểm tra bài làm"}
+                  </button>
+                  <button class="btn btn-danger-outline btn-sm" style="justify-content: center; padding: 0.45rem 0.6rem;" onclick="openRejectPhotoModal('${sanitizeText(sub.id)}')" title="Từ chối ảnh & Báo gửi lại qua Email">
+                    🚫 Từ chối ảnh
+                  </button>
+                </div>
               </div>
             `;
           } else {
@@ -3733,6 +3790,11 @@ function openGradingStudio(submissionId, isReadOnly = false) {
     saveBtn.style.display = isReadOnly ? "none" : "flex";
   }
 
+  const rejectBtn = document.getElementById("gradingRejectPhotoBtn");
+  if (rejectBtn) {
+    rejectBtn.style.display = isReadOnly ? "none" : "flex";
+  }
+
   const proofsView = document.getElementById("studentAdditionalProofsView");
   const safeUrl = sanitizeUrl(sub.linkProof);
 
@@ -4143,6 +4205,157 @@ function saveAndReturnGrade() {
   closeGradingStudio();
   renderCurrentView();
   alert(requestResubmit ? "Đã gửi thông báo yêu cầu học sinh chụp nộp lại!" : "✅ Đã xác nhận học sinh đã hoàn thành bài làm!");
+}
+
+// ==========================================
+// 6.5 REJECT PHOTO & AUTO NOTIFY EMAIL
+// ==========================================
+
+let activeRejectSubmissionId = null;
+
+function openRejectPhotoModal(submissionId) {
+  const sub = submissions.find((s) => s.id === submissionId);
+  if (!sub) return;
+
+  activeRejectSubmissionId = submissionId;
+  const asg = assignments.find((a) => a.id === sub.assignmentId);
+  const student = users.find((u) => u.id === sub.studentId) || { name: sub.studentName, email: "", class: "" };
+
+  const modal = document.getElementById("rejectPhotoModal");
+  if (!modal) return;
+
+  const idInput = document.getElementById("rejectSubmissionId");
+  if (idInput) idInput.value = submissionId;
+
+  const infoBox = document.getElementById("rejectStudentInfoBox");
+  if (infoBox) {
+    infoBox.innerHTML = `
+      <div><strong>Học sinh:</strong> ${sanitizeText(student.name)} ${student.class ? `(Lớp ${sanitizeText(student.class)})` : ""}</div>
+      <div><strong>Đề bài:</strong> ${asg ? sanitizeText(asg.title) : "Bài tập"} ${asg ? `(${sanitizeText(asg.subject)})` : ""}</div>
+      <div style="margin-top: 0.25rem;">
+        ${student.email && student.email.includes("@") ? `📧 <strong>Email học sinh:</strong> <span style="color: #059669; font-weight: 700;">${sanitizeText(student.email)}</span>` : `⚠️ <span style="color: #DC2626; font-style: italic;">Học sinh chưa có địa chỉ Email nhận thông báo</span>`}
+      </div>
+    `;
+  }
+
+  const reasonInput = document.getElementById("rejectPhotoReasonInput");
+  if (reasonInput) {
+    const studioNote = document.getElementById("resubmitNoteInput");
+    reasonInput.value = (studioNote && studioNote.value.trim()) ? studioNote.value.trim() : "Ảnh chụp bị mờ hoặc thiếu trang. Em vui lòng chụp lại bài làm nhé!";
+  }
+
+  const hintBox = document.getElementById("rejectEmailNotifyHint");
+  if (hintBox) {
+    if (student.email && student.email.includes("@")) {
+      hintBox.innerHTML = `✉️ <strong>Hệ thống tự động gửi Email:</strong> Khi xác nhận, hệ thống sẽ tự động kích hoạt gửi thư thông báo tới <strong>${sanitizeText(student.email)}</strong> kèm lý do và link nộp lại. Thầy/Cô không cần gửi thủ công.`;
+      hintBox.style.display = "block";
+    } else {
+      hintBox.innerHTML = `💡 Học sinh này chưa cài đặt Email. Khi từ chối, hệ thống sẽ hiện thông báo <strong>"⚠️ Cần nộp lại"</strong> trực tiếp trên tài khoản học sinh khi em vào web.`;
+      hintBox.style.display = "block";
+    }
+  }
+
+  modal.style.display = "flex";
+}
+
+function closeRejectPhotoModal() {
+  const modal = document.getElementById("rejectPhotoModal");
+  if (modal) modal.style.display = "none";
+  activeRejectSubmissionId = null;
+}
+
+function setQuickRejectReason(reasonText) {
+  const reasonInput = document.getElementById("rejectPhotoReasonInput");
+  if (reasonInput) {
+    reasonInput.value = reasonText;
+    reasonInput.focus();
+  }
+}
+
+function confirmRejectPhotoAndNotify() {
+  const subId = activeRejectSubmissionId || (document.getElementById("rejectSubmissionId") ? document.getElementById("rejectSubmissionId").value : null);
+  const sub = submissions.find((s) => s.id === subId);
+  if (!sub) return;
+
+  const reasonInput = document.getElementById("rejectPhotoReasonInput");
+  const reason = reasonInput ? reasonInput.value.trim() : "Ảnh chụp bị mờ hoặc thiếu trang. Em vui lòng chụp lại bài làm nhé!";
+
+  const asg = assignments.find((a) => a.id === sub.assignmentId) || { title: "Bài tập", subject: "Môn học" };
+  const student = users.find((u) => u.id === sub.studentId) || { name: sub.studentName, email: "" };
+
+  sub.status = "resubmit_requested";
+  sub.resubmitRequested = true;
+  sub.grade = null;
+  sub.feedback = reason;
+
+  persistData();
+
+  const sb = getSupabase();
+  if (sb) {
+    try {
+      sb.rpc("grade_submission", {
+        p_teacher_id: currentUser.id,
+        p_password: currentUser.password,
+        p_submission_id: sub.id,
+        p_grade: null,
+        p_feedback: sub.feedback,
+        p_annotations: sub.annotations || {},
+        p_resubmit: true
+      }).then(({ error: rpcErr }) => {
+        if (rpcErr) {
+          sb.from("eduproof_submissions").update({
+            status: "resubmit_requested",
+            resubmit_requested: true,
+            grade: null,
+            feedback: sub.feedback,
+            annotations: sub.annotations || {}
+          }).eq("id", sub.id).then(({ error }) => {
+            if (error) console.warn("Lỗi lưu trạng thái từ chối ảnh lên Supabase:", error);
+          });
+        }
+      });
+    } catch (err) {
+      console.warn("Lỗi kết nối Supabase khi từ chối ảnh:", err);
+    }
+  }
+
+  let emailSent = false;
+  if (student.email && student.email.includes("@") && student.email.includes(".")) {
+    const appUrl = window.location.origin + window.location.pathname;
+    const emailSubject = `[EduProof] Yêu cầu nộp lại ảnh bài làm - Môn ${asg.subject}: ${asg.title}`;
+    const emailBody = `Chào em ${student.name},\n\nThầy/Cô ${currentUser.name} đã kiểm tra ảnh bài làm của em cho bài tập "${asg.title}" (Môn ${asg.subject}).\n\n🚫 LÝ DO TỪ CHỐI ẢNH: "${reason}"\n\n👉 Em hãy đăng nhập vào hệ thống EduProof để chụp lại ảnh bài làm rõ nét hơn và gửi lại cho thầy/cô nhé:\n${appUrl}\n\nChúc em học tốt!\nThân ái,\n${currentUser.name}`;
+
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(student.email)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    const mailtoUrl = `mailto:${encodeURIComponent(student.email)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+
+    try {
+      const win = window.open(gmailUrl, "_blank");
+      if (!win) {
+        window.location.href = mailtoUrl;
+      }
+    } catch (e) {
+      window.location.href = mailtoUrl;
+    }
+    emailSent = true;
+  }
+
+  closeRejectPhotoModal();
+  closeGradingStudio();
+  renderCurrentView();
+
+  if (emailSent) {
+    showNoticeModal(
+      `Đã từ chối ảnh bài làm và tự động kích hoạt gửi thư thông báo tới email học sinh <strong>${sanitizeText(student.name)}</strong> (${sanitizeText(student.email)})!`,
+      "Từ chối & Gửi Email thành công",
+      "📧"
+    );
+  } else {
+    showNoticeModal(
+      `Đã từ chối ảnh bài làm của học sinh <strong>${sanitizeText(student.name)}</strong> và chuyển sang trạng thái "Cần nộp lại".\n\n💡 Học sinh chưa cài email nên thông báo hiển thị trực tiếp khi em đăng nhập web.`,
+      "Đã từ chối ảnh",
+      "⚠️"
+    );
+  }
 }
 
 // ==========================================

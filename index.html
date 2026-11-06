@@ -637,9 +637,12 @@
             </div>
           </div>
 
-          <div style="padding-top: 1rem; border-top: 1px solid var(--border-color);">
+          <div style="padding-top: 1rem; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 0.5rem;">
             <button id="saveGradeBtn" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 0.7rem; font-size: 0.88rem; font-weight: 700;" onclick="saveAndReturnGrade()">
               ✅ Xác nhận học sinh đã làm bài
+            </button>
+            <button id="gradingRejectPhotoBtn" class="btn btn-danger-outline" style="width: 100%; justify-content: center; padding: 0.6rem; font-size: 0.82rem; font-weight: 700;" onclick="openRejectPhotoModal(activeGradingSubmissionId)">
+              🚫 Từ chối ảnh & Báo gửi lại qua Email
             </button>
           </div>
         </div>
@@ -872,6 +875,50 @@
         <a id="batchEmailClientBtn" href="#" class="btn btn-primary" style="text-decoration: none; background: #4338CA;">
           ✉️ Mở Mail Client
         </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 7.5: REJECT PHOTO & AUTO NOTIFY EMAIL ==================== -->
+  <div id="rejectPhotoModal" class="modal-overlay" style="display: none; z-index: 9998;" onclick="if (event.target === this) closeRejectPhotoModal()">
+    <div class="modal-content" style="max-width: 520px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 1.25rem;">🚫</span>
+          <h3 style="font-size: 1.05rem; font-weight: 700; color: #DC2626;">Từ chối ảnh bài làm & Yêu cầu chụp lại</h3>
+        </div>
+        <button class="tool-icon-btn" onclick="closeRejectPhotoModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="rejectSubmissionId" value="">
+        <div id="rejectStudentInfoBox" style="background: #FEF2F2; border: 1px solid #FECACA; padding: 0.75rem 0.9rem; border-radius: 8px; margin-bottom: 0.85rem; font-size: 0.82rem; line-height: 1.5; color: #991B1B;">
+          <!-- Rendered dynamically: Student name, Assignment, Email -->
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0.75rem;">
+          <label class="form-label" style="font-size: 0.78rem;">Chọn nhanh lý do từ chối ảnh:</label>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="setQuickRejectReason('Ảnh chụp bị mờ / lóa đèn, không đọc được bài làm')">📷 Ảnh mờ / lóa đèn</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="setQuickRejectReason('Chụp thiếu trang bài làm, cần chụp bổ sung đầy đủ')">📄 Thiếu trang</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="setQuickRejectReason('Ảnh chụp bị ngược chiều / méo góc, khó theo dõi')">🔄 Ảnh bị ngược / lệch</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="setQuickRejectReason('Chụp nhầm vở hoặc nhầm đề bài khác, vui lòng kiểm tra lại')">❌ Nhầm đề bài</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" style="font-size: 0.78rem;">Lời dặn / Chi tiết lý do gửi cho học sinh:</label>
+          <textarea id="rejectPhotoReasonInput" class="form-textarea" rows="3" placeholder="Nhập lý do chi tiết để học sinh biết cần sửa gì..." style="font-size: 0.82rem; background: #FFF; font-family: inherit; line-height: 1.5;"></textarea>
+        </div>
+
+        <div id="rejectEmailNotifyHint" style="font-size: 0.78rem; color: #4F46E5; background: #EEF2FF; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid #C7D2FE;">
+          <!-- Dynamic hint about email auto dispatch -->
+        </div>
+      </div>
+      <div class="modal-footer" style="gap: 0.5rem;">
+        <button class="btn btn-secondary" onclick="closeRejectPhotoModal()">Hủy bỏ</button>
+        <button class="btn btn-danger" id="confirmRejectPhotoBtn" onclick="confirmRejectPhotoAndNotify()">
+          🚫 Xác nhận từ chối & Tự động gửi Email
+        </button>
       </div>
     </div>
   </div>
