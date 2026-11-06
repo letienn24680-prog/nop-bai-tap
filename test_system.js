@@ -1570,4 +1570,24 @@ assert.strictEqual(mockSubmissions47[0].className, "12A2");
 
 console.log("✅ 47. Kiểm thử Admin Quản trị & Chỉnh sửa Thông tin Tài khoản Giáo viên và Học sinh: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (47/47)!");
+// 48. Test: Khắc phục triệt để lỗi ô chọn đợt bài bị kéo giãn chiều dọc thành hình vuông khổng lồ
+const css48 = fs.readFileSync(path.join(__dirname, "app.css"), "utf8");
+
+// 1. Kiểm tra .campaign-select và .form-select được cố định chiều cao chuẩn 38px, không bị giãn dọc
+assert.ok(
+  css48.includes("height: 38px !important;") &&
+  css48.includes("min-height: 38px !important;") &&
+  css48.includes("max-height: 38px !important;"),
+  "app.css phải cố định height, min-height, max-height 38px cho .campaign-select để chống giãn dọc trên mọi thiết bị"
+);
+
+// 2. Kiểm tra .campaign-select-wrap trên màn hình nhỏ được reset flex: none !important
+assert.ok(
+  css48.includes(".campaign-select-wrap") &&
+  css48.includes("flex: none !important;"),
+  "app.css phải triệt tiêu flex basis dọc trên màn hình di động cho .campaign-select-wrap"
+);
+
+console.log("✅ 48. Kiểm thử Cố định Chiều cao Chuẩn Ô chọn Đợt bài (Chống Giãn dọc Khổng lồ trên Mobile/PC): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (48/48)!");

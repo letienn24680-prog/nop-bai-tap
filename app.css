@@ -783,6 +783,8 @@ body {
   background-size: 14px 14px;
   padding-right: 2.2rem !important;
   cursor: pointer;
+  height: 38px;
+  line-height: normal;
 }
 
 /* Quick chips */
@@ -1276,6 +1278,7 @@ body {
     box-sizing: border-box !important;
   }
   .campaign-select-wrap {
+    flex: none !important;
     flex-direction: column !important;
     align-items: stretch !important;
     gap: 0.35rem !important;
@@ -1285,8 +1288,12 @@ body {
     box-sizing: border-box !important;
   }
   .campaign-select {
+    flex: none !important;
     width: 100% !important;
     max-width: 100% !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    max-height: 38px !important;
     box-sizing: border-box !important;
   }
   .campaign-deadline-pill {
@@ -1441,8 +1448,8 @@ body {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  flex: 1 1 300px;
-  min-width: 0;
+  flex: 1 1 auto;
+  min-width: 260px;
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -1463,6 +1470,10 @@ body {
   border: 1px solid #CBD5E1;
   background-color: #F8FAFC;
   flex: 1 1 auto;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  line-height: normal !important;
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
