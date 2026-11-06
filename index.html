@@ -381,9 +381,27 @@
         </div>
       </div>
 
-      <!-- Tab 5: Gradebook Tab Content -->
+      <!-- Tab 5: Gradebook Tab Content (Sổ theo dõi & Điểm số theo từng đề bài) -->
       <div id="teacherGradebookTab" style="display: none;">
-        <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); padding: 1rem;">
+        <!-- Assignment Selector Header -->
+        <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); padding: 1.15rem 1.25rem; margin-bottom: 1.15rem;">
+          <div style="display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 0.85rem;">
+            <div style="flex: 1; min-width: 260px;">
+              <label for="gradebookAssignmentSelect" style="font-size: 0.82rem; font-weight: 700; color: #4338CA; display: block; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.03em;">
+                📖 Chọn đề bài để xem danh sách học sinh & điểm số:
+              </label>
+              <select id="gradebookAssignmentSelect" class="form-select" style="width: 100%; max-width: 520px; font-weight: 600;" onchange="handleGradebookAssignmentChange(this.value)">
+                <!-- Options rendered dynamically -->
+              </select>
+            </div>
+            <div id="gradebookTopActions" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <!-- Export & action buttons rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Gradebook Detail & Student List Container -->
+        <div id="gradebookDetailContainer">
           <div class="campaign-desktop-view">
             <table class="data-table" id="gradebookTable">
               <!-- Rendered dynamically -->

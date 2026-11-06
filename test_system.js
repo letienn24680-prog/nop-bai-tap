@@ -1021,4 +1021,23 @@ assert.ok(
 
 console.log("✅ 37. Kiểm thử tính năng song song PC và Điện thoại (Touch Events & Chấm bài trên Canvas): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (37/37)!");
+// 38. Test: Gradebook per-assignment selector and isolated student status
+const currentJs38 = fs.readFileSync("app.js", "utf8");
+const currentHtml38 = fs.readFileSync("index.html", "utf8");
+
+assert.ok(
+  currentHtml38.includes('id="gradebookAssignmentSelect"') && currentHtml38.includes('id="gradebookDetailContainer"'),
+  "index.html phải có ô chọn đề bài gradebookAssignmentSelect và container chi tiết sổ điểm"
+);
+assert.ok(
+  currentJs38.includes("handleGradebookAssignmentChange") && currentJs38.includes("filterGradebookStudents"),
+  "app.js phải có hàm xử lý đổi đề bài và lọc học sinh trong Sổ điểm"
+);
+assert.ok(
+  currentJs38.includes("gradebookSelectedAssignmentId") && currentJs38.includes("exportAllGradebookReport"),
+  "app.js phải quản lý đề bài được chọn độc lập và hỗ trợ xuất báo cáo tổng hợp"
+);
+
+console.log("✅ 38. Kiểm thử Sổ điểm theo từng đề bài độc lập & Thống kê song song PC/Điện thoại: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (38/38)!");

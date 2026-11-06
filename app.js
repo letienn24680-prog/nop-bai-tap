@@ -187,6 +187,8 @@ let studentFilter = "all";
 let teacherActiveTab = "submissions";
 let selectedCampaignId = null;
 let campaignStudentFilter = "all";
+let gradebookSelectedAssignmentId = null;
+let gradebookStudentFilter = "all";
 
 // Submission Modal State (Student)
 let activeSubmittingAssignmentId = null;
@@ -378,6 +380,9 @@ function initData() {
   const savedSelectedCampaign = localStorage.getItem("eduproof_selected_campaign");
   if (savedSelectedCampaign) selectedCampaignId = savedSelectedCampaign;
 
+  const savedGradebookAsg = localStorage.getItem("eduproof_gradebook_asg");
+  if (savedGradebookAsg) gradebookSelectedAssignmentId = savedGradebookAsg;
+
   // 3. Load or Seed Assignments & Submissions
   const savedAssignments = localStorage.getItem(DB_KEY_ASSIGNMENTS);
   const savedSubmissions = localStorage.getItem(DB_KEY_SUBMISSIONS);
@@ -396,6 +401,9 @@ function initData() {
       });
       if (!selectedCampaignId && assignments.length > 0) {
         selectedCampaignId = assignments[0].id;
+      }
+      if (!gradebookSelectedAssignmentId && assignments.length > 0) {
+        gradebookSelectedAssignmentId = assignments[0].id;
       }
       updateHeaderUserDisplay();
       renderCurrentView();
@@ -810,6 +818,7 @@ function logout() {
   localStorage.removeItem("eduproof_teacher_tab");
   localStorage.removeItem("eduproof_admin_tab");
   localStorage.removeItem("eduproof_selected_campaign");
+  localStorage.removeItem("eduproof_gradebook_asg");
   localStorage.removeItem("eduproof_student_filter");
   showLoginScreen();
 }
@@ -3013,103 +3022,489 @@ function renderTeacherStudents(myStudentsList) {
   }
 }
 
+function handleGradebookAssignmentChange(assignmentId) {
+  gradebookSelectedAssignmentId = assignmentId;
+  localStorage.setItem("eduproof_gradebook_asg", assignmentId);
+  renderTeacherGradebook();
+}
+
+function filterGradebookStudents(mode) {
+  gradebookStudentFilter = mode;
+  renderTeacherGradebook();
+}
+
+function exportAllGradebookReport() {
+  const myAssignments = assignments.filter((a) => a.teacherId === currentUser.id);
+  const myStudents = users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
+
+  const rows = myStudents.map((st, idx) => {
+    const stSubs = submissions.filter((s) => s.studentId === st.id);
+    const gradedSubs = stSubs.filter((s) => s.status === "graded" && s.grade !== null);
+    const avgScore = gradedSubs.length > 0
+      ? (gradedSubs.reduce((acc, curr) => acc + curr.grade, 0) / gradedSubs.length).toFixed(1)
+      : "—";
+
+    return {
+      "STT": idx + 1,
+      "Họ và tên": st.name,
+      "Tên đăng nhập": st.username,
+      "Lớp": st.class || "12A1",
+      "Số bài đã nộp": `${stSubs.length} / ${myAssignments.length}`,
+      "Điểm trung bình": avgScore,
+      "Tỷ lệ hoàn thành": myAssignments.length > 0 ? `${Math.round((stSubs.length / myAssignments.length) * 100)}%` : "0%"
+    };
+  });
+
+  if (typeof XLSX !== "undefined") {
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "So_Diem_Tong_Hop");
+    XLSX.writeFile(wb, `So_Diem_Tong_Hop_${new Date().toLocaleDateString("vi-VN").replace(/\//g, "-")}.xlsx`);
+  } else {
+    alert("Thư viện Excel chưa sẵn sàng. Vui lòng thử lại sau 1 giây.");
+  }
+}
+
 function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
-  const table = document.getElementById("gradebookTable");
-  const cardsContainer = document.getElementById("gradebookCards");
+  const selectBox = document.getElementById("gradebookAssignmentSelect");
+  const topActions = document.getElementById("gradebookTopActions");
+  const detailContainer = document.getElementById("gradebookDetailContainer");
+
   const studentUsers = myStudentsList || users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
   const myAssignments = myAssignmentsList || assignments.filter((a) => a.teacherId === currentUser.id);
 
-  if (table) {
-    table.innerHTML = `
-      <thead>
-        <tr>
-          <th>Họ và tên</th>
-          <th>Tên đăng nhập</th>
-          <th>Lớp</th>
-          <th>Số bài đã nộp</th>
-          <th>Điểm TB</th>
-          <th>Đánh giá chuyên cần</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${studentUsers.length === 0 ? `<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Chưa có học sinh nào.</td></tr>` : ""}
-        ${studentUsers
-          .map((st) => {
-            const stSubs = submissions.filter((s) => s.studentId === st.id);
-            const gradedSubs = stSubs.filter((s) => s.status === "graded" && s.grade !== null);
-            const avgScore =
-              gradedSubs.length > 0
-                ? (gradedSubs.reduce((acc, curr) => acc + curr.grade, 0) / gradedSubs.length).toFixed(1)
-                : "—";
+  if (myAssignments.length === 0) {
+    if (selectBox) selectBox.innerHTML = `<option value="none">Chưa có bài tập nào được tạo</option>`;
+    if (topActions) topActions.innerHTML = "";
+    if (detailContainer) {
+      detailContainer.innerHTML = `
+        <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); padding: 2.5rem 1.5rem; text-align: center; color: var(--text-muted);">
+          <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">📖</div>
+          <p style="font-size: 1rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Thầy/Cô chưa tạo bài tập nào.</p>
+          <p style="font-size: 0.85rem;">Hãy bấm nút "Tạo bài tập mới" ở góc trên để giao bài và mở sổ theo dõi điểm cho học sinh.</p>
+        </div>
+      `;
+    }
+    return;
+  }
 
-            let attendanceBadge = "";
-            if (stSubs.length === myAssignments.length && myAssignments.length > 0) {
-              attendanceBadge = `<span class="badge-status status-graded">100% Đầy đủ</span>`;
-            } else if (stSubs.length > 0) {
-              attendanceBadge = `<span class="badge-status status-submitted">${stSubs.length}/${myAssignments.length} bài</span>`;
-            } else {
-              attendanceBadge = `<span class="badge-status status-resubmit">Chưa nộp bài nào</span>`;
-            }
+  // Xác định đề bài được chọn (Ưu tiên đề đang chọn, hoặc đề đầu tiên)
+  if (!gradebookSelectedAssignmentId || (gradebookSelectedAssignmentId !== "all" && !myAssignments.some((a) => a.id === gradebookSelectedAssignmentId))) {
+    gradebookSelectedAssignmentId = myAssignments[0].id;
+    localStorage.setItem("eduproof_gradebook_asg", gradebookSelectedAssignmentId);
+  }
 
-            return `
-              <tr>
-                <td><strong>${sanitizeText(st.name)}</strong></td>
-                <td><code>${sanitizeText(st.username)}</code></td>
-                <td>${sanitizeText(st.class || "12A1")}</td>
-                <td>${stSubs.length} / ${myAssignments.length} bài</td>
-                <td style="font-weight: 700; color: var(--primary);">${avgScore}</td>
-                <td>${attendanceBadge}</td>
-              </tr>
-            `;
-          })
-          .join("")}
-      </tbody>
+  // 1. Cập nhật danh sách đề bài vào ô chọn
+  if (selectBox) {
+    const optionsHtml = myAssignments.map((a) => {
+      const isSelected = gradebookSelectedAssignmentId === a.id ? "selected" : "";
+      const deadlineStr = new Date(a.deadline).toLocaleDateString("vi-VN");
+      return `<option value="${a.id}" ${isSelected}>📖 [${sanitizeText(a.subject)}] ${sanitizeText(a.title)} (Hạn: ${deadlineStr})</option>`;
+    });
+
+    optionsHtml.push(
+      `<option value="all" ${gradebookSelectedAssignmentId === "all" ? "selected" : ""}>📊 [Tất cả] Bảng tổng hợp chuyên cần & Điểm trung bình toàn khóa</option>`
+    );
+
+    selectBox.innerHTML = optionsHtml.join("");
+  }
+
+  // 2. TRƯỜNG HỢP A: Xem danh sách học sinh & điểm theo TỪNG ĐỀ BÀI RIÊNG BIỆT
+  if (gradebookSelectedAssignmentId !== "all") {
+    const asg = myAssignments.find((a) => a.id === gradebookSelectedAssignmentId) || myAssignments[0];
+    const asgSubmissions = submissions.filter((s) => s.assignmentId === asg.id);
+    const submittedStudentIds = new Set(asgSubmissions.map((s) => s.studentId));
+
+    const submittedCount = asgSubmissions.length;
+    const notSubmittedCount = Math.max(0, studentUsers.length - submittedCount);
+    const gradedSubs = asgSubmissions.filter((s) => s.status === "graded" && s.grade !== null);
+    const gradedCount = gradedSubs.length;
+    const avgScore = gradedCount > 0 ? (gradedSubs.reduce((acc, c) => acc + c.grade, 0) / gradedCount).toFixed(1) : "—";
+
+    // Cập nhật nút thao tác trên đầu
+    if (topActions) {
+      topActions.innerHTML = `
+        <button class="btn btn-secondary btn-sm" onclick="exportCampaignReport('${asg.id}')" title="Xuất file Excel điểm bài tập này">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+          Xuất Excel bài này
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="copyUnsubmittedStudents('${asg.id}')" title="Sao chép danh sách học sinh chưa nộp bài này để nhắc Zalo">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Nhắc Zalo (${notSubmittedCount})
+        </button>
+      `;
+    }
+
+    // Lọc danh sách học sinh theo tab bộ lọc
+    let displayedStudents = studentUsers;
+    if (gradebookStudentFilter === "submitted") {
+      displayedStudents = studentUsers.filter((st) => submittedStudentIds.has(st.id));
+    } else if (gradebookStudentFilter === "graded") {
+      displayedStudents = studentUsers.filter((st) => {
+        const sub = asgSubmissions.find((s) => s.studentId === st.id);
+        return sub && sub.status === "graded";
+      });
+    } else if (gradebookStudentFilter === "not_submitted") {
+      displayedStudents = studentUsers.filter((st) => !submittedStudentIds.has(st.id));
+    }
+
+    // Tạo HTML bảng Desktop (PC)
+    const tableRowsHtml = displayedStudents.map((st, idx) => {
+      const sub = asgSubmissions.find((s) => s.studentId === st.id);
+      if (sub) {
+        sub.photos = normalizePhotos(sub.photos);
+        let badge = "";
+        if (sub.status === "graded") badge = `<span class="badge-status status-graded">🎯 Đã chấm</span>`;
+        else if (sub.status === "resubmit_requested") badge = `<span class="badge-status status-resubmit">⚠️ Cần nộp lại</span>`;
+        else badge = `<span class="badge-status status-submitted">⏳ Chờ chấm</span>`;
+
+        const timeStr = new Date(sub.submittedAt).toLocaleTimeString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          day: "2-digit",
+          month: "2-digit"
+        });
+
+        const scoreDisplay = sub.grade !== null
+          ? `<strong style="color: #4338CA; font-size: 0.95rem;">${sub.grade} / 10</strong>`
+          : `<span style="color: var(--text-muted); font-size: 0.8rem;">Chờ chấm</span>`;
+
+        return `
+          <tr>
+            <td style="color: var(--text-muted); font-size: 0.78rem;">${idx + 1}</td>
+            <td><strong>${sanitizeText(st.name)}</strong> <span style="font-size: 0.75rem; color: var(--text-muted);">(${sanitizeText(st.username)})</span></td>
+            <td><span class="badge-subject" style="font-size: 0.72rem;">${sanitizeText(st.class || "12A1")}</span></td>
+            <td>${badge}</td>
+            <td style="font-size: 0.8rem; color: var(--text-muted);">${timeStr}</td>
+            <td><span style="font-size: 0.8rem;">📷 ${sub.photos.length} trang</span></td>
+            <td>${scoreDisplay}</td>
+            <td style="font-size: 0.78rem; color: #475569; max-width: 180px;">${sub.feedback ? `"${sanitizeText(sub.feedback)}"` : "—"}</td>
+            <td>
+              <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
+                ✏️ ${sub.status === "graded" ? "Sửa điểm" : "Chấm bài"}
+              </button>
+            </td>
+          </tr>
+        `;
+      } else {
+        return `
+          <tr>
+            <td style="color: var(--text-muted); font-size: 0.78rem;">${idx + 1}</td>
+            <td><strong>${sanitizeText(st.name)}</strong> <span style="font-size: 0.75rem; color: var(--text-muted);">(${sanitizeText(st.username)})</span></td>
+            <td><span class="badge-subject" style="font-size: 0.72rem;">${sanitizeText(st.class || "12A1")}</span></td>
+            <td><span class="badge-status status-resubmit">❌ Chưa nộp bài</span></td>
+            <td style="color: var(--text-muted); font-size: 0.8rem;">—</td>
+            <td style="color: var(--text-muted); font-size: 0.8rem;">0 trang</td>
+            <td style="color: var(--text-muted); font-size: 0.8rem;">—</td>
+            <td style="color: var(--text-muted); font-size: 0.8rem;">—</td>
+            <td>
+              <button class="btn btn-secondary btn-sm" onclick="remindStudent('${st.id}', '${asg.id}')">
+                📢 Nhắc nộp bài
+              </button>
+            </td>
+          </tr>
+        `;
+      }
+    }).join("");
+
+    // Tạo HTML thẻ di động (Mobile Cards)
+    const mobileCardsHtml = displayedStudents.map((st) => {
+      const sub = asgSubmissions.find((s) => s.studentId === st.id);
+      if (sub) {
+        sub.photos = normalizePhotos(sub.photos);
+        let badge = "";
+        if (sub.status === "graded") badge = `<span class="badge-status status-graded">🎯 Đã chấm</span>`;
+        else if (sub.status === "resubmit_requested") badge = `<span class="badge-status status-resubmit">⚠️ Cần nộp lại</span>`;
+        else badge = `<span class="badge-status status-submitted">⏳ Chờ chấm</span>`;
+
+        const timeStr = new Date(sub.submittedAt).toLocaleTimeString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          day: "2-digit",
+          month: "2-digit"
+        });
+
+        const scoreText = sub.grade !== null ? sub.grade + "/10" : "Chờ chấm";
+
+        return `
+          <div class="campaign-student-card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.45rem;">
+              <div>
+                <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${sanitizeText(st.name)}</div>
+                <div style="font-size: 0.74rem; color: var(--text-muted);">${sanitizeText(st.username)} • Lớp ${sanitizeText(st.class || "12A1")}</div>
+              </div>
+              <div>${badge}</div>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 0.55rem; font-size: 0.76rem; color: #475569; background: #F8FAFC; padding: 0.4rem 0.6rem; border-radius: 8px; margin-bottom: 0.5rem; align-items: center; border: 1px solid #F1F5F9;">
+              <span>🕒 ${timeStr}</span>
+              <span>📷 ${sub.photos.length} trang ảnh</span>
+              <span>🎯 Điểm: <strong style="color: #4338CA;">${scoreText}</strong></span>
+            </div>
+
+            ${sub.feedback ? `<div style="font-size: 0.74rem; color: #4F46E5; margin-bottom: 0.45rem; font-style: italic;">✍️ Lời phê: "${sanitizeText(sub.feedback)}"</div>` : ""}
+
+            <button class="btn btn-primary btn-sm" style="width: 100%; justify-content: center; padding: 0.45rem;" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
+              ✏️ ${sub.status === "graded" ? "Sửa điểm & Lời phê" : "Mở chấm bài"}
+            </button>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="campaign-student-card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.45rem;">
+              <div>
+                <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${sanitizeText(st.name)}</div>
+                <div style="font-size: 0.74rem; color: var(--text-muted);">${sanitizeText(st.username)} • Lớp ${sanitizeText(st.class || "12A1")}</div>
+              </div>
+              <div><span class="badge-status status-resubmit">❌ Chưa nộp bài</span></div>
+            </div>
+
+            <div style="display: flex; gap: 0.6rem; font-size: 0.76rem; color: #64748B; background: #FFF1F2; padding: 0.4rem 0.6rem; border-radius: 8px; margin-bottom: 0.5rem; align-items: center; border: 1px solid #FFE4E6;">
+              <span style="color: #E11D48; font-weight: 600;">⚠️ Chưa nộp bài tập</span>
+              <span>• 0 trang ảnh</span>
+            </div>
+
+            <button class="btn btn-secondary btn-sm" style="width: 100%; justify-content: center; padding: 0.45rem;" onclick="remindStudent('${st.id}', '${asg.id}')">
+              📢 Nhắc nộp bài
+            </button>
+          </div>
+        `;
+      }
+    }).join("");
+
+    if (detailContainer) {
+      detailContainer.innerHTML = `
+        <div class="campaign-banner">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+            <div>
+              <div style="margin-bottom: 0.4rem;">${formatSubjectBadge(asg.subject)}</div>
+              <h2 style="font-size: 1.2rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">
+                ${sanitizeText(asg.title)}
+              </h2>
+              <p style="font-size: 0.82rem; color: var(--text-muted);">
+                Hạn nộp: <strong>${new Date(asg.deadline).toLocaleString("vi-VN")}</strong>
+              </p>
+            </div>
+          </div>
+
+          <div class="campaign-stats-grid">
+            <div class="stat-box">
+              <div class="stat-num">${studentUsers.length}</div>
+              <div class="stat-label">Học sinh lớp</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-num" style="color: var(--primary);">${submittedCount}</div>
+              <div class="stat-label">Đã gửi bài nộp</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-num" style="color: var(--danger);">${notSubmittedCount}</div>
+              <div class="stat-label">Chưa nộp bài</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-num" style="color: var(--success);">${avgScore}</div>
+              <div class="stat-label">Điểm TB đề này (${gradedCount} đã chấm)</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); padding: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.85rem;">
+            <h3 style="font-size: 1.05rem; font-weight: 700;">
+              Danh sách học sinh (${displayedStudents.length} / ${studentUsers.length} học sinh)
+            </h3>
+            <div class="filter-tabs" style="margin-bottom: 0; padding-bottom: 0;">
+              <button class="tab-btn ${gradebookStudentFilter === 'all' ? 'active' : ''}" onclick="filterGradebookStudents('all')">
+                Tất cả (${studentUsers.length})
+              </button>
+              <button class="tab-btn ${gradebookStudentFilter === 'submitted' ? 'active' : ''}" onclick="filterGradebookStudents('submitted')">
+                Đã nộp (${submittedCount})
+              </button>
+              <button class="tab-btn ${gradebookStudentFilter === 'graded' ? 'active' : ''}" onclick="filterGradebookStudents('graded')">
+                Đã chấm (${gradedCount})
+              </button>
+              <button class="tab-btn ${gradebookStudentFilter === 'not_submitted' ? 'active' : ''}" onclick="filterGradebookStudents('not_submitted')">
+                Chưa nộp (${notSubmittedCount})
+              </button>
+            </div>
+          </div>
+
+          <div class="campaign-desktop-view">
+            <table class="data-table" id="gradebookTable">
+              <thead>
+                <tr>
+                  <th style="width: 40px;">STT</th>
+                  <th>Học sinh</th>
+                  <th>Lớp</th>
+                  <th>Trạng thái nộp</th>
+                  <th>Thời gian nộp</th>
+                  <th>Số trang ảnh</th>
+                  <th>Điểm số</th>
+                  <th>Lời phê</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${displayedStudents.length === 0 ? `<tr><td colspan="9" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Không có học sinh nào trong mục này.</td></tr>` : tableRowsHtml}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="campaign-mobile-view" id="gradebookCards">
+            ${displayedStudents.length === 0 ? `<div style="text-align:center; padding:1.5rem; color:var(--text-muted);">Không có học sinh nào trong mục này.</div>` : mobileCardsHtml}
+          </div>
+        </div>
+      `;
+    }
+    return;
+  }
+
+  // 3. TRƯỜNG HỢP B: Bảng tổng hợp chuyên cần & Điểm trung bình toàn khóa (selected === 'all')
+  if (topActions) {
+    topActions.innerHTML = `
+      <button class="btn btn-secondary btn-sm" onclick="exportAllGradebookReport()" title="Xuất sổ điểm tổng hợp Excel">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+        Xuất sổ điểm tổng hợp Excel
+      </button>
     `;
   }
 
-  if (cardsContainer) {
-    cardsContainer.innerHTML = studentUsers.length === 0
-      ? `<div style="text-align:center; padding:1.5rem; color:var(--text-muted);">Chưa có học sinh nào.</div>`
-      : studentUsers.map((st) => {
-          const stSubs = submissions.filter((s) => s.studentId === st.id);
-          const gradedSubs = stSubs.filter((s) => s.status === "graded" && s.grade !== null);
-          const avgScore =
-            gradedSubs.length > 0
-              ? (gradedSubs.reduce((acc, curr) => acc + curr.grade, 0) / gradedSubs.length).toFixed(1)
-              : "—";
+  const allMyAsgIds = new Set(myAssignments.map((a) => a.id));
+  const allMySubs = submissions.filter((s) => allMyAsgIds.has(s.assignmentId));
+  const allGradedSubs = allMySubs.filter((s) => s.status === "graded" && s.grade !== null);
+  const overallAvg = allGradedSubs.length > 0 ? (allGradedSubs.reduce((acc, c) => acc + c.grade, 0) / allGradedSubs.length).toFixed(1) : "—";
 
-          let attendanceBadge = "";
-          if (stSubs.length === myAssignments.length && myAssignments.length > 0) {
-            attendanceBadge = `<span class="badge-status status-graded">100% Đầy đủ</span>`;
-          } else if (stSubs.length > 0) {
-            attendanceBadge = `<span class="badge-status status-submitted">${stSubs.length}/${myAssignments.length} bài</span>`;
-          } else {
-            attendanceBadge = `<span class="badge-status status-resubmit">Chưa nộp</span>`;
-          }
+  const totalPossible = studentUsers.length * myAssignments.length;
+  const overallRate = totalPossible > 0 ? Math.round((allMySubs.length / totalPossible) * 100) : 0;
 
-          const scoreColor = avgScore !== "—" ? (parseFloat(avgScore) >= 8 ? "#16A34A" : parseFloat(avgScore) >= 5 ? "#2563EB" : "#DC2626") : "var(--text-muted)";
+  const summaryTableRows = studentUsers.map((st, idx) => {
+    const stSubs = allMySubs.filter((s) => s.studentId === st.id);
+    const gradedSubs = stSubs.filter((s) => s.status === "graded" && s.grade !== null);
+    const avgScore = gradedSubs.length > 0
+      ? (gradedSubs.reduce((acc, curr) => acc + curr.grade, 0) / gradedSubs.length).toFixed(1)
+      : "—";
 
-          return `
-            <div class="campaign-student-card">
-              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.35rem;">
-                <div>
-                  <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${sanitizeText(st.name)}</div>
-                  <div style="font-size: 0.74rem; color: var(--text-muted);">
-                    <code>${sanitizeText(st.username)}</code> • Lớp ${sanitizeText(st.class || "12A1")}
-                  </div>
-                </div>
-                <div style="text-align: right;">
-                  <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700;">ĐIỂM TB</div>
-                  <div style="font-size: 1.15rem; font-weight: 800; color: ${scoreColor};">${avgScore}</div>
-                </div>
-              </div>
-              <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.4rem; border-top: 1px solid #F1F5F9; font-size: 0.78rem;">
-                <span style="color: var(--text-muted);">Đã nộp: <strong>${stSubs.length} / ${myAssignments.length} bài</strong></span>
-                <div>${attendanceBadge}</div>
-              </div>
+    let attendanceBadge = "";
+    if (stSubs.length === myAssignments.length && myAssignments.length > 0) {
+      attendanceBadge = `<span class="badge-status status-graded">100% Đầy đủ</span>`;
+    } else if (stSubs.length > 0) {
+      attendanceBadge = `<span class="badge-status status-submitted">${stSubs.length}/${myAssignments.length} bài</span>`;
+    } else {
+      attendanceBadge = `<span class="badge-status status-resubmit">Chưa nộp bài nào</span>`;
+    }
+
+    return `
+      <tr>
+        <td style="color: var(--text-muted); font-size: 0.78rem;">${idx + 1}</td>
+        <td><strong>${sanitizeText(st.name)}</strong></td>
+        <td><code>${sanitizeText(st.username)}</code></td>
+        <td>${sanitizeText(st.class || "12A1")}</td>
+        <td><strong>${stSubs.length} / ${myAssignments.length} bài</strong></td>
+        <td style="font-weight: 700; color: var(--primary); font-size: 0.95rem;">${avgScore}</td>
+        <td>${attendanceBadge}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const summaryMobileCards = studentUsers.map((st) => {
+    const stSubs = allMySubs.filter((s) => s.studentId === st.id);
+    const gradedSubs = stSubs.filter((s) => s.status === "graded" && s.grade !== null);
+    const avgScore = gradedSubs.length > 0
+      ? (gradedSubs.reduce((acc, curr) => acc + curr.grade, 0) / gradedSubs.length).toFixed(1)
+      : "—";
+
+    let attendanceBadge = "";
+    if (stSubs.length === myAssignments.length && myAssignments.length > 0) {
+      attendanceBadge = `<span class="badge-status status-graded">100% Đầy đủ</span>`;
+    } else if (stSubs.length > 0) {
+      attendanceBadge = `<span class="badge-status status-submitted">${stSubs.length}/${myAssignments.length} bài</span>`;
+    } else {
+      attendanceBadge = `<span class="badge-status status-resubmit">Chưa nộp</span>`;
+    }
+
+    const scoreColor = avgScore !== "—" ? (parseFloat(avgScore) >= 8 ? "#16A34A" : parseFloat(avgScore) >= 5 ? "#2563EB" : "#DC2626") : "var(--text-muted)";
+
+    return `
+      <div class="campaign-student-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.35rem;">
+          <div>
+            <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${sanitizeText(st.name)}</div>
+            <div style="font-size: 0.74rem; color: var(--text-muted);">
+              <code>${sanitizeText(st.username)}</code> • Lớp ${sanitizeText(st.class || "12A1")}
             </div>
-          `;
-        }).join("");
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700;">ĐIỂM TB</div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: ${scoreColor};">${avgScore}</div>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.4rem; border-top: 1px solid #F1F5F9; font-size: 0.78rem;">
+          <span style="color: var(--text-muted);">Đã nộp: <strong>${stSubs.length} / ${myAssignments.length} bài</strong></span>
+          <div>${attendanceBadge}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  if (detailContainer) {
+    detailContainer.innerHTML = `
+      <div class="campaign-banner">
+        <h2 style="font-size: 1.2rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">
+          📊 Bảng tổng hợp chuyên cần & Điểm trung bình toàn khóa
+        </h2>
+        <p style="font-size: 0.82rem; color: var(--text-muted);">
+          Thống kê dữ liệu xuyên suốt tất cả ${myAssignments.length} đề bài đã giao
+        </p>
+
+        <div class="campaign-stats-grid">
+          <div class="stat-box">
+            <div class="stat-num">${myAssignments.length}</div>
+            <div class="stat-label">Tổng số đề bài đã giao</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num">${studentUsers.length}</div>
+            <div class="stat-label">Học sinh của bạn</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num" style="color: var(--primary);">${overallRate}%</div>
+            <div class="stat-label">Tỷ lệ nộp bài chung (${allMySubs.length} lượt)</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num" style="color: var(--success);">${overallAvg}</div>
+            <div class="stat-label">Điểm TB toàn khóa (${allGradedSubs.length} đã chấm)</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); padding: 1.25rem;">
+        <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 0.85rem;">
+          Danh sách chuyên cần toàn lớp (${studentUsers.length} học sinh)
+        </h3>
+
+        <div class="campaign-desktop-view">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 40px;">STT</th>
+                <th>Họ và tên</th>
+                <th>Tên đăng nhập</th>
+                <th>Lớp</th>
+                <th>Số bài đã nộp</th>
+                <th>Điểm TB</th>
+                <th>Đánh giá chuyên cần</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${studentUsers.length === 0 ? `<tr><td colspan="7" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Chưa có học sinh nào.</td></tr>` : summaryTableRows}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="campaign-mobile-view">
+          ${studentUsers.length === 0 ? `<div style="text-align:center; padding:1.5rem; color:var(--text-muted);">Chưa có học sinh nào.</div>` : summaryMobileCards}
+        </div>
+      </div>
+    `;
   }
 }
 
