@@ -896,4 +896,21 @@ assert.ok(
 
 console.log("✅ 30. Kiểm thử phân loại Hoạt động Đoàn trường & Báo cáo thống kê hoàn thành: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (30/30)!");
+// 31. Test: Mobile Segmented Filter Tabs & DataURL to Blob Conversion
+const currentCss = fs.readFileSync("app.css", "utf8");
+assert.ok(
+  currentCss.includes("tab-label-short") && currentCss.includes("tab-label-full"),
+  "app.css phải hỗ trợ lớp nhãn ngắn gọn .tab-label-short cho thiết bị di động"
+);
+assert.ok(
+  htmlContent.includes("tab-label-short") && htmlContent.includes("tab-label-full"),
+  "index.html phải có thẻ nhãn đầy đủ và nhãn ngắn cho bộ lọc học sinh & giáo viên"
+);
+assert.ok(
+  appJsContent.includes("dataUrlToBlob"),
+  "app.js phải có hàm dataUrlToBlob để chuyển đổi an toàn Base64 sang Blob trên Safari iOS / Chrome Android"
+);
+
+console.log("✅ 31. Kiểm thử giao diện thẻ lọc di động (Segmented Tabs) & nạp ảnh Base64 an toàn: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (31/31)!");

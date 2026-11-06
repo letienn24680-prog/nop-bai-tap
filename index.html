@@ -182,19 +182,23 @@
       <div class="filter-tabs">
         <button class="tab-btn active" onclick="filterStudentAssignments('all', this)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-          Tất cả bài tập
+          <span class="tab-label-full">Tất cả bài tập</span>
+          <span class="tab-label-short">Tất cả</span>
         </button>
         <button class="tab-btn" onclick="filterStudentAssignments('pending', this)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          Chưa nộp (Cần làm)
+          <span class="tab-label-full">Chưa nộp (Cần làm)</span>
+          <span class="tab-label-short">Cần làm</span>
         </button>
         <button class="tab-btn" onclick="filterStudentAssignments('submitted', this)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          Đã nộp / Chờ chấm
+          <span class="tab-label-full">Đã nộp / Chờ chấm</span>
+          <span class="tab-label-short">Đã nộp</span>
         </button>
         <button class="tab-btn" onclick="filterStudentAssignments('graded', this)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          Đã có điểm & Nhận xét
+          <span class="tab-label-full">Đã có điểm & Nhận xét</span>
+          <span class="tab-label-short">Có điểm</span>
         </button>
       </div>
 
@@ -231,23 +235,28 @@
       <div class="filter-tabs">
         <button class="tab-btn active" onclick="switchTeacherTab('submissions', this)">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          Hàng chờ bài nộp (<span id="pendingSubCount">0</span>)
+          <span class="tab-label-full">Hàng chờ bài nộp (<span id="pendingSubCount">0</span>)</span>
+          <span class="tab-label-short">Hàng chờ (<span id="pendingSubCountShort">0</span>)</span>
         </button>
         <button class="tab-btn" onclick="switchTeacherTab('campaigns', this)">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-          Quản lý nộp theo đợt bài tập
+          <span class="tab-label-full">Quản lý nộp theo đợt bài tập</span>
+          <span class="tab-label-short">Theo đợt</span>
         </button>
         <button class="tab-btn" onclick="switchTeacherTab('assignments', this)">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-          Danh sách bài đã giao
+          <span class="tab-label-full">Danh sách bài đã giao</span>
+          <span class="tab-label-short">Bài đã giao</span>
         </button>
         <button class="tab-btn" onclick="switchTeacherTab('students', this)">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Quản lý tài khoản học sinh (<span id="totalStudentsCount">0</span>)
+          <span class="tab-label-full">Quản lý tài khoản học sinh (<span id="totalStudentsCount">0</span>)</span>
+          <span class="tab-label-short">Học sinh (<span id="totalStudentsCountShort">0</span>)</span>
         </button>
         <button class="tab-btn" onclick="switchTeacherTab('gradebook', this)">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          Sổ theo dõi chuyên cần & Điểm số
+          <span class="tab-label-full">Sổ theo dõi chuyên cần & Điểm số</span>
+          <span class="tab-label-short">Sổ điểm</span>
         </button>
       </div>
 

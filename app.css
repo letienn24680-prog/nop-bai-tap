@@ -264,6 +264,14 @@ body {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.tab-label-short {
+  display: none !important;
+}
+
+.tab-label-full {
+  display: inline !important;
+}
+
 .tab-btn:hover {
   background: #EEF2FF;
   border-color: #A5B4FC;
@@ -896,6 +904,13 @@ body {
   }
 
   /* 3. Filter Tabs Mobile */
+  .tab-label-full {
+    display: none !important;
+  }
+  .tab-label-short {
+    display: inline !important;
+  }
+
   .filter-tabs {
     gap: 0.35rem;
     padding-bottom: 0.35rem;
@@ -905,6 +920,26 @@ body {
     padding: 0.35rem 0.7rem;
     font-size: 0.78rem;
     border-radius: 9999px;
+  }
+
+  #studentView .filter-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 0.35rem !important;
+    overflow-x: visible !important;
+    white-space: normal !important;
+    padding: 0.15rem 0 0.35rem 0 !important;
+  }
+  #studentView .tab-btn {
+    padding: 0.45rem 0.2rem !important;
+    font-size: 0.74rem !important;
+    justify-content: center !important;
+    text-align: center !important;
+    border-radius: 10px !important;
+    width: 100% !important;
+  }
+  #studentView .tab-btn svg {
+    display: none !important;
   }
 
   /* 4. Assignment Card & Grid Mobile */

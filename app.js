@@ -1615,6 +1615,23 @@ function renderStudentView() {
       actionBtn = `<button class="btn btn-secondary btn-sm" onclick="viewSubmissionSummary('${sub.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Lời phê & Bút đỏ</button>`;
     }
 
+    let studentPhotoPreview = "";
+    if (sub && sub.photos) {
+      sub.photos = normalizePhotos(sub.photos);
+      const firstPhoto = sub.photos[0] ? (sub.photos[0].dataUrl || sub.photos[0].url || "") : "";
+      if (firstPhoto) {
+        studentPhotoPreview = `
+          <div style="display: flex; align-items: center; gap: 0.6rem; margin: 0.5rem 0; padding: 0.45rem; background: #EEF2FF; border-radius: 8px; border: 1px solid #C7D2FE; cursor: pointer;" onclick="viewSubmissionSummary('${sub.id}')" title="Bấm để xem lại bài nộp">
+            <img src="${firstPhoto}" alt="Ảnh đã nộp" style="width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid #A5B4FC;" onerror="this.onerror=null;this.src='';this.alt='Lỗi ảnh';" />
+            <div style="font-size: 0.74rem; color: #4338CA;">
+              <strong style="color: #1E1B4B;">Đã gửi ${sub.photos.length} ảnh minh chứng</strong><br>
+              <span style="color: #4F46E5;">Nộp: ${new Date(sub.submittedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}</span>
+            </div>
+          </div>
+        `;
+      }
+    }
+
     card.innerHTML = `
       <div>
         <div class="card-top">
@@ -1623,6 +1640,7 @@ function renderStudentView() {
         </div>
         <h3 class="card-title">${sanitizeText(asg.title)}</h3>
         <p class="card-instructions">${sanitizeText(asg.description)}</p>
+        ${studentPhotoPreview}
         <div class="proof-requirements">
           <span class="proof-tag">📷 Vở ghi (≥${asg.minPhotos} trang)</span>
           ${asg.allowLink ? '<span class="proof-tag">🔗 Kèm link</span>' : ""}
@@ -1777,7 +1795,8 @@ function handleFileSelect(event) {
       break;
     }
 
-    if (!file.type.startsWith("image/")) {
+    const isImage = (file.type && file.type.startsWith("image/")) || /\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i.test(file.name || "");
+    if (!isImage) {
       alert(`Tệp "${sanitizeText(file.name)}" không phải là hình ảnh hợp lệ.`);
       continue;
     }
@@ -1904,12 +1923,31 @@ function renderPhotoPreviews() {
   });
 }
 
+// Chuyển đổi an toàn Base64 dataURL sang Blob (chống lỗi fetch data: trên Safari iOS & Chrome Android)
+function dataUrlToBlob(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== "string" || !dataUrl.startsWith("data:")) return null;
+  try {
+    const parts = dataUrl.split(",");
+    const mimeMatch = parts[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+    const bstr = atob(parts[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  } catch (e) {
+    return null;
+  }
+}
+
 // Tải ảnh lên Supabase Storage bucket 'proofs' (nếu bucket tồn tại) và tự động fallback về Base64
 async function uploadPhotoToStorage(sb, dataUrl, filePath) {
   if (!sb || !dataUrl || !dataUrl.startsWith("data:")) return null;
   try {
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
+    const blob = dataUrlToBlob(dataUrl);
+    if (!blob) return null;
     const { data, error } = await sb.storage.from("proofs").upload(filePath, blob, {
       upsert: true,
       contentType: blob.type || "image/jpeg"
@@ -1998,7 +2036,7 @@ async function confirmSubmitAssignment() {
     if (sb) {
       // 2. Xác thực nộp bài qua RPC submit_homework bằng mật khẩu học sinh (chống nộp thay & mạo danh)
       try {
-        const { error: rpcErr } = await sb.rpc("submit_homework", {
+        const { data: rpcData, error: rpcErr } = await sb.rpc("submit_homework", {
           p_student_id: currentUser.id,
           p_password: currentUser.password,
           p_assignment_id: asg.id,
@@ -2025,6 +2063,12 @@ async function confirmSubmitAssignment() {
             feedback: newSubData.feedback,
             resubmit_requested: newSubData.resubmitRequested
           }]);
+        } else if (rpcData && rpcData.submission_id) {
+          newSubData.id = rpcData.submission_id;
+          if (subIndex >= 0) {
+            submissions[subIndex].id = rpcData.submission_id;
+          }
+          persistData();
         }
       } catch (cloudErr) {
         console.warn("Lỗi đồng bộ bài nộp lên cloud:", cloudErr);
@@ -2034,6 +2078,7 @@ async function confirmSubmitAssignment() {
     closeSubmitModal();
     renderStudentView();
     alert("🎉 Chúc mừng! Bạn đã nộp bài tập thành công.");
+    syncCloudData(false);
   } finally {
     isSubmitting = false;
     if (submitBtn) {
@@ -2084,8 +2129,15 @@ function renderTeacherView() {
   const mySubmissions = submissions.filter((s) => myAssignmentIds.has(s.assignmentId));
 
   const pendingSubs = mySubmissions.filter((s) => s.status === "submitted");
-  document.getElementById("pendingSubCount").innerText = pendingSubs.length;
-  document.getElementById("totalStudentsCount").innerText = myStudents.length;
+  const elPending = document.getElementById("pendingSubCount");
+  if (elPending) elPending.innerText = pendingSubs.length;
+  const elPendingShort = document.getElementById("pendingSubCountShort");
+  if (elPendingShort) elPendingShort.innerText = pendingSubs.length;
+
+  const elStudents = document.getElementById("totalStudentsCount");
+  if (elStudents) elStudents.innerText = myStudents.length;
+  const elStudentsShort = document.getElementById("totalStudentsCountShort");
+  if (elStudentsShort) elStudentsShort.innerText = myStudents.length;
 
   const subTab = document.getElementById("teacherSubmissionsTab");
   const camTab = document.getElementById("teacherCampaignTab");
@@ -2151,6 +2203,9 @@ function renderTeacherSubmissions(mySubmissionsList) {
       month: "2-digit"
     });
 
+    sub.photos = normalizePhotos(sub.photos);
+    const firstPhoto = sub.photos && sub.photos[0] ? (sub.photos[0].dataUrl || sub.photos[0].url || "") : "";
+
     card.innerHTML = `
       <div>
         <div class="card-top">
@@ -2160,13 +2215,23 @@ function renderTeacherSubmissions(mySubmissionsList) {
           </div>
           ${statusBadge}
         </div>
-        <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.25rem;">
-          ${asg ? sanitizeText(asg.title) : "Bài tập đã xóa"}
+        <div style="display: flex; gap: 0.75rem; align-items: flex-start; margin: 0.5rem 0;">
+          ${firstPhoto ? `
+            <div style="position: relative; width: 68px; height: 68px; flex-shrink: 0; cursor: pointer; border-radius: 8px; overflow: hidden; border: 1.5px solid #C7D2FE; box-shadow: 0 2px 5px rgba(0,0,0,0.08);" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)" title="Bấm để chấm bài trên ảnh">
+              <img src="${firstPhoto}" alt="Ảnh vở bài làm" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.onerror=null;this.src='';this.alt='Lỗi ảnh';" />
+              <span style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(15,23,42,0.75); color: #FFF; font-size: 0.62rem; text-align: center; font-weight: 600; padding: 1px 0;">${sub.photos.length} trang</span>
+            </div>
+          ` : ""}
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.2rem;">
+              ${asg ? sanitizeText(asg.title) : "Bài tập đã xóa"}
+            </div>
+            <div style="font-size: 0.74rem; color: var(--text-muted);">
+              Nộp lúc: ${submittedDate}
+            </div>
+            ${sub.studentNote ? `<div style="font-size: 0.75rem; background: #F8FAFC; padding: 0.3rem 0.5rem; border-radius: 4px; margin-top: 0.35rem; color: #475569;">💬 <em>"${sanitizeText(sub.studentNote)}"</em></div>` : ""}
+          </div>
         </div>
-        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-          Nộp lúc: ${submittedDate} • ${sub.photos.length} trang ảnh
-        </div>
-        ${sub.studentNote ? `<div style="font-size: 0.78rem; background: #F1F5F9; padding: 0.4rem; border-radius: 4px; margin-bottom: 0.5rem;">💬 <em>"${sanitizeText(sub.studentNote)}"</em></div>` : ""}
       </div>
       <div class="card-footer">
         <span style="font-size: 0.75rem; color: var(--text-muted);">Lớp: 12A1</span>
