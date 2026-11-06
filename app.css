@@ -247,17 +247,14 @@ body {
   border-radius: 8px;
 }
 
-/* Filter pills */
+/* Filter pills - Chống tràn ngang tuyệt đối, luôn gói gọn trong trang */
 .filter-tabs {
   display: flex;
-  gap: 0.6rem;
-  overflow-x: auto;
-  overflow-y: hidden;
-  white-space: nowrap;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE / Edge */
-  padding: 0.25rem 0.25rem 0.5rem 0.25rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  overflow: visible;
+  padding: 0.25rem 0 0.5rem 0;
   margin-bottom: 1.25rem;
 }
 
@@ -271,8 +268,8 @@ body {
   border: 1px solid #E2E8F0;
   background: #FFFFFF;
   color: #475569;
-  padding: 0.45rem 1rem;
-  font-size: 0.84rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
   border-radius: 9999px;
   cursor: pointer;
@@ -281,6 +278,11 @@ body {
   user-select: none;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  text-align: center;
 }
 
 .tab-label-short {
@@ -770,6 +772,22 @@ body {
 }
 
 /* Responsive Rules */
+@media (max-width: 960px) {
+  .tab-label-full {
+    display: none !important;
+  }
+  .tab-label-short {
+    display: inline !important;
+  }
+  .filter-tabs {
+    gap: 0.4rem;
+  }
+  .tab-btn {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+  }
+}
+
 @media (max-width: 860px) {
   .brand-subtitle {
     display: none !important;
@@ -811,6 +829,12 @@ body {
   }
   .logout-btn {
     padding: 0.25rem 0.4rem !important;
+  }
+  #studentView .filter-tabs {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  #adminView .filter-tabs {
+    grid-template-columns: 1fr !important;
   }
 }
 
@@ -962,24 +986,25 @@ body {
   }
 
   #teacherView .filter-tabs {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 0.35rem !important;
-    overflow-x: visible !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.4rem !important;
+    overflow: visible !important;
     white-space: normal !important;
     padding: 0.15rem 0 0.35rem 0 !important;
   }
   #teacherView .tab-btn {
-    flex: 1 1 calc(50% - 0.35rem) !important;
-    min-width: 125px !important;
-    padding: 0.45rem 0.3rem !important;
-    font-size: 0.74rem !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 0.45rem 0.35rem !important;
+    font-size: 0.76rem !important;
     justify-content: center !important;
     text-align: center !important;
     border-radius: 10px !important;
+    white-space: normal !important;
   }
-  #teacherView .tab-btn svg {
-    display: none !important;
+  #teacherView .tab-btn:nth-child(5) {
+    grid-column: span 2 !important;
   }
 
   #adminView .filter-tabs {
