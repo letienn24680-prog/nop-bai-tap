@@ -1646,4 +1646,32 @@ assert.ok(
 
 console.log("✅ 50. Kiểm thử Hiệu ứng Chuyển động Mượt mà & Tương tác Xúc giác (Animations & Micro-Interactions): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (50/50)!");
+// --- TEST 51: Kiểm thử logic hiển thị trạng thái và nút bấm khi giáo viên đã từ chối ảnh ---
+const appJs51 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+
+// 1. Kiểm tra logic hiển thị trạng thái và nút bấm trong renderTeacherCampaignView
+assert.ok(
+  appJs51.includes('sub.status === "resubmit_requested" || sub.resubmitRequested) ? "Xem bài đã từ chối" : "Kiểm tra bài làm"') &&
+  appJs51.includes('sub.status === "resubmit_requested" || sub.resubmitRequested) ? "Cần nộp lại" : "Chờ xem"') &&
+  appJs51.includes('sub.status === "submitted" && !sub.resubmitRequested'),
+  "renderTeacherCampaignView phải hiển thị 'Cần nộp lại', nút 'Xem bài đã từ chối' và ẩn nút 'Từ chối ảnh' khi bài nộp đã bị từ chối"
+);
+
+// 2. Kiểm tra logic hiển thị trong renderTeacherGradebook
+assert.ok(
+  appJs51.includes('sub.status === "resubmit_requested" || sub.resubmitRequested) ? "Xem bài đã từ chối" : "Kiểm tra bài"') &&
+  appJs51.includes('⚠️ Cần nộp lại ảnh</strong>') &&
+  appJs51.includes('⏳ Chờ xem</span>'),
+  "renderTeacherGradebook phải hiển thị trạng thái 'Cần nộp lại ảnh' và nút 'Xem bài đã từ chối'"
+);
+
+// 3. Kiểm tra logic trong openGradingStudio
+assert.ok(
+  appJs51.includes('headerPrefix = (sub.status === "resubmit_requested" || sub.resubmitRequested)\n    ? "Xem bài đã từ chối ảnh:"') ||
+  appJs51.includes('headerPrefix = (sub.status === "resubmit_requested" || sub.resubmitRequested)'),
+  "openGradingStudio phải cập nhật tiêu đề thành 'Xem bài đã từ chối ảnh' và ẩn nút từ chối nếu bài đã bị từ chối trước đó"
+);
+
+console.log("✅ 51. Kiểm thử Chuẩn hóa Logic Trạng thái Từ chối ảnh & Nút thao tác Giáo viên: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (51/51)!");

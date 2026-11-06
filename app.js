@@ -2798,7 +2798,7 @@ function renderTeacherSubmissions(mySubmissionsList) {
         <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
           <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-            ${sub.status === "graded" ? "Xem lại bài" : "Kiểm tra bài làm"}
+            ${sub.status === "graded" ? "Xem lại bài" : ((sub.status === "resubmit_requested" || sub.resubmitRequested) ? "Xem bài đã từ chối" : "Kiểm tra bài làm")}
           </button>
           <button class="btn btn-danger-outline btn-sm" onclick="openRejectPhotoModal('${sanitizeText(sub.id)}')" title="Từ chối ảnh bài làm và gửi email thông báo cho học sinh">
             🚫 Từ chối ảnh
@@ -2983,15 +2983,17 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
                 <td>${badge}</td>
                 <td>${timeStr}</td>
                 <td>📷 ${sub.photos.length} trang</td>
-                <td><strong style="color: #4338CA;">${sub.status === "graded" ? "✅ Đã hoàn thành" : "⏳ Chờ xem"}</strong></td>
+                <td>${sub.status === "graded" ? `<strong style="color: #059669;">✅ Đã làm</strong>` : ((sub.status === "resubmit_requested" || sub.resubmitRequested) ? `<strong style="color: #DC2626;">⚠️ Đã từ chối ảnh</strong>` : `<strong style="color: #4338CA;">⏳ Chờ xem</strong>`)}</td>
                 <td>
                   <div style="display: flex; gap: 0.35rem; align-items: center;">
                     <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
-                      ✍️ ${sub.status === "graded" ? "Xem lại" : "Kiểm tra"}
+                      ✍️ ${sub.status === "graded" ? "Xem lại" : ((sub.status === "resubmit_requested" || sub.resubmitRequested) ? "Xem bài đã từ chối" : "Kiểm tra")}
                     </button>
-                    <button class="btn btn-danger-outline btn-sm" onclick="openRejectPhotoModal('${sanitizeText(sub.id)}')" title="Từ chối ảnh bài làm và gửi email thông báo cho học sinh">
-                      🚫 Từ chối ảnh
-                    </button>
+                    ${(sub.status === "submitted" && !sub.resubmitRequested) ? `
+                      <button class="btn btn-danger-outline btn-sm" onclick="openRejectPhotoModal('${sanitizeText(sub.id)}')" title="Từ chối ảnh bài làm và gửi email thông báo cho học sinh">
+                        🚫 Từ chối ảnh
+                      </button>
+                    ` : ""}
                   </div>
                 </td>
               </tr>
@@ -3043,16 +3045,24 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
                 <div style="display: flex; flex-wrap: wrap; gap: 0.55rem; font-size: 0.76rem; color: #475569; background: #F8FAFC; padding: 0.4rem 0.6rem; border-radius: 8px; margin-bottom: 0.5rem; align-items: center; border: 1px solid #F1F5F9;">
                   <span>🕒 ${timeStr}</span>
                   <span>📷 ${sub.photos.length} trang ảnh</span>
-                  <span>Trạng thái: <strong style="color: #4338CA;">${sub.status === "graded" ? "Đã làm" : "Chờ xem"}</strong></span>
+                  <span>Trạng thái: <strong style="color: ${sub.status === 'graded' ? '#059669' : ((sub.status === 'resubmit_requested' || sub.resubmitRequested) ? '#DC2626' : '#4338CA')};">${sub.status === "graded" ? "Đã làm" : ((sub.status === "resubmit_requested" || sub.resubmitRequested) ? "Cần nộp lại" : "Chờ xem")}</strong></span>
                 </div>
+
+                ${(sub.status === "resubmit_requested" || sub.resubmitRequested) && sub.feedback ? `
+                  <div style="font-size: 0.74rem; color: #DC2626; margin-bottom: 0.45rem; background: #FEF2F2; padding: 0.35rem 0.55rem; border-radius: 6px; border: 1px solid #FECACA;">
+                    🚫 <strong>Lý do từ chối:</strong> "${sanitizeText(sub.feedback)}"
+                  </div>
+                ` : ""}
 
                 <div style="display: flex; gap: 0.35rem; margin-top: 0.45rem;">
                   <button class="btn btn-primary btn-sm" style="flex: 1; justify-content: center; padding: 0.45rem;" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
-                    ✍️ ${sub.status === "graded" ? "Xem lại bài" : "Kiểm tra bài làm"}
+                    ✍️ ${sub.status === "graded" ? "Xem lại bài" : ((sub.status === "resubmit_requested" || sub.resubmitRequested) ? "Xem bài đã từ chối" : "Kiểm tra bài làm")}
                   </button>
-                  <button class="btn btn-danger-outline btn-sm" style="justify-content: center; padding: 0.45rem 0.6rem;" onclick="openRejectPhotoModal('${sanitizeText(sub.id)}')" title="Từ chối ảnh & Báo gửi lại qua Email">
-                    🚫 Từ chối ảnh
-                  </button>
+                  ${(sub.status === "submitted" && !sub.resubmitRequested) ? `
+                    <button class="btn btn-danger-outline btn-sm" style="justify-content: center; padding: 0.45rem 0.6rem;" onclick="openRejectPhotoModal('${sanitizeText(sub.id)}')" title="Từ chối ảnh & Báo gửi lại qua Email">
+                      🚫 Từ chối ảnh
+                    </button>
+                  ` : ""}
                 </div>
               </div>
             `;
@@ -3589,7 +3599,9 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
 
         const scoreDisplay = sub.status === "graded"
           ? `<strong style="color: #059669; font-size: 0.85rem;">✅ Đã hoàn thành</strong>`
-          : `<span style="color: var(--text-muted); font-size: 0.8rem;">⏳ Chờ xem</span>`;
+          : ((sub.status === "resubmit_requested" || sub.resubmitRequested)
+            ? `<strong style="color: #DC2626; font-size: 0.85rem;">⚠️ Cần nộp lại ảnh</strong>`
+            : `<span style="color: var(--text-muted); font-size: 0.8rem;">⏳ Chờ xem</span>`);
 
         return `
           <tr>
@@ -3603,7 +3615,7 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
             <td style="font-size: 0.78rem; color: #475569; max-width: 180px;">${sub.feedback ? `"${sanitizeText(sub.feedback)}"` : "—"}</td>
             <td>
               <button class="btn btn-primary btn-sm" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
-                ✏️ ${sub.status === "graded" ? "Xem lại bài" : "Kiểm tra bài"}
+                ✏️ ${sub.status === "graded" ? "Xem lại bài" : ((sub.status === "resubmit_requested" || sub.resubmitRequested) ? "Xem bài đã từ chối" : "Kiểm tra bài")}
               </button>
             </td>
           </tr>
@@ -3659,13 +3671,13 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
             <div style="display: flex; flex-wrap: wrap; gap: 0.55rem; font-size: 0.76rem; color: #475569; background: #F8FAFC; padding: 0.4rem 0.6rem; border-radius: 8px; margin-bottom: 0.5rem; align-items: center; border: 1px solid #F1F5F9;">
               <span>🕒 ${timeStr}</span>
               <span>📷 ${sub.photos.length} trang ảnh</span>
-              <span>Trạng thái: <strong style="color: ${sub.status === 'graded' ? '#059669' : '#4338CA'};">${sub.status === "graded" ? "Đã làm" : "Chờ xem"}</strong></span>
+              <span>Trạng thái: <strong style="color: ${sub.status === 'graded' ? '#059669' : ((sub.status === 'resubmit_requested' || sub.resubmitRequested) ? '#DC2626' : '#4338CA')};">${sub.status === "graded" ? "Đã làm" : ((sub.status === "resubmit_requested" || sub.resubmitRequested) ? "Cần nộp lại" : "Chờ xem")}</strong></span>
             </div>
 
-            ${sub.feedback ? `<div style="font-size: 0.74rem; color: #4F46E5; margin-bottom: 0.45rem; font-style: italic;">✍️ Lời phê: "${sanitizeText(sub.feedback)}"</div>` : ""}
+            ${sub.feedback ? `<div style="font-size: 0.74rem; color: ${sub.status === 'resubmit_requested' ? '#DC2626' : '#4F46E5'}; margin-bottom: 0.45rem; font-style: italic;">${sub.status === 'resubmit_requested' ? '🚫 Lý do từ chối: ' : '✍️ Lời phê: '}"${sanitizeText(sub.feedback)}"</div>` : ""}
 
             <button class="btn btn-primary btn-sm" style="width: 100%; justify-content: center; padding: 0.45rem;" onclick="openGradingStudio('${sanitizeText(sub.id)}', false)">
-              ✏️ ${sub.status === "graded" ? "Xem lại bài" : "Kiểm tra bài"}
+              ✏️ ${sub.status === "graded" ? "Xem lại bài" : ((sub.status === "resubmit_requested" || sub.resubmitRequested) ? "Xem bài đã từ chối" : "Kiểm tra bài")}
             </button>
           </div>
         `;
@@ -3949,19 +3961,22 @@ function openGradingStudio(submissionId, isReadOnly = false) {
     return;
   }
 
-  document.getElementById("gradingStudentName").innerText = `${isReadOnly ? "Xem bài làm:" : "Kiểm tra bài làm:"} ${sub.studentName}`;
+  const headerPrefix = (sub.status === "resubmit_requested" || sub.resubmitRequested)
+    ? "Xem bài đã từ chối ảnh:"
+    : (isReadOnly ? "Xem bài làm:" : "Kiểm tra bài làm:");
+  document.getElementById("gradingStudentName").innerText = `${headerPrefix} ${sub.studentName}`;
   document.getElementById("gradingSubmissionTime").innerText = `Nộp lúc: ${new Date(sub.submittedAt).toLocaleTimeString("vi-VN")}`;
 
   const resubmitCb = document.getElementById("requestResubmitCheckbox");
   if (resubmitCb) {
-    resubmitCb.checked = sub.status === "resubmit_requested";
+    resubmitCb.checked = sub.status === "resubmit_requested" || Boolean(sub.resubmitRequested);
     resubmitCb.disabled = isReadOnly;
     toggleResubmitCheckbox(resubmitCb.checked);
   }
 
   const resubmitNote = document.getElementById("resubmitNoteInput");
   if (resubmitNote) {
-    resubmitNote.value = (sub.status === "resubmit_requested" && sub.feedback) ? sub.feedback : "";
+    resubmitNote.value = ((sub.status === "resubmit_requested" || sub.resubmitRequested) && sub.feedback) ? sub.feedback : "";
     resubmitNote.disabled = isReadOnly;
   }
 
@@ -3972,7 +3987,7 @@ function openGradingStudio(submissionId, isReadOnly = false) {
 
   const rejectBtn = document.getElementById("gradingRejectPhotoBtn");
   if (rejectBtn) {
-    rejectBtn.style.display = isReadOnly ? "none" : "flex";
+    rejectBtn.style.display = (isReadOnly || sub.status === "resubmit_requested" || sub.resubmitRequested) ? "none" : "flex";
   }
 
   const proofsView = document.getElementById("studentAdditionalProofsView");
