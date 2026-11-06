@@ -1374,4 +1374,45 @@ assert.ok(
 
 console.log("✅ 44. Kiểm thử Toàn diện Khắc phục & Bảo đảm Rủi ro (Cache-Control, Popup Fallback, Storage Policies, Rate-limit): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (44/44)!");
+// 45. Test: Fix Select Dropdown UI Overflow, Orange Outline Removal & Unified Assignment Options
+const html45 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+const js45 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const css45 = fs.readFileSync(path.join(__dirname, "app.css"), "utf8");
+
+// 1. Kiểm tra loại bỏ viền cam mặc định (:focus outline) và thêm custom chevron SVG
+assert.ok(
+  css45.includes(".form-select:focus") &&
+  css45.includes("outline: none !important;") &&
+  css45.includes("box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;"),
+  "app.css phải loại bỏ outline viền cam mặc định của trình duyệt và thay bằng vòng focus xanh indigo thanh lịch"
+);
+assert.ok(
+  css45.includes("appearance: none;") &&
+  css45.includes("background-image: url(\"data:image/svg+xml"),
+  "app.css phải định hình mũi tên xổ xuống dạng vector SVG sắc nét cho .form-select"
+);
+
+// 2. Kiểm tra chống tràn và chống cắt cụt select box trên mobile & desktop
+assert.ok(
+  css45.includes(".campaign-banner") &&
+  css45.includes("overflow: visible;") &&
+  css45.includes(".campaign-select-wrap"),
+  "app.css phải mở overflow: visible cho .campaign-banner để không xén cụt viền select box"
+);
+
+// 3. Kiểm tra tính đồng bộ nội dung tùy chọn: cả Đợt bài và Sổ điểm đều có icon 📖 và hạn nộp (Hạn: ...)
+assert.ok(
+  js45.includes("📖 [${sanitizeText(asg.subject)}] ${sanitizeText(asg.title)} (Hạn: ${deadlineStr})") &&
+  js45.includes("📖 [${sanitizeText(a.subject)}] ${sanitizeText(a.title)} (Hạn: ${deadlineStr})"),
+  "app.js phải đồng bộ hiển thị icon 📖 và hạn nộp rõ ràng trên cả ô chọn đợt bài và sổ điểm"
+);
+
+// 4. Kiểm tra Sổ điểm cô lập từng đề bài độc lập, loại bỏ option gộp điểm toàn khóa
+assert.ok(
+  !js45.includes("📊 [Tất cả] Bảng tổng hợp chuyên cần & Điểm trung bình toàn khóa"),
+  "app.js phải loại bỏ tùy chọn gộp chung điểm trung bình để giữ đúng yêu cầu từng đề bài độc lập"
+);
+
+console.log("✅ 45. Kiểm thử Khắc phục Lỗi Giao diện Ô chọn Đề bài (Chống tràn viền, Xóa viền cam, Đồng bộ icon & Hạn nộp): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (45/45)!");

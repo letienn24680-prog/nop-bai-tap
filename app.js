@@ -2677,7 +2677,8 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
 
   const selectOptionsHtml = myAssignments.map((asg) => {
     const isSelected = asg.id === selectedCampaignId ? "selected" : "";
-    return `<option value="${asg.id}" ${isSelected}>[${sanitizeText(asg.subject)}] ${sanitizeText(asg.title)}</option>`;
+    const deadlineStr = new Date(asg.deadline).toLocaleDateString("vi-VN");
+    return `<option value="${asg.id}" ${isSelected}>📖 [${sanitizeText(asg.subject)}] ${sanitizeText(asg.title)} (Hạn: ${deadlineStr})</option>`;
   }).join("");
 
   const asgSubmissions = submissions.filter((s) => s.assignmentId === currentAsg.id);
@@ -3338,8 +3339,8 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
     return;
   }
 
-  // Xác định đề bài được chọn (Ưu tiên đề đang chọn, hoặc đề đầu tiên)
-  if (!gradebookSelectedAssignmentId || (gradebookSelectedAssignmentId !== "all" && !myAssignments.some((a) => a.id === gradebookSelectedAssignmentId))) {
+  // Xác định đề bài được chọn (Luôn chọn đề bài cụ thể độc lập, không gộp chung)
+  if (!gradebookSelectedAssignmentId || gradebookSelectedAssignmentId === "all" || !myAssignments.some((a) => a.id === gradebookSelectedAssignmentId)) {
     gradebookSelectedAssignmentId = myAssignments[0].id;
     localStorage.setItem("eduproof_gradebook_asg", gradebookSelectedAssignmentId);
   }
@@ -3351,10 +3352,6 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
       const deadlineStr = new Date(a.deadline).toLocaleDateString("vi-VN");
       return `<option value="${a.id}" ${isSelected}>📖 [${sanitizeText(a.subject)}] ${sanitizeText(a.title)} (Hạn: ${deadlineStr})</option>`;
     });
-
-    optionsHtml.push(
-      `<option value="all" ${gradebookSelectedAssignmentId === "all" ? "selected" : ""}>📊 [Tất cả] Bảng tổng hợp chuyên cần & Điểm trung bình toàn khóa</option>`
-    );
 
     selectBox.innerHTML = optionsHtml.join("");
   }

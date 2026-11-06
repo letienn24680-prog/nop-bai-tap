@@ -10,7 +10,7 @@
   <meta http-equiv="Expires" content="0">
   <title>EduProof - Nộp & Chấm Bài Tập Minh Chứng</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234F46E5'/%3E%3Cpath d='M16 5L4 11.5L16 18L28 11.5L16 5Z' fill='white'/%3E%3Cpath d='M8 14.5V20.5C8 24 11.5 26.5 16 26.5C20.5 26.5 24 24 24 20.5V14.5L16 19L8 14.5Z' fill='white' fill-opacity='0.85'/%3E%3Cpath d='M26 13.5V22' stroke='%23FDE047' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='26' cy='22.5' r='1.5' fill='%23FDE047'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="app.css?v=20261106_2215">
+  <link rel="stylesheet" href="app.css?v=20261106_2245">
   <script>
     // Ghi đè alert của trình duyệt sang popup trong trang web ngay lập tức
     window.alert = function(msg) {
@@ -366,13 +366,13 @@
       <!-- Tab 5: Gradebook Tab Content (Sổ theo dõi làm bài theo từng đề bài) -->
       <div id="teacherGradebookTab" style="display: none;">
         <!-- Assignment Selector Header -->
-        <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); padding: 1.15rem 1.25rem; margin-bottom: 1.15rem;">
-          <div style="display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 0.85rem;">
-            <div style="flex: 1; min-width: 260px;">
+        <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); padding: 1.15rem 1.25rem; margin-bottom: 1.15rem; box-sizing: border-box; width: 100%;">
+          <div style="display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 0.85rem; width: 100%; box-sizing: border-box;">
+            <div style="flex: 1 1 300px; min-width: 0; max-width: 100%; box-sizing: border-box;">
               <label for="gradebookAssignmentSelect" style="font-size: 0.82rem; font-weight: 700; color: #4338CA; display: block; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.03em;">
                 📖 Chọn đề bài để xem danh sách học sinh & bài làm:
               </label>
-              <select id="gradebookAssignmentSelect" class="form-select" style="width: 100%; max-width: 520px; font-weight: 600;" onchange="handleGradebookAssignmentChange(this.value)">
+              <select id="gradebookAssignmentSelect" class="form-select" style="width: 100%; max-width: 560px; font-weight: 600; box-sizing: border-box;" onchange="handleGradebookAssignmentChange(this.value)">
                 <!-- Options rendered dynamically -->
               </select>
             </div>
@@ -976,9 +976,9 @@
 
   <!-- Supabase Cloud SDK & Configuration -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js?v=20261106_2215"></script>
+  <script src="supabase-config.js?v=20261106_2245"></script>
 
   <!-- Core App Logic -->
-  <script src="app.js?v=20261106_2215"></script>
+  <script src="app.js?v=20261106_2245"></script>
 </body>
 </html>
