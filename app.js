@@ -2607,32 +2607,31 @@ function handleCampaignSelectChange(assignmentId) {
 }
 
 function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
-  const selectBox = document.getElementById("campaignSelectBox");
-  selectBox.innerHTML = "";
+  const container = document.getElementById("campaignDetailContainer");
+  if (!container) return;
 
   const myAssignments = myAssignmentsList || assignments.filter((a) => a.teacherId === currentUser.id);
   const studentsList = myStudentsList || users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
 
   if (myAssignments.length === 0) {
-    document.getElementById("campaignDetailContainer").innerHTML =
-      `<p style="color: var(--text-muted); padding: 1.5rem; text-align: center;">Bạn chưa giao bài tập nào. Hãy bấm "Tạo bài tập mới".</p>`;
-    document.getElementById("campaignDeadlineNotice").innerText = "";
+    container.innerHTML = `
+      <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); padding: 2rem; text-align: center;">
+        <p style="color: var(--text-muted); margin-bottom: 1rem;">Bạn chưa giao bài tập nào. Hãy bấm "Tạo bài tập mới" để bắt đầu.</p>
+        <button class="btn btn-primary btn-sm" onclick="openCreateAssignmentModal()">➕ Tạo bài tập mới</button>
+      </div>`;
     return;
   }
-
-  myAssignments.forEach((asg) => {
-    const opt = document.createElement("option");
-    opt.value = asg.id;
-    opt.innerText = `[${asg.subject}] ${asg.title}`;
-    if (asg.id === selectedCampaignId) opt.selected = true;
-    selectBox.appendChild(opt);
-  });
 
   let currentAsg = myAssignments.find((a) => a.id === selectedCampaignId);
   if (!currentAsg) {
     currentAsg = myAssignments[0];
     selectedCampaignId = currentAsg.id;
   }
+
+  const selectOptionsHtml = myAssignments.map((asg) => {
+    const isSelected = asg.id === selectedCampaignId ? "selected" : "";
+    return `<option value="${asg.id}" ${isSelected}>[${sanitizeText(asg.subject)}] ${sanitizeText(asg.title)}</option>`;
+  }).join("");
 
   const asgSubmissions = submissions.filter((s) => s.assignmentId === currentAsg.id);
 
@@ -2648,38 +2647,51 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
     year: "numeric"
   });
 
-  document.getElementById("campaignDeadlineNotice").innerHTML =
-    `Hạn nộp: <strong>${deadlineFormatted}</strong>`;
-
-  const container = document.getElementById("campaignDetailContainer");
   container.innerHTML = `
     <div class="campaign-banner">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
-        <div>
-          <div style="margin-bottom: 0.5rem;">${formatSubjectBadge(currentAsg.subject)}</div>
-          <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">
-            ${currentAsg.title}
-          </h2>
-          <p style="font-size: 0.85rem; color: var(--text-muted);">${currentAsg.description}</p>
+      <!-- 1. Hàng chọn đợt bài tập & Hạn nộp gọn gàng -->
+      <div class="campaign-header-row">
+        <div class="campaign-select-wrap">
+          <label class="campaign-select-label" for="campaignSelectBox">
+            📂 Chọn đợt bài:
+          </label>
+          <select id="campaignSelectBox" class="form-select campaign-select" onchange="handleCampaignSelectChange(this.value)">
+            ${selectOptionsHtml}
+          </select>
         </div>
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <button class="btn btn-secondary btn-sm" onclick="exportCampaignReport('${currentAsg.id}')" title="Xuất file Excel báo cáo tiến độ nộp minh chứng cho Đoàn trường / BGH">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
-            Xuất báo cáo Excel
-          </button>
-          <button class="btn btn-secondary btn-sm" onclick="copyUnsubmittedStudents('${currentAsg.id}')" title="Sao chép danh sách học sinh chưa nộp để gửi vào nhóm Zalo">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            Nhắc Zalo (${notSubmittedCount})
-          </button>
-          <button class="btn btn-secondary btn-sm" onclick="copyAssignmentShareLink('${currentAsg.id}')">
-            🔗 Link nộp bài
-          </button>
-          <button class="btn btn-danger btn-sm" onclick="deleteAssignment('${currentAsg.id}')">
-            🗑️ Xóa đợt này
-          </button>
+        <div class="campaign-deadline-pill">
+          ⏰ Hạn nộp: <strong>${deadlineFormatted}</strong>
         </div>
       </div>
 
+      <!-- 2. Thông tin chi tiết đợt bài -->
+      <div class="campaign-info-row">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; flex-wrap: wrap;">
+          ${formatSubjectBadge(currentAsg.subject)}
+          <h2 class="campaign-title" style="font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin: 0;">
+            ${sanitizeText(currentAsg.title)}
+          </h2>
+        </div>
+        ${currentAsg.description ? `<p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.25rem 0 0 0; line-height: 1.4;">${sanitizeText(currentAsg.description)}</p>` : ""}
+      </div>
+
+      <!-- 3. Cụm nút thao tác nhanh (Cân đối 2x2 trên mobile, 1 hàng trên desktop) -->
+      <div class="campaign-actions-bar">
+        <button class="btn btn-secondary btn-sm campaign-action-btn" onclick="copyAssignmentShareLink('${currentAsg.id}')">
+          🔗 Link nộp bài
+        </button>
+        <button class="btn btn-secondary btn-sm campaign-action-btn" onclick="copyUnsubmittedStudents('${currentAsg.id}')" title="Sao chép danh sách học sinh chưa nộp để gửi vào nhóm Zalo">
+          📋 Nhắc Zalo (${notSubmittedCount})
+        </button>
+        <button class="btn btn-secondary btn-sm campaign-action-btn" onclick="exportCampaignReport('${currentAsg.id}')" title="Xuất file Excel báo cáo tiến độ nộp minh chứng cho Đoàn trường / BGH">
+          📊 Xuất Excel
+        </button>
+        <button class="btn btn-danger-outline btn-sm campaign-action-btn" onclick="deleteAssignment('${currentAsg.id}')" title="Xóa đợt bài tập này và toàn bộ bài nộp liên quan">
+          🗑️ Xóa đợt này
+        </button>
+      </div>
+
+      <!-- 4. Lưới thống kê 4 ô nhỏ gọn -->
       <div class="campaign-stats-grid">
         <div class="stat-box">
           <div class="stat-num">${studentsList.length}</div>

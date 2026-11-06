@@ -240,6 +240,18 @@ body {
   box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
   transform: translateY(-1px);
 }
+.btn-danger-outline {
+  background: #FFF1F2;
+  color: #E11D48;
+  border: 1px solid #FECDD3;
+  box-shadow: 0 1px 3px rgba(225, 29, 72, 0.08);
+}
+.btn-danger-outline:hover {
+  background: #FFE4E6;
+  color: #BE123C;
+  border-color: #FDA4AF;
+  transform: translateY(-1px);
+}
 
 .btn-sm {
   padding: 0.35rem 0.75rem;
@@ -1025,8 +1037,8 @@ body {
 
   #teacherView .filter-tabs {
     display: grid !important;
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 0.4rem !important;
+    grid-template-columns: repeat(6, 1fr) !important;
+    gap: 0.35rem !important;
     overflow: visible !important;
     white-space: normal !important;
     padding: 0.15rem 0 0.35rem 0 !important;
@@ -1034,15 +1046,22 @@ body {
   #teacherView .tab-btn {
     width: 100% !important;
     min-width: 0 !important;
-    padding: 0.45rem 0.35rem !important;
-    font-size: 0.76rem !important;
+    padding: 0.45rem 0.2rem !important;
+    font-size: 0.74rem !important;
+    font-weight: 600 !important;
     justify-content: center !important;
     text-align: center !important;
     border-radius: 10px !important;
-    white-space: normal !important;
+    white-space: nowrap !important;
   }
-  #teacherView .tab-btn:nth-child(5) {
+  #teacherView .tab-btn:nth-child(1),
+  #teacherView .tab-btn:nth-child(2),
+  #teacherView .tab-btn:nth-child(3) {
     grid-column: span 2 !important;
+  }
+  #teacherView .tab-btn:nth-child(4),
+  #teacherView .tab-btn:nth-child(5) {
+    grid-column: span 3 !important;
   }
 
   #adminView .filter-tabs {
@@ -1227,23 +1246,57 @@ body {
     gap: 0.25rem !important;
   }
 
+  .campaign-banner {
+    padding: 0.85rem !important;
+    border-radius: 14px !important;
+    margin-bottom: 0.85rem !important;
+  }
+  .campaign-header-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.45rem !important;
+    margin-bottom: 0.65rem !important;
+    padding-bottom: 0.6rem !important;
+  }
+  .campaign-select-wrap {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  .campaign-deadline-pill {
+    text-align: center !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    font-size: 0.75rem !important;
+    padding: 0.3rem 0.5rem !important;
+  }
+  .campaign-actions-bar {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.45rem !important;
+    margin-top: 0.75rem !important;
+  }
+  .campaign-actions-bar .btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 0.45rem 0.25rem !important;
+    font-size: 0.76rem !important;
+    white-space: nowrap !important;
+  }
   .campaign-stats-grid {
     grid-template-columns: 1fr 1fr !important;
-    gap: 0.5rem !important;
+    gap: 0.45rem !important;
     margin-top: 0.75rem !important;
     padding-top: 0.75rem !important;
   }
-
   .stat-box {
-    padding: 0.65rem 0.5rem !important;
+    padding: 0.55rem 0.35rem !important;
+    border-radius: 10px !important;
   }
-
   .stat-num {
-    font-size: 1.3rem !important;
+    font-size: 1.25rem !important;
   }
-
   .stat-label {
-    font-size: 0.7rem !important;
+    font-size: 0.72rem !important;
   }
 
   .canvas-btn {
@@ -1338,6 +1391,72 @@ body {
   right: 0;
   height: 4px;
   background: linear-gradient(90deg, #3B82F6, #8B5CF6, #EC4899);
+}
+
+.campaign-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.campaign-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  min-width: 260px;
+}
+
+.campaign-select-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.campaign-select {
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid #CBD5E1;
+  background-color: #F8FAFC;
+  flex: 1;
+  min-width: 0;
+}
+
+.campaign-select:focus {
+  background-color: #FFFFFF;
+  border-color: #6366F1;
+}
+
+.campaign-deadline-pill {
+  font-size: 0.8rem;
+  color: #475569;
+  background: #F1F5F9;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid #E2E8F0;
+  white-space: nowrap;
+}
+
+.campaign-actions-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.campaign-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
 }
 
 .campaign-stats-grid {

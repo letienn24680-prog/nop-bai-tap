@@ -1238,4 +1238,24 @@ assert.strictEqual(matchResults[1].name, "Lê Văn Mới");
 
 console.log("✅ 41. Kiểm thử Quản lý Email học sinh, Khớp tên file Excel & Thông báo Email tự động khi tạo đề bài: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (41/41)!");
+// 42. Test: Streamlined Campaign Banner (Single Unified Card & Mobile 3+2 Grid Tabs)
+const html42 = fs.readFileSync("index.html", "utf8");
+const js42 = fs.readFileSync("app.js", "utf8");
+const css42 = fs.readFileSync("app.css", "utf8");
+
+assert.ok(
+  !html42.includes("CHỌN ĐỢT BÀI TẬP CẦN THEO DÕI NỘP BÀI:"),
+  "index.html không được để hộp chọn trùng lặp bên ngoài container chiến dịch"
+);
+assert.ok(
+  js42.includes("campaign-header-row") && js42.includes("campaign-actions-bar") && js42.includes("btn-danger-outline"),
+  "app.js phải tích hợp bộ chọn đợt bài và cụm nút thao tác cân đối vào chung card .campaign-banner"
+);
+assert.ok(
+  css42.includes("repeat(6, 1fr)") && css42.includes("btn-danger-outline") && css42.includes("campaign-header-row"),
+  "app.css phải hỗ trợ phân bổ tab 6 cột (3+2 cân đối) và kiểu dáng thanh lịch cho banner đợt bài"
+);
+
+console.log("✅ 42. Kiểm thử Tinh giản Giao diện Quản lý đợt bài tập (Thống nhất 1 Card & Tab Mobile 3+2): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (42/42)!");
