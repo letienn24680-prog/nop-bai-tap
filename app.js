@@ -1434,51 +1434,90 @@ function renderAdminView() {
 
 function renderAdminTeachersTable() {
   const table = document.getElementById("adminTeachersTable");
+  const cardsContainer = document.getElementById("adminTeachersCards");
   const teacherUsers = users.filter((u) => u.role === "teacher");
 
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th>Họ và tên Giáo viên</th>
-        <th>Tên đăng nhập</th>
-        <th>Mật khẩu</th>
-        <th>Bộ môn / Lớp</th>
-        <th>Số HS trực thuộc</th>
-        <th>Bài tập đã giao</th>
-        <th>Thao tác</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${teacherUsers.length === 0 ? `<tr><td colspan="7" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Chưa có giáo viên nào.</td></tr>` : ""}
-      ${teacherUsers
-        .map((t) => {
+  if (table) {
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>Họ và tên Giáo viên</th>
+          <th>Tên đăng nhập</th>
+          <th>Mật khẩu</th>
+          <th>Bộ môn / Lớp</th>
+          <th>Số HS trực thuộc</th>
+          <th>Bài tập đã giao</th>
+          <th>Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${teacherUsers.length === 0 ? `<tr><td colspan="7" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Chưa có giáo viên nào.</td></tr>` : ""}
+        ${teacherUsers
+          .map((t) => {
+            const stCount = users.filter((u) => u.role === "student" && u.teacherId === t.id).length;
+            const asgCount = assignments.filter((a) => a.teacherId === t.id).length;
+            return `
+              <tr>
+                <td><strong>${sanitizeText(t.name)}</strong></td>
+                <td><code>${sanitizeText(t.username)}</code></td>
+                <td><code>${sanitizeText(t.password)}</code></td>
+                <td>${sanitizeText(t.subject || "Bộ môn")}</td>
+                <td><span class="badge-status status-submitted">${stCount} học sinh</span></td>
+                <td><strong>${asgCount} bài</strong></td>
+                <td>
+                  <button class="btn btn-secondary btn-sm" onclick="filterAdminTreeForTeacher('${sanitizeText(t.id)}')">
+                    👥 Xem học sinh
+                  </button>
+                  <button class="btn btn-secondary btn-sm" onclick="copyTeacherInfo('${sanitizeText(t.username)}')">
+                    📋 Sao chép
+                  </button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteTeacherAccount('${sanitizeText(t.id)}')">
+                    🗑️ Xóa
+                  </button>
+                </td>
+              </tr>
+            `;
+          })
+          .join("")}
+      </tbody>
+    `;
+  }
+
+  if (cardsContainer) {
+    cardsContainer.innerHTML = teacherUsers.length === 0
+      ? `<div style="text-align:center; padding:1.5rem; color:var(--text-muted);">Chưa có giáo viên nào.</div>`
+      : teacherUsers.map((t) => {
           const stCount = users.filter((u) => u.role === "student" && u.teacherId === t.id).length;
           const asgCount = assignments.filter((a) => a.teacherId === t.id).length;
           return `
-            <tr>
-              <td><strong>${sanitizeText(t.name)}</strong></td>
-              <td><code>${sanitizeText(t.username)}</code></td>
-              <td><code>${sanitizeText(t.password)}</code></td>
-              <td>${sanitizeText(t.subject || "Bộ môn")}</td>
-              <td><span class="badge-status status-submitted">${stCount} học sinh</span></td>
-              <td><strong>${asgCount} bài</strong></td>
-              <td>
-                <button class="btn btn-secondary btn-sm" onclick="filterAdminTreeForTeacher('${sanitizeText(t.id)}')">
+            <div class="campaign-student-card">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.35rem;">
+                <div>
+                  <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${sanitizeText(t.name)}</div>
+                  <div style="font-size: 0.74rem; color: var(--text-muted);">${sanitizeText(t.subject || "Bộ môn")}</div>
+                </div>
+                <span class="badge-status status-submitted">${stCount} học sinh</span>
+              </div>
+              <div style="background: #F8FAFC; padding: 0.4rem 0.6rem; border-radius: 6px; font-size: 0.78rem; margin-bottom: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center; border: 1px solid #F1F5F9;">
+                <span>TK: <code>${sanitizeText(t.username)}</code></span>
+                <span>MK: <code>${sanitizeText(t.password)}</code></span>
+                <span>Đã giao: <strong>${asgCount} bài</strong></span>
+              </div>
+              <div style="display: flex; gap: 0.4rem;">
+                <button class="btn btn-secondary btn-sm" style="flex: 1; justify-content: center; padding: 0.45rem;" onclick="filterAdminTreeForTeacher('${sanitizeText(t.id)}')">
                   👥 Xem học sinh
                 </button>
-                <button class="btn btn-secondary btn-sm" onclick="copyTeacherInfo('${sanitizeText(t.username)}')">
+                <button class="btn btn-secondary btn-sm" style="padding: 0.45rem 0.65rem;" onclick="copyTeacherInfo('${sanitizeText(t.username)}')">
                   📋 Sao chép
                 </button>
-                <button class="btn btn-danger btn-sm" onclick="deleteTeacherAccount('${sanitizeText(t.id)}')">
+                <button class="btn btn-danger btn-sm" style="padding: 0.45rem 0.65rem;" onclick="deleteTeacherAccount('${sanitizeText(t.id)}')">
                   🗑️ Xóa
                 </button>
-              </td>
-            </tr>
+              </div>
+            </div>
           `;
-        })
-        .join("")}
-    </tbody>
-  `;
+        }).join("");
+  }
 }
 
 function filterAdminTreeForTeacher(teacherId) {
@@ -1516,38 +1555,69 @@ function renderAdminStudentsTree(selectedTeacherId) {
   }
 
   const table = document.getElementById("adminStudentsTreeTable");
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th>Họ tên Học sinh</th>
-        <th>Tên đăng nhập</th>
-        <th>Mật khẩu</th>
-        <th>Lớp</th>
-        <th>Giáo viên Quản lý trực tiếp</th>
-        <th>Số bài đã nộp</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${studentUsers.length === 0 ? `<tr><td colspan="6" style="text-align:center; color: var(--text-muted); padding: 1.5rem;">Chưa có học sinh nào thuộc giáo viên này.</td></tr>` : ""}
-      ${studentUsers
-        .map((s) => {
+  const cardsContainer = document.getElementById("adminStudentsTreeCards");
+
+  if (table) {
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>Họ tên Học sinh</th>
+          <th>Tên đăng nhập</th>
+          <th>Mật khẩu</th>
+          <th>Lớp</th>
+          <th>Giáo viên Quản lý trực tiếp</th>
+          <th>Số bài đã nộp</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${studentUsers.length === 0 ? `<tr><td colspan="6" style="text-align:center; color: var(--text-muted); padding: 1.5rem;">Chưa có học sinh nào thuộc giáo viên này.</td></tr>` : ""}
+        ${studentUsers
+          .map((s) => {
+            const teacher = users.find((u) => u.id === s.teacherId);
+            const teacherName = teacher ? `${sanitizeText(teacher.name)} (${sanitizeText(teacher.username)})` : `<span style="color:red">Chưa gán</span>`;
+            const subCount = submissions.filter((sub) => sub.studentId === s.id).length;
+            return `
+              <tr>
+                <td><strong>${sanitizeText(s.name)}</strong></td>
+                <td><code>${sanitizeText(s.username)}</code></td>
+                <td><code>${sanitizeText(s.password)}</code></td>
+                <td>${sanitizeText(s.class || "12A1")}</td>
+                <td><span class="badge-status status-graded">${teacherName}</span></td>
+                <td><strong>${subCount} bài</strong></td>
+              </tr>
+            `;
+          })
+          .join("")}
+      </tbody>
+    `;
+  }
+
+  if (cardsContainer) {
+    cardsContainer.innerHTML = studentUsers.length === 0
+      ? `<div style="text-align:center; color: var(--text-muted); padding: 1.5rem;">Chưa có học sinh nào thuộc giáo viên này.</div>`
+      : studentUsers.map((s) => {
           const teacher = users.find((u) => u.id === s.teacherId);
           const teacherName = teacher ? `${sanitizeText(teacher.name)} (${sanitizeText(teacher.username)})` : `<span style="color:red">Chưa gán</span>`;
           const subCount = submissions.filter((sub) => sub.studentId === s.id).length;
           return `
-            <tr>
-              <td><strong>${sanitizeText(s.name)}</strong></td>
-              <td><code>${sanitizeText(s.username)}</code></td>
-              <td><code>${sanitizeText(s.password)}</code></td>
-              <td>${sanitizeText(s.class || "12A1")}</td>
-              <td><span class="badge-status status-graded">${teacherName}</span></td>
-              <td><strong>${subCount} bài</strong></td>
-            </tr>
+            <div class="campaign-student-card">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.35rem;">
+                <div>
+                  <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${sanitizeText(s.name)}</div>
+                  <div style="font-size: 0.74rem; color: var(--text-muted);">Lớp ${sanitizeText(s.class || "12A1")} • Đã nộp ${subCount} bài</div>
+                </div>
+              </div>
+              <div style="background: #F8FAFC; padding: 0.4rem 0.6rem; border-radius: 6px; font-size: 0.78rem; margin-bottom: 0.4rem; display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center; border: 1px solid #F1F5F9;">
+                <span>TK: <code>${sanitizeText(s.username)}</code></span>
+                <span>MK: <code>${sanitizeText(s.password)}</code></span>
+              </div>
+              <div style="font-size: 0.75rem; color: var(--primary); font-weight: 600;">
+                GV quản lý: ${teacherName}
+              </div>
+            </div>
           `;
-        })
-        .join("")}
-    </tbody>
-  `;
+        }).join("");
+  }
 }
 
 // ==========================================
@@ -2876,24 +2946,62 @@ function renderTeacherStudents(myStudentsList) {
 
 function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
   const table = document.getElementById("gradebookTable");
+  const cardsContainer = document.getElementById("gradebookCards");
   const studentUsers = myStudentsList || users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
   const myAssignments = myAssignmentsList || assignments.filter((a) => a.teacherId === currentUser.id);
 
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th>Họ và tên</th>
-        <th>Tên đăng nhập</th>
-        <th>Lớp</th>
-        <th>Số bài đã nộp</th>
-        <th>Điểm TB</th>
-        <th>Đánh giá chuyên cần</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${studentUsers.length === 0 ? `<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Chưa có học sinh nào.</td></tr>` : ""}
-      ${studentUsers
-        .map((st) => {
+  if (table) {
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>Họ và tên</th>
+          <th>Tên đăng nhập</th>
+          <th>Lớp</th>
+          <th>Số bài đã nộp</th>
+          <th>Điểm TB</th>
+          <th>Đánh giá chuyên cần</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${studentUsers.length === 0 ? `<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Chưa có học sinh nào.</td></tr>` : ""}
+        ${studentUsers
+          .map((st) => {
+            const stSubs = submissions.filter((s) => s.studentId === st.id);
+            const gradedSubs = stSubs.filter((s) => s.status === "graded" && s.grade !== null);
+            const avgScore =
+              gradedSubs.length > 0
+                ? (gradedSubs.reduce((acc, curr) => acc + curr.grade, 0) / gradedSubs.length).toFixed(1)
+                : "—";
+
+            let attendanceBadge = "";
+            if (stSubs.length === myAssignments.length && myAssignments.length > 0) {
+              attendanceBadge = `<span class="badge-status status-graded">100% Đầy đủ</span>`;
+            } else if (stSubs.length > 0) {
+              attendanceBadge = `<span class="badge-status status-submitted">${stSubs.length}/${myAssignments.length} bài</span>`;
+            } else {
+              attendanceBadge = `<span class="badge-status status-resubmit">Chưa nộp bài nào</span>`;
+            }
+
+            return `
+              <tr>
+                <td><strong>${sanitizeText(st.name)}</strong></td>
+                <td><code>${sanitizeText(st.username)}</code></td>
+                <td>${sanitizeText(st.class || "12A1")}</td>
+                <td>${stSubs.length} / ${myAssignments.length} bài</td>
+                <td style="font-weight: 700; color: var(--primary);">${avgScore}</td>
+                <td>${attendanceBadge}</td>
+              </tr>
+            `;
+          })
+          .join("")}
+      </tbody>
+    `;
+  }
+
+  if (cardsContainer) {
+    cardsContainer.innerHTML = studentUsers.length === 0
+      ? `<div style="text-align:center; padding:1.5rem; color:var(--text-muted);">Chưa có học sinh nào.</div>`
+      : studentUsers.map((st) => {
           const stSubs = submissions.filter((s) => s.studentId === st.id);
           const gradedSubs = stSubs.filter((s) => s.status === "graded" && s.grade !== null);
           const avgScore =
@@ -2907,23 +3015,33 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
           } else if (stSubs.length > 0) {
             attendanceBadge = `<span class="badge-status status-submitted">${stSubs.length}/${myAssignments.length} bài</span>`;
           } else {
-            attendanceBadge = `<span class="badge-status status-resubmit">Chưa nộp bài nào</span>`;
+            attendanceBadge = `<span class="badge-status status-resubmit">Chưa nộp</span>`;
           }
 
+          const scoreColor = avgScore !== "—" ? (parseFloat(avgScore) >= 8 ? "#16A34A" : parseFloat(avgScore) >= 5 ? "#2563EB" : "#DC2626") : "var(--text-muted)";
+
           return `
-            <tr>
-              <td><strong>${sanitizeText(st.name)}</strong></td>
-              <td><code>${sanitizeText(st.username)}</code></td>
-              <td>${sanitizeText(st.class || "12A1")}</td>
-              <td>${stSubs.length} / ${myAssignments.length} bài</td>
-              <td style="font-weight: 700; color: var(--primary);">${avgScore}</td>
-              <td>${attendanceBadge}</td>
-            </tr>
+            <div class="campaign-student-card">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.35rem;">
+                <div>
+                  <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${sanitizeText(st.name)}</div>
+                  <div style="font-size: 0.74rem; color: var(--text-muted);">
+                    <code>${sanitizeText(st.username)}</code> • Lớp ${sanitizeText(st.class || "12A1")}
+                  </div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 0.68rem; color: var(--text-muted); font-weight: 700;">ĐIỂM TB</div>
+                  <div style="font-size: 1.15rem; font-weight: 800; color: ${scoreColor};">${avgScore}</div>
+                </div>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.4rem; border-top: 1px solid #F1F5F9; font-size: 0.78rem;">
+                <span style="color: var(--text-muted);">Đã nộp: <strong>${stSubs.length} / ${myAssignments.length} bài</strong></span>
+                <div>${attendanceBadge}</div>
+              </div>
+            </div>
           `;
-        })
-        .join("")}
-    </tbody>
-  `;
+        }).join("");
+  }
 }
 
 // ==========================================

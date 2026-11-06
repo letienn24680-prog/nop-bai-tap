@@ -137,17 +137,22 @@
 
       <!-- Admin Tab 1: Teachers Table -->
       <div id="adminTeachersTab">
-        <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); overflow-x: auto; padding: 1.25rem;">
+        <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); padding: 1.25rem;">
           <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 0.75rem;">Danh sách Giáo viên trong trường</h3>
-          <table class="data-table" id="adminTeachersTable">
+          <div class="campaign-desktop-view">
+            <table class="data-table" id="adminTeachersTable">
+              <!-- Rendered dynamically -->
+            </table>
+          </div>
+          <div class="campaign-mobile-view" id="adminTeachersCards">
             <!-- Rendered dynamically -->
-          </table>
+          </div>
         </div>
       </div>
 
       <!-- Admin Tab 2: Students Tree per Teacher -->
       <div id="adminStudentsTreeTab" style="display: none;">
-        <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); overflow-x: auto; padding: 1.25rem;">
+        <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); padding: 1.25rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
             <div>
               <h3 style="font-size: 1.05rem; font-weight: 700;">Học sinh trực thuộc Giáo viên</h3>
@@ -159,9 +164,14 @@
               </select>
             </div>
           </div>
-          <table class="data-table" id="adminStudentsTreeTable">
+          <div class="campaign-desktop-view">
+            <table class="data-table" id="adminStudentsTreeTable">
+              <!-- Rendered dynamically -->
+            </table>
+          </div>
+          <div class="campaign-mobile-view" id="adminStudentsTreeCards">
             <!-- Rendered dynamically -->
-          </table>
+          </div>
         </div>
       </div>
     </section>
@@ -361,10 +371,15 @@
 
       <!-- Tab 5: Gradebook Tab Content -->
       <div id="teacherGradebookTab" style="display: none;">
-        <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); overflow-x: auto; padding: 1rem;">
-          <table class="data-table" id="gradebookTable">
+        <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); padding: 1rem;">
+          <div class="campaign-desktop-view">
+            <table class="data-table" id="gradebookTable">
+              <!-- Rendered dynamically -->
+            </table>
+          </div>
+          <div class="campaign-mobile-view" id="gradebookCards">
             <!-- Rendered dynamically -->
-          </table>
+          </div>
         </div>
       </div>
     </section>
@@ -385,7 +400,7 @@
           <input type="text" id="newTeacherFullName" class="form-input" placeholder="Ví dụ: Thầy Trần Quang Nam">
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+        <div class="form-grid-2col">
           <div class="form-group">
             <label class="form-label">Tên đăng nhập (username):</label>
             <input type="text" id="newTeacherUsername" class="form-input" placeholder="gv-nam">
@@ -428,7 +443,7 @@
           <input type="text" id="newStudentFullName" class="form-input" placeholder="Ví dụ: Phạm Thu Hà" oninput="autoSuggestUsername(this.value)">
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+        <div class="form-grid-2col">
           <div class="form-group">
             <label class="form-label">Tên đăng nhập (username):</label>
             <input type="text" id="newStudentUsername" class="form-input" placeholder="hs_ha">
@@ -651,7 +666,7 @@
           <input type="text" id="newTitleInput" class="form-input" placeholder="Ví dụ: Nộp minh chứng Cuộc thi trực tuyến Đoàn trường / Ôn tập Tiết 14">
         </div>
 
-        <div style="grid-template-columns: 1fr 1fr; gap: 0.75rem; display: grid;">
+        <div class="form-grid-2col">
           <div class="form-group">
             <label class="form-label">Phân loại môn / Hoạt động:</label>
             <select id="newSubjectInput" class="form-select" onchange="handleSubjectSelectChange(this.value)">

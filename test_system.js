@@ -943,4 +943,24 @@ assert.ok(
 
 console.log("✅ 33. Kiểm thử hộp thoại thông báo nội bộ trong web (In-App Notice Dialog): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (33/33)!");
+// 34. Test: Full Responsive Containment & Mobile Cards Across All Tabs (No Horizontal Scroll)
+const updatedHtml = fs.readFileSync("index.html", "utf8");
+const updatedJs = fs.readFileSync("app.js", "utf8");
+const updatedCss = fs.readFileSync("app.css", "utf8");
+
+assert.ok(
+  updatedHtml.includes('id="gradebookCards"') && updatedHtml.includes('id="adminTeachersCards"') && updatedHtml.includes('id="adminStudentsTreeCards"'),
+  "index.html phải có container mobile card cho Sổ điểm và Quản trị trường học"
+);
+assert.ok(
+  updatedJs.includes("gradebookCards") && updatedJs.includes("adminTeachersCards") && updatedJs.includes("adminStudentsTreeCards"),
+  "app.js phải tự động tạo thẻ di động cho Sổ điểm và Admin"
+);
+assert.ok(
+  updatedCss.includes("overflow-x: hidden") && updatedCss.includes("#teacherView .filter-tabs"),
+  "app.css phải chặn triệt để tràn trang ngang và bọc gọn các tab trên điện thoại"
+);
+
+console.log("✅ 34. Kiểm thử cô lập toàn diện chống tràn trang & thẻ di động trên tất cả các tab: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (34/34)!");
