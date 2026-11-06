@@ -1622,15 +1622,51 @@ async function startCameraStream() {
   const container = document.getElementById("cameraContainer");
   const video = document.getElementById("cameraVideo");
 
+  // Hỗ trợ MediaDevices API đa trình duyệt (Safari iOS, Chrome, Android, Edge)
+  const getUserMedia = navigator.mediaDevices && navigator.mediaDevices.getUserMedia
+    ? (constraints) => navigator.mediaDevices.getUserMedia(constraints)
+    : (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia)
+        ? (constraints) => new Promise((resolve, reject) => {
+            (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia).call(navigator, constraints, resolve, reject);
+          })
+        : null;
+
+  if (!getUserMedia) {
+    // Nếu thiết bị không hỗ trợ stream camera web, tự động mở camera native qua input capture
+    const directCam = document.getElementById("directCameraInput");
+    if (directCam) {
+      directCam.click();
+      return;
+    }
+    alert("Trình duyệt không hỗ trợ xem trước camera trực tiếp. Vui lòng bấm 'Chụp ảnh bài làm' hoặc 'Chọn ảnh từ thiết bị'.");
+    return;
+  }
+
   try {
-    cameraMediaStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }
+    cameraMediaStream = await getUserMedia({
+      video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
     });
-    video.srcObject = cameraMediaStream;
+
+    if ("srcObject" in video) {
+      video.srcObject = cameraMediaStream;
+    } else {
+      video.src = window.URL.createObjectURL(cameraMediaStream);
+    }
+
+    video.setAttribute("playsinline", "true");
+    video.setAttribute("webkit-playsinline", "true");
+    video.muted = true;
+    await video.play().catch(() => {});
     container.style.display = "flex";
   } catch (err) {
-    alert("Không thể truy cập camera. Vui lòng cho phép quyền hoặc sử dụng nút 'Chọn ảnh từ thiết bị'.");
-    console.warn("Camera access denied or unavailable", err);
+    console.warn("Không thể mở live video stream, chuyển sang mở camera thiết bị:", err);
+    const directCam = document.getElementById("directCameraInput");
+    if (directCam) {
+      directCam.click();
+    } else {
+      alert("Không thể truy cập camera. Vui lòng bấm 'Chụp ảnh bài làm' hoặc 'Chọn ảnh từ thiết bị'.");
+    }
   }
 }
 
@@ -1646,13 +1682,20 @@ function captureSnapshot() {
   const video = document.getElementById("cameraVideo");
   if (!video || !cameraMediaStream) return;
 
-  const canvas = document.createElement("canvas");
-  canvas.width = video.videoWidth || 1280;
-  canvas.height = video.videoHeight || 720;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const w = video.videoWidth || video.clientWidth || 1280;
+  const h = video.videoHeight || video.clientHeight || 720;
+  if (w === 0 || h === 0) {
+    alert("Camera đang khởi động, vui lòng chờ 1 giây rồi bấm chụp lại.");
+    return;
+  }
 
-  const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.8);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0, w, h);
+
+  const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.82);
   const approxSizeKb = Math.round((compressedDataUrl.length * 3) / 4 / 1024);
 
   currentUploadedPhotos.push({

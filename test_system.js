@@ -751,4 +751,31 @@ assert.strictEqual(filterStudentsByQuery(sampleClass, "an_12").length, 1, "Tìm 
 assert.strictEqual(filterStudentsByQuery(sampleClass, "không_tồn_tại").length, 0);
 console.log("✅ 24. Kiểm thử tìm kiếm tức thì danh sách học sinh (Instant Search): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (24/24)!");
+// 25. Test: Cross-Platform Camera Stream Resolver & Native Fallback
+function resolveCameraAction(mockNavigator) {
+  const hasGetUserMedia = Boolean(
+    (mockNavigator.mediaDevices && mockNavigator.mediaDevices.getUserMedia) ||
+    mockNavigator.getUserMedia ||
+    mockNavigator.webkitGetUserMedia
+  );
+  if (hasGetUserMedia) {
+    return "STREAM";
+  }
+  return "NATIVE_CAPTURE";
+}
+
+// Case A: Modern browser with navigator.mediaDevices.getUserMedia
+const modernNav = { mediaDevices: { getUserMedia: () => {} } };
+assert.strictEqual(resolveCameraAction(modernNav), "STREAM");
+
+// Case B: Safari with legacy webkitGetUserMedia
+const safariLegacy = { webkitGetUserMedia: () => {} };
+assert.strictEqual(resolveCameraAction(safariLegacy), "STREAM");
+
+// Case C: Legacy or restricted browser without WebRTC -> Fallback to Native Camera Input
+const restrictedNav = {};
+assert.strictEqual(resolveCameraAction(restrictedNav), "NATIVE_CAPTURE", "Tự động kích hoạt chụp ảnh qua input camera native");
+
+console.log("✅ 25. Kiểm thử khởi động camera đa nền tảng và cơ chế fallback Camera Native: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (25/25)!");

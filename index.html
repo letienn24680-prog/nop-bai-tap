@@ -418,7 +418,7 @@
       <div class="modal-body">
         <!-- Live Camera View Container -->
         <div id="cameraContainer" class="camera-view-container">
-          <video id="cameraVideo" class="camera-video" autoplay playsinline></video>
+          <video id="cameraVideo" class="camera-video" autoplay playsinline webkit-playsinline muted></video>
           <div class="camera-controls">
             <button class="btn btn-primary" onclick="captureSnapshot()">📸 Chụp trang này</button>
             <button class="btn btn-secondary" onclick="stopCameraStream()">✕ Đóng Camera</button>
@@ -440,8 +440,12 @@
             </div>
 
             <div class="photo-actions-row">
+              <label class="btn btn-primary btn-sm" style="cursor: pointer;" title="Mở máy ảnh chụp bài làm">
+                📸 Chụp ảnh bài làm
+                <input type="file" id="directCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="handleFileSelect(event)">
+              </label>
               <button type="button" class="btn btn-secondary btn-sm" onclick="startCameraStream()">
-                📱 Bật Camera chụp
+                📱 Bật Camera trực tiếp
               </button>
               <label class="btn btn-secondary btn-sm" style="cursor: pointer;">
                 📁 Chọn ảnh từ thiết bị
