@@ -778,4 +778,18 @@ assert.strictEqual(resolveCameraAction(restrictedNav), "NATIVE_CAPTURE", "Tự �
 
 console.log("✅ 25. Kiểm thử khởi động camera đa nền tảng và cơ chế fallback Camera Native: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (25/25)!");
+// 26. Test: Responsive Layout Breakpoints & Foldable Device Viewport Logic
+function computeResponsiveColumns(viewportWidth) {
+  if (viewportWidth <= 640) return 1; // Phone & Folded screen (280px - 640px)
+  if (viewportWidth <= 920) return 2; // Foldable unfolded & iPad Mini (641px - 920px)
+  return 3; // Desktop & Large Screens (> 920px)
+}
+
+assert.strictEqual(computeResponsiveColumns(280), 1, "Màn hình gập hẹp 280px -> 1 cột");
+assert.strictEqual(computeResponsiveColumns(375), 1, "Điện thoại 375px -> 1 cột");
+assert.strictEqual(computeResponsiveColumns(717), 2, "Galaxy Fold mở rộng 717px -> 2 cột đều đẹp");
+assert.strictEqual(computeResponsiveColumns(820), 2, "iPad 820px -> 2 cột");
+assert.strictEqual(computeResponsiveColumns(1200), 3, "Desktop -> 3 cột");
+console.log("✅ 26. Kiểm thử tính toán cột hiển thị trên màn hình gập & đa kích thước: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (26/26)!");

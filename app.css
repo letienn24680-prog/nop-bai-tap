@@ -230,7 +230,7 @@ body {
 /* Grid Cards */
 .assignment-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
   gap: 1.25rem;
 }
 
@@ -633,6 +633,9 @@ body {
 
 /* Responsive Rules */
 @media (max-width: 860px) {
+  .brand-subtitle {
+    display: none !important;
+  }
   .grading-studio-layout {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr auto;
@@ -640,6 +643,36 @@ body {
   .grading-sidebar {
     border-left: none;
     border-top: 1px solid var(--border-color);
+  }
+}
+
+/* Extra Narrow Displays (Galaxy Z Fold outer screen, small wearables <= 340px) */
+@media (max-width: 340px) {
+  .topbar {
+    padding: 0.35rem 0.45rem !important;
+    gap: 0.25rem !important;
+  }
+  .brand-icon {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 0.85rem !important;
+  }
+  .brand-title {
+    font-size: 0.85rem !important;
+  }
+  .user-profile-badge {
+    max-width: 90px !important;
+    padding: 0.2rem 0.3rem !important;
+  }
+  .user-profile-info strong {
+    max-width: 48px !important;
+    font-size: 0.72rem !important;
+  }
+  #cloudSyncBtn {
+    padding: 0.25rem 0.35rem !important;
+  }
+  .logout-btn {
+    padding: 0.25rem 0.4rem !important;
   }
 }
 
