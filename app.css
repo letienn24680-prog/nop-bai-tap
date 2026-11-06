@@ -788,9 +788,35 @@ body {
   }
 }
 
-@media (max-width: 860px) {
+/* Tablet & Medium Screens (<= 920px) - Tự động chuyển toàn bộ bảng sang dạng thẻ di động & bọc gọn các tab */
+@media (max-width: 920px) {
   .brand-subtitle {
     display: none !important;
+  }
+  .campaign-desktop-view {
+    display: none !important;
+  }
+  .campaign-mobile-view {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.65rem !important;
+  }
+  .campaign-list-container {
+    overflow-x: hidden !important;
+    padding: 0.75rem 0.5rem !important;
+  }
+  #teacherView .filter-tabs {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.4rem !important;
+    width: 100% !important;
+  }
+  #teacherView .tab-btn {
+    flex: 1 1 calc(33.33% - 0.4rem) !important;
+    min-width: 110px !important;
+    justify-content: center !important;
+    text-align: center !important;
+    white-space: normal !important;
   }
   .grading-studio-layout {
     grid-template-columns: 1fr;
@@ -1346,6 +1372,9 @@ body {
 /* Responsive Mobile Card View for Tables */
 .campaign-desktop-view {
   display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .campaign-mobile-view {
@@ -1371,13 +1400,14 @@ body {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.86rem;
+  font-size: 0.83rem;
   background: #FFFFFF;
+  table-layout: auto;
 }
 
 .data-table th {
   background: linear-gradient(135deg, #F8FAFC 0%, #EEF2FF 100%);
-  padding: 0.85rem 1rem;
+  padding: 0.7rem 0.8rem;
   text-align: left;
   font-weight: 700;
   color: #3730A3;
@@ -1385,12 +1415,17 @@ body {
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 .data-table td {
-  padding: 0.85rem 1rem;
+  padding: 0.7rem 0.8rem;
   border-bottom: 1px solid #F1F5F9;
   vertical-align: middle;
+}
+
+.data-table td:first-child {
+  white-space: normal;
 }
 
 .data-table tr:hover td {

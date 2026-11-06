@@ -8,6 +8,18 @@
   <title>EduProof - Nộp & Chấm Bài Tập Minh Chứng</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234F46E5'/%3E%3Cpath d='M16 5L4 11.5L16 18L28 11.5L16 5Z' fill='white'/%3E%3Cpath d='M8 14.5V20.5C8 24 11.5 26.5 16 26.5C20.5 26.5 24 24 24 20.5V14.5L16 19L8 14.5Z' fill='white' fill-opacity='0.85'/%3E%3Cpath d='M26 13.5V22' stroke='%23FDE047' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='26' cy='22.5' r='1.5' fill='%23FDE047'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="app.css">
+  <script>
+    // Ghi đè alert của trình duyệt sang popup trong trang web ngay lập tức
+    window.alert = function(msg) {
+      if (typeof showNoticeModal === "function") {
+        showNoticeModal(msg);
+      } else {
+        window.addEventListener("DOMContentLoaded", function() {
+          if (typeof showNoticeModal === "function") showNoticeModal(msg);
+        });
+      }
+    };
+  </script>
 </head>
 <body>
 
@@ -808,6 +820,30 @@
       <div class="modal-footer" style="padding: 0.75rem 1.25rem; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: flex-end;">
         <button class="btn btn-primary" onclick="closeNoticeModal()" style="padding: 0.5rem 1.5rem; font-size: 0.85rem;">
           Đã hiểu
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 8: IN-APP CONFIRM POPUP (Thay thế confirm() trình duyệt) ==================== -->
+  <div id="confirmModal" class="modal-overlay" style="display: none; z-index: 9999;" onclick="if (event.target === this) closeConfirmModal(false)">
+    <div class="modal-content" style="max-width: 440px; padding: 0; border-radius: 18px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(239, 68, 68, 0.25); border: 1px solid #FECACA;">
+      <div style="background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%); padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #FECACA;">
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <span id="confirmModalIcon" style="font-size: 1.25rem;">⚠️</span>
+          <strong id="confirmModalTitle" style="font-size: 0.95rem; color: #991B1B;">Xác nhận thao tác</strong>
+        </div>
+        <button class="tool-icon-btn" onclick="closeConfirmModal(false)" style="color: #64748B;">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 1.25rem;">
+        <div id="confirmModalContent" style="font-size: 0.88rem; line-height: 1.6; color: #1E293B; white-space: pre-wrap; word-break: break-word;"></div>
+      </div>
+      <div class="modal-footer" style="padding: 0.75rem 1.25rem; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: flex-end; gap: 0.5rem;">
+        <button class="btn btn-secondary" onclick="closeConfirmModal(false)" style="padding: 0.5rem 1.25rem; font-size: 0.85rem;">
+          Hủy bỏ
+        </button>
+        <button id="confirmModalActionBtn" class="btn btn-danger" onclick="closeConfirmModal(true)" style="padding: 0.5rem 1.25rem; font-size: 0.85rem;">
+          Đồng ý
         </button>
       </div>
     </div>

@@ -133,6 +133,43 @@ function closeNoticeModal() {
   if (modal) modal.style.display = "none";
 }
 
+let confirmModalCallback = null;
+
+function showConfirmModal(message, onConfirm, title = "Xác nhận thao tác", actionText = "Đồng ý", isDanger = true) {
+  confirmModalCallback = onConfirm;
+  const modal = document.getElementById("confirmModal");
+  if (!modal) {
+    if (confirm(message)) {
+      if (typeof onConfirm === "function") onConfirm();
+    }
+    return;
+  }
+  const titleEl = document.getElementById("confirmModalTitle");
+  const contentEl = document.getElementById("confirmModalContent");
+  const actionBtn = document.getElementById("confirmModalActionBtn");
+
+  if (titleEl) titleEl.innerText = title;
+  if (contentEl) contentEl.innerText = message;
+  if (actionBtn) {
+    actionBtn.innerText = actionText;
+    actionBtn.className = isDanger ? "btn btn-danger" : "btn btn-primary";
+  }
+
+  modal.style.display = "flex";
+}
+
+function closeConfirmModal(accepted) {
+  const modal = document.getElementById("confirmModal");
+  if (modal) modal.style.display = "none";
+  if (accepted && typeof confirmModalCallback === "function") {
+    const cb = confirmModalCallback;
+    confirmModalCallback = null;
+    cb();
+  } else {
+    confirmModalCallback = null;
+  }
+}
+
 // Ghi đè hàm alert() của trình duyệt sang popup trong trang web
 if (typeof window !== "undefined") {
   window.alert = function(msg) {
@@ -953,21 +990,27 @@ function deleteStudentAccount(studentId) {
   const student = users.find((u) => u.id === studentId);
   if (!student) return;
 
-  if (confirm(`Bạn có chắc chắn muốn xóa tài khoản của học sinh "${student.name}" (${student.username})?`)) {
-    users = users.filter((u) => u.id !== studentId);
-    // remove their submissions
-    submissions = submissions.filter((s) => s.studentId !== studentId);
-    persistData();
+  showConfirmModal(
+    `Bạn có chắc chắn muốn xóa tài khoản của học sinh "${student.name}" (${student.username})?`,
+    () => {
+      users = users.filter((u) => u.id !== studentId);
+      // remove their submissions
+      submissions = submissions.filter((s) => s.studentId !== studentId);
+      persistData();
 
-    const sb = getSupabase();
-    if (sb) {
-      sb.from("eduproof_users").delete().eq("id", studentId).then();
-      sb.from("eduproof_submissions").delete().eq("student_id", studentId).then();
-    }
+      const sb = getSupabase();
+      if (sb) {
+        sb.from("eduproof_users").delete().eq("id", studentId).then();
+        sb.from("eduproof_submissions").delete().eq("student_id", studentId).then();
+      }
 
-    renderTeacherView();
-    alert("Đã xóa tài khoản học sinh thành công.");
-  }
+      renderTeacherView();
+      alert("Đã xóa tài khoản học sinh thành công.");
+    },
+    "Xác nhận xóa tài khoản",
+    "Xóa học sinh",
+    true
+  );
 }
 
 function copyAccountInfo(username) {
@@ -1396,29 +1439,30 @@ function deleteTeacherAccount(teacherId) {
   const countStudents = users.filter((u) => u.role === "student" && u.teacherId === teacherId).length;
   const countAssignments = assignments.filter((a) => a.teacherId === teacherId).length;
 
-  if (
-    confirm(
-      `Bạn có chắc chắn muốn xóa tài khoản Giáo viên "${teacher.name}"?\n\n` +
-      `⚠️ CẢNH BÁO: Toàn bộ ${countStudents} học sinh trực thuộc và ${countAssignments} bài tập của giáo viên này cũng sẽ bị xóa bỏ!`
-    )
-  ) {
-    users = users.filter((u) => u.id !== teacherId && u.teacherId !== teacherId);
-    const teacherAsgIds = new Set(assignments.filter((a) => a.teacherId === teacherId).map((a) => a.id));
-    assignments = assignments.filter((a) => a.teacherId !== teacherId);
-    submissions = submissions.filter((s) => !teacherAsgIds.has(s.assignmentId));
+  showConfirmModal(
+    `Bạn có chắc chắn muốn xóa tài khoản Giáo viên "${teacher.name}"?\n\n⚠️ CẢNH BÁO: Toàn bộ ${countStudents} học sinh trực thuộc và ${countAssignments} bài tập của giáo viên này cũng sẽ bị xóa bỏ!`,
+    () => {
+      users = users.filter((u) => u.id !== teacherId && u.teacherId !== teacherId);
+      const teacherAsgIds = new Set(assignments.filter((a) => a.teacherId === teacherId).map((a) => a.id));
+      assignments = assignments.filter((a) => a.teacherId !== teacherId);
+      submissions = submissions.filter((s) => !teacherAsgIds.has(s.assignmentId));
 
-    persistData();
+      persistData();
 
-    const sb = getSupabase();
-    if (sb) {
-      sb.from("eduproof_users").delete().eq("id", teacherId).then();
-      sb.from("eduproof_users").delete().eq("teacher_id", teacherId).then();
-      sb.from("eduproof_assignments").delete().eq("teacher_id", teacherId).then();
-    }
+      const sb = getSupabase();
+      if (sb) {
+        sb.from("eduproof_users").delete().eq("id", teacherId).then();
+        sb.from("eduproof_users").delete().eq("teacher_id", teacherId).then();
+        sb.from("eduproof_assignments").delete().eq("teacher_id", teacherId).then();
+      }
 
-    renderAdminView();
-    alert("Đã xóa giáo viên và toàn bộ dữ liệu trực thuộc thành công.");
-  }
+      renderAdminView();
+      alert("Đã xóa giáo viên và toàn bộ dữ liệu trực thuộc thành công.");
+    },
+    "Xác nhận xóa Giáo viên",
+    "Xóa giáo viên",
+    true
+  );
 }
 
 function renderAdminView() {
@@ -2841,36 +2885,40 @@ async function deleteAssignment(assignmentId) {
   const asg = assignments.find((a) => a.id === assignmentId);
   const title = asg ? asg.title : "này";
 
-  if (!confirm(`Bạn có chắc chắn muốn xóa bài tập "${title}"?\n\nLưu ý: Mọi bài nộp của học sinh liên quan đến bài tập này cũng sẽ bị xóa bỏ hoàn toàn trên cả thiết bị và Supabase Cloud.`)) {
-    return;
-  }
+  showConfirmModal(
+    `Bạn có chắc chắn muốn xóa bài tập "${title}"?\n\nLưu ý: Mọi bài nộp của học sinh liên quan đến bài tập này cũng sẽ bị xóa bỏ hoàn toàn trên cả thiết bị và Supabase Cloud.`,
+    async () => {
+      assignments = assignments.filter((a) => a.id !== assignmentId);
+      submissions = submissions.filter((s) => s.assignmentId !== assignmentId);
 
-  assignments = assignments.filter((a) => a.id !== assignmentId);
-  submissions = submissions.filter((s) => s.assignmentId !== assignmentId);
+      if (selectedCampaignId === assignmentId) {
+        selectedCampaignId = assignments.length > 0 ? assignments[0].id : null;
+        localStorage.setItem("eduproof_selected_campaign", selectedCampaignId || "");
+      }
 
-  if (selectedCampaignId === assignmentId) {
-    selectedCampaignId = assignments.length > 0 ? assignments[0].id : null;
-    localStorage.setItem("eduproof_selected_campaign", selectedCampaignId || "");
-  }
+      persistData();
 
-  persistData();
+      // Xóa trực tiếp trên Supabase Cloud ngay lập tức
+      const sb = getSupabase();
+      if (sb) {
+        try {
+          await Promise.all([
+            sb.from("eduproof_assignments").delete().eq("id", assignmentId),
+            sb.from("eduproof_submissions").delete().eq("assignment_id", assignmentId)
+          ]);
+          console.log("✅ Đã xóa bài tập trên Supabase Cloud:", assignmentId);
+        } catch (err) {
+          console.warn("Lỗi xóa bài tập trên Cloud:", err);
+        }
+      }
 
-  // Xóa trực tiếp trên Supabase Cloud ngay lập tức
-  const sb = getSupabase();
-  if (sb) {
-    try {
-      await Promise.all([
-        sb.from("eduproof_assignments").delete().eq("id", assignmentId),
-        sb.from("eduproof_submissions").delete().eq("assignment_id", assignmentId)
-      ]);
-      console.log("✅ Đã xóa bài tập trên Supabase Cloud:", assignmentId);
-    } catch (err) {
-      console.warn("Lỗi xóa bài tập trên Cloud:", err);
-    }
-  }
-
-  renderTeacherView();
-  alert("Đã xóa bài tập thành công.");
+      renderTeacherView();
+      alert("Đã xóa bài tập thành công.");
+    },
+    "Xác nhận xóa bài tập",
+    "Xóa bài tập",
+    true
+  );
 }
 
 // Student Accounts Management & Instant Search

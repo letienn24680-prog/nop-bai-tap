@@ -982,4 +982,28 @@ assert.ok(
 
 console.log("✅ 35. Kiểm thử cơ chế cứu hộ ảnh minh chứng (Resilient Photo Fallback): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (35/35)!");
+// 36. Test: Responsive Cards for Tablet/Medium Screens (max-width: 920px) & In-App Confirm Dialog
+const testAppHtml = fs.readFileSync("index.html", "utf8");
+const testAppJs = fs.readFileSync("app.js", "utf8");
+const testAppCss = fs.readFileSync("app.css", "utf8");
+
+assert.ok(
+  testAppHtml.includes('id="confirmModal"') && testAppHtml.includes('id="confirmModalActionBtn"'),
+  "index.html phải có hộp thoại xác nhận nội bộ confirmModal để thay thế hoàn toàn confirm() trình duyệt"
+);
+assert.ok(
+  testAppJs.includes("showConfirmModal") && testAppJs.includes("closeConfirmModal"),
+  "app.js phải có hàm điều khiển showConfirmModal và closeConfirmModal"
+);
+assert.ok(
+  testAppCss.includes("@media (max-width: 920px)") && testAppCss.includes("campaign-mobile-view"),
+  "app.css phải kích hoạt chuyển bảng sang thẻ di động tự động từ độ phân giải 920px trở xuống"
+);
+assert.ok(
+  testAppHtml.includes("window.alert = function"),
+  "index.html phải ghi đè window.alert ngay từ đầu trang trong thẻ head"
+);
+
+console.log("✅ 36. Kiểm thử chuyển đổi thẻ di động mở rộng (920px) & Hộp thoại xác nhận nội bộ trong trang: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (36/36)!");
