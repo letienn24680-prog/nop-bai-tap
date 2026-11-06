@@ -214,6 +214,11 @@ BEGIN
     IF v_existing.status = 'graded' THEN
       RAISE EXCEPTION 'Bài nộp này đã được giáo viên chấm điểm. Không thể sửa hoặc nộp lại trừ khi có yêu cầu.';
     END IF;
+
+    -- Chống spam gửi bài liên tục (khoảng cách tối thiểu 3 giây giữa các lần nộp lại)
+    IF v_existing.submitted_at > NOW() - INTERVAL '3 seconds' THEN
+      RAISE EXCEPTION 'Thao tác quá nhanh. Vui lòng chờ 3 giây trước khi cập nhật lại bài nộp.';
+    END IF;
     
     UPDATE eduproof_submissions
     SET 

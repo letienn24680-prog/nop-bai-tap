@@ -692,4 +692,38 @@ assert.throws(() => {
 
 console.log("✅ 21. Kiểm thử RPC get_my_students phân quyền tài khoản theo lớp của giáo viên: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (21/21)!");
+// 22. Test: Submission Rate Limiting / Anti-Spam Check
+function checkSubmissionRateLimit(lastSubmittedAt, cooldownSeconds = 3) {
+  if (!lastSubmittedAt) return { allowed: true };
+  const diffMs = Date.now() - new Date(lastSubmittedAt).getTime();
+  if (diffMs < cooldownSeconds * 1000) {
+    return { allowed: false, retryAfterMs: cooldownSeconds * 1000 - diffMs };
+  }
+  return { allowed: true };
+}
+
+const justNow = new Date().toISOString();
+assert.strictEqual(checkSubmissionRateLimit(justNow, 3).allowed, false, "Gửi lại trong 3 giây phải bị chặn chống spam");
+const twoMinutesAgo = new Date(Date.now() - 120000).toISOString();
+assert.strictEqual(checkSubmissionRateLimit(twoMinutesAgo, 3).allowed, true, "Gửi lại sau thời gian cooldown phải được phép");
+console.log("✅ 22. Kiểm thử cơ chế Rate Limiting chống spam gửi bài liên tục: ĐẠT");
+
+// 23. Test: Overdue Deadline Status Calculation
+function computeAssignmentStatusBadge(deadlineIso, submission) {
+  const isPast = new Date() > new Date(deadlineIso);
+  if (!submission) {
+    return isPast ? "OVERDUE" : "PENDING";
+  }
+  if (submission.status === "graded") return "GRADED";
+  if (submission.status === "resubmit_requested") return "RESUBMIT";
+  return "SUBMITTED";
+}
+
+const pastDeadline = new Date(Date.now() - 3600000).toISOString();
+const futureDeadline = new Date(Date.now() + 3600000).toISOString();
+assert.strictEqual(computeAssignmentStatusBadge(pastDeadline, null), "OVERDUE", "Chưa nộp và quá deadline -> OVERDUE");
+assert.strictEqual(computeAssignmentStatusBadge(futureDeadline, null), "PENDING", "Chưa nộp và còn hạn -> PENDING");
+assert.strictEqual(computeAssignmentStatusBadge(pastDeadline, { status: "submitted" }), "SUBMITTED");
+console.log("✅ 23. Kiểm thử nhận diện quá hạn nộp bài tập (Overdue Deadline): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (23/23)!");

@@ -567,15 +567,28 @@ async function syncCloudData(notify = false) {
   }
 }
 
+let realtimeSubscribed = false;
+let realtimeDebounceTimer = null;
+
 function setupRealtimeListener() {
+  if (realtimeSubscribed) return;
   const sb = getSupabase();
   if (!sb || !sb.channel) return;
   try {
+    const triggerDebouncedSync = () => {
+      clearTimeout(realtimeDebounceTimer);
+      realtimeDebounceTimer = setTimeout(() => {
+        syncCloudData(false);
+      }, 350);
+    };
+
     sb.channel("eduproof_live_sync")
-      .on("postgres_changes", { event: "*", schema: "public", table: "eduproof_assignments" }, () => syncCloudData(false))
-      .on("postgres_changes", { event: "*", schema: "public", table: "eduproof_submissions" }, () => syncCloudData(false))
-      .on("postgres_changes", { event: "*", schema: "public", table: "eduproof_users" }, () => syncCloudData(false))
+      .on("postgres_changes", { event: "*", schema: "public", table: "eduproof_assignments" }, triggerDebouncedSync)
+      .on("postgres_changes", { event: "*", schema: "public", table: "eduproof_submissions" }, triggerDebouncedSync)
+      .on("postgres_changes", { event: "*", schema: "public", table: "eduproof_users" }, triggerDebouncedSync)
       .subscribe();
+
+    realtimeSubscribed = true;
   } catch (e) {
     console.warn("Realtime listener không khả dụng:", e);
   }
@@ -1527,9 +1540,13 @@ function renderStudentView() {
       month: "2-digit"
     });
 
+    const isLate = new Date() > new Date(asg.deadline);
+
     if (status === "pending") {
-      statusBadge = `<span class="badge-status status-pending">⏳ Cần nộp bài</span>`;
-      actionBtn = `<button class="btn btn-primary btn-sm" onclick="openSubmitModal('${asg.id}')">📸 Nộp bài tập</button>`;
+      statusBadge = isLate
+        ? `<span class="badge-status status-resubmit">⚠️ Đã quá hạn</span>`
+        : `<span class="badge-status status-pending">⏳ Cần nộp bài</span>`;
+      actionBtn = `<button class="btn btn-primary btn-sm" onclick="openSubmitModal('${asg.id}')">${isLate ? "📸 Nộp bài muộn" : "📸 Nộp bài tập"}</button>`;
     } else if (status === "resubmit") {
       statusBadge = `<span class="badge-status status-resubmit">⚠️ Yêu cầu chụp lại</span>`;
       actionBtn = `<button class="btn btn-danger btn-sm" onclick="openSubmitModal('${asg.id}')">🔄 Chụp nộp lại</button>`;
@@ -1809,7 +1826,11 @@ async function uploadPhotoToStorage(sb, dataUrl, filePath) {
   }
 }
 
+let isSubmitting = false;
+
 async function confirmSubmitAssignment() {
+  if (isSubmitting) return;
+
   const asg = assignments.find((a) => a.id === activeSubmittingAssignmentId);
   if (!asg) return;
 
@@ -1818,6 +1839,7 @@ async function confirmSubmitAssignment() {
     return;
   }
 
+  isSubmitting = true;
   const submitBtn = document.querySelector("#submitModal .btn-primary");
   if (submitBtn) {
     submitBtn.disabled = true;
@@ -1827,18 +1849,19 @@ async function confirmSubmitAssignment() {
   try {
     const sb = getSupabase();
 
-    // 1. Thử tải ảnh lên Supabase Storage bucket 'proofs' để tiết kiệm dung lượng database
+    // 1. Tải ảnh lên Supabase Storage bucket 'proofs' song song (parallel) để tăng tốc nộp bài
     if (sb) {
-      for (let i = 0; i < currentUploadedPhotos.length; i++) {
-        const photo = currentUploadedPhotos[i];
-        if (photo.dataUrl && photo.dataUrl.startsWith("data:")) {
-          const path = `submissions/${asg.id}/${currentUser.id}/${photo.id || "page_" + i}.jpg`;
-          const storageUrl = await uploadPhotoToStorage(sb, photo.dataUrl, path);
-          if (storageUrl) {
-            photo.dataUrl = storageUrl;
+      await Promise.all(
+        currentUploadedPhotos.map(async (photo, i) => {
+          if (photo.dataUrl && photo.dataUrl.startsWith("data:")) {
+            const path = `submissions/${asg.id}/${currentUser.id}/${photo.id || "page_" + i}.jpg`;
+            const storageUrl = await uploadPhotoToStorage(sb, photo.dataUrl, path);
+            if (storageUrl) {
+              photo.dataUrl = storageUrl;
+            }
           }
-        }
-      }
+        })
+      );
     }
 
     const linkProof = document.getElementById("proofLinkInput").value.trim();
@@ -1912,6 +1935,7 @@ async function confirmSubmitAssignment() {
     renderStudentView();
     alert("🎉 Chúc mừng! Bạn đã nộp bài tập thành công.");
   } finally {
+    isSubmitting = false;
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.innerText = "🚀 Xác nhận nộp bài";
