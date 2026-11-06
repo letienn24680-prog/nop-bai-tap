@@ -4080,6 +4080,19 @@ function closeGradingStudio() {
   document.getElementById("gradingModal").style.display = "none";
 }
 
+function handleGradingImageError(imgEl) {
+  if (!imgEl) return;
+  const backup = imgEl.getAttribute("data-backup");
+  if (backup && backup !== "" && imgEl.src !== backup) {
+    console.warn("Chuyển sang ảnh dự phòng Base64 trong Grading Studio...");
+    imgEl.setAttribute("data-backup", "");
+    imgEl.src = backup;
+    return;
+  }
+  imgEl.onerror = null;
+  imgEl.src = FALLBACK_PHOTO_SVG;
+}
+
 function loadGradingPage(pageIndex) {
   const sub = submissions.find((s) => s.id === activeGradingSubmissionId);
   if (!sub) return;
@@ -4090,103 +4103,58 @@ function loadGradingPage(pageIndex) {
   if (pageIndex < 0) pageIndex = 0;
   if (pageIndex >= sub.photos.length) pageIndex = sub.photos.length - 1;
   activeGradingPageIndex = pageIndex;
+  canvasUndoStack = [];
 
-  document.getElementById("pageNavIndicator").innerText =
-    `Trang ${pageIndex + 1} / ${sub.photos.length}`;
+  const navIndicator = document.getElementById("pageNavIndicator");
+  if (navIndicator) {
+    navIndicator.innerText = `Trang ${pageIndex + 1} / ${sub.photos.length}`;
+  }
 
+  const gradingImg = document.getElementById("gradingImage");
   const canvas = document.getElementById("annotationCanvas");
-  const ctx = canvas.getContext("2d");
+  const loadingNotice = document.getElementById("canvasLoadingNotice");
+  if (!canvas) return;
+
   const photo = sub.photos[pageIndex];
   const photoUrl = photo ? (photo.dataUrl || photo.url || "") : "";
   const photoBackup = photo ? (photo.backupDataUrl || "") : "";
 
-  if (!photoUrl) {
-    canvas.width = 800;
-    canvas.height = 600;
-    ctx.fillStyle = "#F8FAFC";
-    ctx.fillRect(0, 0, 800, 600);
-    ctx.fillStyle = "#EF4444";
-    ctx.font = "bold 18px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("Không tìm thấy đường dẫn ảnh của trang này", 400, 300);
-    return;
-  }
-
-  // Draw loading state on canvas
-  canvas.width = 800;
-  canvas.height = 600;
-  ctx.fillStyle = "#1E293B";
-  ctx.fillRect(0, 0, 800, 600);
-  ctx.fillStyle = "#94A3B8";
-  ctx.font = "16px sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("⏳ Đang tải ảnh bài nộp...", 400, 300);
-
-  const img = new Image();
-  // ONLY set crossOrigin for external http/https URLs, NEVER for data: URIs!
-  if (photoUrl.startsWith("http://") || photoUrl.startsWith("https://")) {
-    img.crossOrigin = "anonymous";
-  }
-
-  const renderImageToCanvas = () => {
-    canvas.width = img.naturalWidth || img.width || 1200;
-    canvas.height = img.naturalHeight || img.height || 1600;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-    if (sub.annotations && sub.annotations[pageIndex]) {
-      const savedDrawings = new Image();
-      if (typeof sub.annotations[pageIndex] === "string" && sub.annotations[pageIndex].startsWith("http")) {
-        savedDrawings.crossOrigin = "anonymous";
-      }
-      savedDrawings.onload = () => {
-        ctx.drawImage(savedDrawings, 0, 0, canvas.width, canvas.height);
-        saveCanvasState();
-      };
-      savedDrawings.src = sub.annotations[pageIndex];
-    } else {
-      saveCanvasState();
-    }
-  };
-
-  img.onload = renderImageToCanvas;
-
-  img.onerror = () => {
-    if (photoBackup && img.src !== photoBackup) {
-      console.warn("Chuyển sang ảnh dự phòng Base64...");
-      img.crossOrigin = null;
-      img.onload = renderImageToCanvas;
-      img.src = photoBackup;
-      return;
-    }
-    console.warn("Thử tải lại ảnh không dùng crossOrigin anonymous...");
-    if (img.crossOrigin) {
-      img.crossOrigin = null;
-      img.onload = renderImageToCanvas;
-      img.onerror = () => showCanvasError();
-      img.src = photoUrl;
-    } else {
-      showCanvasError();
-    }
-  };
-
-  function showCanvasError() {
-    canvas.width = 800;
-    canvas.height = 600;
-    ctx.fillStyle = "#F8FAFC";
-    ctx.fillRect(0, 0, 800, 600);
-    ctx.fillStyle = "#EF4444";
-    ctx.font = "bold 18px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("⚠️ Không thể tải ảnh trực tiếp trên Canvas", 400, 270);
-    ctx.fillStyle = "#4F46E5";
-    ctx.font = "14px sans-serif";
-    ctx.fillText("👉 Bấm vào đây để mở xem ảnh trong tab mới", 400, 310);
-    canvas.onclick = () => window.open(photoUrl, "_blank");
-  }
-
-  img.src = photoUrl;
   initCanvasEvents();
+
+  if (gradingImg) {
+    if (loadingNotice) loadingNotice.style.display = "block";
+    gradingImg.setAttribute("data-backup", photoBackup);
+
+    const applyCanvasSizeAndDrawings = () => {
+      if (loadingNotice) loadingNotice.style.display = "none";
+      const natW = gradingImg.naturalWidth || gradingImg.clientWidth || 800;
+      const natH = gradingImg.naturalHeight || gradingImg.clientHeight || 1000;
+      canvas.width = natW;
+      canvas.height = natH;
+
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (sub.annotations && sub.annotations[pageIndex]) {
+        const savedDrawings = new Image();
+        savedDrawings.onload = () => {
+          ctx.drawImage(savedDrawings, 0, 0, canvas.width, canvas.height);
+          saveCanvasState();
+        };
+        savedDrawings.src = sub.annotations[pageIndex];
+      } else {
+        saveCanvasState();
+      }
+    };
+
+    gradingImg.onload = applyCanvasSizeAndDrawings;
+
+    if (gradingImg.src === photoUrl && gradingImg.complete && gradingImg.naturalWidth > 0) {
+      applyCanvasSizeAndDrawings();
+    } else {
+      gradingImg.src = photoUrl;
+    }
+  }
 }
 
 function changeGradingPage(delta) {
@@ -4233,9 +4201,10 @@ function selectAnnotationTool(tool) {
 
 function initCanvasEvents() {
   const canvas = document.getElementById("annotationCanvas");
+  if (!canvas || canvas.dataset.eventsBound === "true") return;
+  canvas.dataset.eventsBound = "true";
 
-  const newCanvas = canvas.cloneNode(true);
-  canvas.parentNode.replaceChild(newCanvas, canvas);
+  const newCanvas = canvas;
 
   const getCanvasPos = (evt) => {
     const rect = newCanvas.getBoundingClientRect();
@@ -4360,11 +4329,15 @@ function saveCanvasState() {
 }
 
 function undoAnnotation() {
-  if (canvasUndoStack.length <= 1) return;
+  if (canvasUndoStack.length <= 1) {
+    clearAnnotations();
+    return;
+  }
   canvasUndoStack.pop();
   const prevState = canvasUndoStack[canvasUndoStack.length - 1];
 
   const canvas = document.getElementById("annotationCanvas");
+  if (!canvas) return;
   const ctx = canvas.getContext("2d");
   const img = new Image();
   img.onload = () => {
@@ -4375,7 +4348,13 @@ function undoAnnotation() {
 }
 
 function clearAnnotations() {
-  loadGradingPage(activeGradingPageIndex);
+  const canvas = document.getElementById("annotationCanvas");
+  if (canvas) {
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  canvasUndoStack = [];
+  saveCanvasState();
 }
 
 function addQuickComment(text) {

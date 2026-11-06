@@ -1770,4 +1770,34 @@ assert.strictEqual(canStudentResubmit53, false, "Học sinh không được phé
 
 console.log("✅ 53. Kiểm thử Vòng đời Toàn diện Khép kín (End-to-End State Machine Lifecycle): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (53/53)!");
+// --- TEST 54: Kiểm thử Hiển thị Ảnh Trực quan & Lớp Vẽ Chấm Bài (Grading Studio Visual Fix) ---
+const html54 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+const appJs54 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const css54 = fs.readFileSync(path.join(__dirname, "app.css"), "utf8");
+
+// 1. Kiểm tra kiến trúc thẻ ảnh #gradingImage và #annotationCanvas lồng nhau
+assert.ok(
+  html54.includes('id="gradingImage"') &&
+  html54.includes('id="annotationCanvas"') &&
+  html54.includes('id="canvasStageWrapper"'),
+  "index.html phải có thẻ img #gradingImage và canvas #annotationCanvas lồng trong wrapper"
+);
+
+// 2. Kiểm tra CSS lớp vẽ trong suốt trên nền ảnh thật
+assert.ok(
+  css54.includes("#annotationCanvas") &&
+  css54.includes("background: transparent !important;"),
+  "app.css phải đặt nền canvas trong suốt để thấy ảnh bài làm bên dưới"
+);
+
+// 3. Kiểm tra nạp ảnh bằng thẻ img và không dùng cloneNode làm mất DOM
+assert.ok(
+  appJs54.includes('function handleGradingImageError') &&
+  appJs54.includes('gradingImg.src = photoUrl;') &&
+  !appJs54.includes('newCanvas = canvas.cloneNode(true)'),
+  "app.js phải nạp ảnh trực tiếp qua gradingImg, có cơ chế cứu hộ ảnh và không dùng cloneNode làm mất canvas"
+);
+
+console.log("✅ 54. Kiểm thử Hiển thị Ảnh Trực quan & Lớp Vẽ Chấm Bài (Grading Studio Visual Fix): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (54/54)!");

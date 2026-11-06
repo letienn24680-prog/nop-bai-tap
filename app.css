@@ -722,8 +722,7 @@ body {
 }
 
 #annotationCanvas {
-  background: #FFFFFF;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  background: transparent !important;
   cursor: crosshair;
   max-width: 100%;
   touch-action: none;
