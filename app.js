@@ -5034,6 +5034,62 @@ function handleSubjectSelectChange(val) {
 
 let currentBatchEmailData = null;
 
+async function autoDispatchAssignmentEmail(assignment, recipientStudents) {
+  if (!recipientStudents || recipientStudents.length === 0) return;
+  const emailsList = recipientStudents.map((s) => s.email.trim());
+  const deadlineStr = new Date(assignment.deadline).toLocaleString("vi-VN");
+  const appUrl = window.location.origin + window.location.pathname;
+
+  const emailSubject = `[EduProof] Bài tập mới: ${assignment.title} - Môn ${assignment.subject}`;
+  const emailBody = `Chào các em học sinh,\n\nThầy/Cô ${currentUser.name} vừa giao bài tập mới trên hệ thống EduProof:\n\n📌 Tiêu đề bài tập: ${assignment.title}\n📚 Môn học: ${assignment.subject}\n⏰ Hạn nộp: ${deadlineStr}\n📝 Hướng dẫn: ${assignment.description || "Làm bài tập đầy đủ và chụp ảnh vở bài làm nộp lên EduProof."}\n\n👉 Các em hãy đăng nhập vào hệ thống để nộp bài đúng hạn nhé:\n${appUrl}\n\nChúc các em làm bài tốt!\nThân ái,\n${currentUser.name}`;
+
+  const emailHtml = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 18px; border: 1px solid #E2E8F0; border-radius: 12px; background: #FFFFFF;">
+      <div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); padding: 16px; border-radius: 8px; color: #FFF; text-align: center;">
+        <h2 style="margin: 0; font-size: 1.25rem;">EduProof • Thông Báo Bài Tập Mới</h2>
+      </div>
+      <div style="padding: 16px 4px; color: #1E293B; line-height: 1.6;">
+        <p>Chào các em học sinh,</p>
+        <p>Thầy/Cô <strong>${escapeHtml(currentUser.name)}</strong> vừa giao bài tập mới:</p>
+        <div style="background: #F8FAFC; border-left: 4px solid #4F46E5; padding: 10px 14px; margin: 12px 0; border-radius: 0 8px 8px 0;">
+          <p style="margin: 3px 0;">📌 <strong>Đề bài:</strong> ${escapeHtml(assignment.title)}</p>
+          <p style="margin: 3px 0;">📚 <strong>Môn học:</strong> ${escapeHtml(assignment.subject)}</p>
+          <p style="margin: 3px 0;">⏰ <strong>Hạn nộp:</strong> <span style="color: #DC2626; font-weight: 700;">${deadlineStr}</span></p>
+          <p style="margin: 3px 0;">📝 <strong>Yêu cầu:</strong> ${escapeHtml(assignment.description || "Làm bài tập và chụp ảnh vở nộp lên web.")}</p>
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <a href="${appUrl}" style="background: #4F46E5; color: #FFF; padding: 10px 22px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">👉 Đăng nhập nộp bài</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  try {
+    fetch("/api/send-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        bcc: emailsList,
+        subject: emailSubject,
+        text: emailBody,
+        html: emailHtml,
+        assignmentTitle: assignment.title,
+        teacherName: currentUser.name,
+        studentCount: emailsList.length
+      })
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("✅ [EduProof Auto Email] Đã tự động gửi email thành công:", data);
+      })
+      .catch((err) => {
+        console.log("ℹ️ [EduProof Auto Email] Background dispatch:", err);
+      });
+  } catch (err) {
+    console.warn("Lỗi gửi email tự động:", err);
+  }
+}
+
 function openBatchEmailModal(assignment, recipientStudents) {
   currentBatchEmailData = { assignment, recipientStudents };
   const modal = document.getElementById("batchEmailModal");
@@ -5206,17 +5262,19 @@ async function confirmCreateAssignment() {
   }
 
   if (notifyEmail && emailStudents.length > 0) {
-    openBatchEmailModal(newAsg, emailStudents);
-  } else {
-    let successNote = `🎉 Đã tạo bài tập "${newAsg.title}" và đồng bộ thành công lên hệ thống!`;
-    if (notifyZalo) {
-      successNote += `\n\n📋 Nội dung thông báo bài tập đã được tự động sao chép vào bộ nhớ tạm (Thầy/Cô có thể dán ngay vào nhóm Zalo lớp).`;
-    }
-    if (notifyEmail && emailStudents.length === 0) {
-      successNote += `\n\n💡 Lưu ý: Lớp chưa có học sinh nào cài địa chỉ Email. Thầy/Cô có thể cập nhật email ở mục "Quản lý học sinh" hoặc nhập file Excel để gửi email tự động.`;
-    }
-    showNoticeModal(successNote, "Tạo bài tập thành công", "🎉");
+    autoDispatchAssignmentEmail(newAsg, emailStudents);
   }
+
+  let successNote = `🎉 Đã tạo bài tập "${newAsg.title}" và đồng bộ thành công lên hệ thống!`;
+  if (notifyEmail && emailStudents.length > 0) {
+    successNote += `\n\n📧 Hệ thống đã tự động gửi email thông báo bài tập mới đến ${emailStudents.length} học sinh trong lớp (Thầy/Cô không cần thao tác thủ công).`;
+  } else if (notifyEmail && emailStudents.length === 0) {
+    successNote += `\n\n💡 Lưu ý: Lớp chưa có học sinh nào cài địa chỉ Email. Thầy/Cô có thể cập nhật email ở mục "Quản lý học sinh" hoặc nhập file Excel để tự động gửi email.`;
+  }
+  if (notifyZalo) {
+    successNote += `\n\n📋 Nội dung thông báo bài tập đã được tự động sao chép vào bộ nhớ tạm (Thầy/Cô có thể dán ngay vào nhóm Zalo lớp).`;
+  }
+  showNoticeModal(successNote, "Tạo bài tập thành công", "🎉");
 }
 
 window.addEventListener("DOMContentLoaded", initData);

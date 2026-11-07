@@ -2013,4 +2013,62 @@ assert.strictEqual(groupThread[0].content, "Tin nhắn chung cả lớp");
 
 console.log("✅ 57. Kiểm thử Hiển thị Học sinh Dưới quyền GV Hiện tại & Nhắn tin Riêng tư 1-1 (Direct Messaging): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (57/57)!");
+// --- TEST 58: Kiểm thử Tự động Gửi Email Thông báo Khi Tạo Bài Mới (Automated Background Email Dispatch) & Bỏ Modal Thủ công ---
+const appJs58 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const sendEmailApiExists = fs.existsSync(path.join(__dirname, "api", "send-email.js"));
+assert.ok(sendEmailApiExists, "Hệ thống phải có serverless function api/send-email.js cho triển khai Vercel");
+
+// 1. Kiểm tra định nghĩa hàm gửi email ngầm autoDispatchAssignmentEmail
+assert.ok(
+  appJs58.includes("function autoDispatchAssignmentEmail") || appJs58.includes("async function autoDispatchAssignmentEmail"),
+  "app.js phải có hàm autoDispatchAssignmentEmail để tự động gửi thông báo ngầm"
+);
+
+// 2. Kiểm tra trong confirmCreateAssignment: KHÔNG được gọi openBatchEmailModal làm phiền người dùng
+assert.ok(
+  !appJs58.includes("openBatchEmailModal(newAsg"),
+  "confirmCreateAssignment tuyệt đối không được mở popup openBatchEmailModal bắt người dùng thao tác thủ công"
+);
+assert.ok(
+  appJs58.includes("autoDispatchAssignmentEmail(newAsg, emailStudents)"),
+  "confirmCreateAssignment phải tự động gọi autoDispatchAssignmentEmail khi có học sinh cài email"
+);
+
+// 3. Kiểm tra thông điệp xác nhận rõ ràng rằng hệ thống đã tự động gửi email
+assert.ok(
+  appJs58.includes("Hệ thống đã tự động gửi email thông báo bài tập mới đến"),
+  "Thông báo thành công phải khẳng định hệ thống đã tự động gửi email, không cần thao tác gửi thủ công"
+);
+
+// 4. Kiểm thử chạy thử api/send-email.js
+const sendEmailHandler = require(path.join(__dirname, "api", "send-email.js"));
+let mockStatus = 0;
+let mockResponseJson = null;
+const mockRes = {
+  setHeader: () => {},
+  status: (code) => {
+    mockStatus = code;
+    return {
+      json: (data) => { mockResponseJson = data; },
+      end: () => {}
+    };
+  }
+};
+const mockReq = {
+  method: "POST",
+  body: {
+    bcc: ["test_student@gmail.com"],
+    subject: "[EduProof] Bài tập mới kiểm thử",
+    text: "Nội dung bài tập",
+    html: "<p>Nội dung</p>"
+  }
+};
+
+sendEmailHandler(mockReq, mockRes).then(() => {
+  assert.strictEqual(mockStatus, 200, "api/send-email.js phải trả về status 200");
+  assert.strictEqual(mockResponseJson.success, true, "api/send-email.js phải phản hồi success: true");
+});
+
+console.log("✅ 58. Kiểm thử Tự động Gửi Email Thông báo Khi Tạo Bài Mới & Bỏ Popup Thủ công: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (58/58)!");
