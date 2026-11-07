@@ -2138,4 +2138,42 @@ sendEmailHandler59(mockReq59, mockRes59).then(() => {
 
 console.log("✅ 59. Kiểm thử Bảo mật Danh tính & Gửi Thư Qua Mail Ảo Hệ Thống (Virtual System Sender): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (59/59)!");
+// --- TEST 60: Kiểm thử Nền Động Bầu Trời Galaxy & Khung/Chữ Tương Phản Cao ---
+const css60 = fs.readFileSync(path.join(__dirname, "app.css"), "utf8");
+const html60 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+const galaxyImageExists = fs.existsSync(path.join(__dirname, "galaxy-bg.jpg"));
+
+// 1. Kiểm tra tồn tại tệp ảnh nền galaxy
+assert.ok(galaxyImageExists, "Tệp galaxy-bg.jpg phải tồn tại trong thư mục dự án");
+
+// 2. Kiểm tra HTML chứa đủ cấu trúc phân lớp thiên hà động
+assert.ok(
+  html60.includes('class="galaxy-universe"') &&
+  html60.includes('class="galaxy-bg-image"') &&
+  html60.includes('class="galaxy-nebula"') &&
+  html60.includes('class="galaxy-stars-layer1"') &&
+  html60.includes('class="galaxy-shooting-star"'),
+  "index.html phải có đủ các lớp ảnh vũ trụ, tinh vân phát sáng, sao lấp lánh và sao băng chuyển động"
+);
+
+// 3. Kiểm tra CSS keyframes hiệu ứng bầu trời galaxy động
+assert.ok(
+  css60.includes("@keyframes galaxyDrift") &&
+  css60.includes("@keyframes nebulaPulse") &&
+  css60.includes("@keyframes starTwinkle") &&
+  css60.includes("@keyframes shootingStar"),
+  "app.css phải định nghĩa các keyframe galaxyDrift, nebulaPulse, starTwinkle, shootingStar"
+);
+
+// 4. Kiểm tra độ tương phản cao cho khung và chữ
+assert.ok(
+  css60.includes(".galaxy-universe") &&
+  css60.includes("rgba(255, 255, 255, 0.97)") &&
+  css60.includes(".view-title") &&
+  css60.includes(".card-title"),
+  "app.css phải thiết lập khung tương phản cao rgba(255,255,255,0.97) và chữ đậm nổi bật trên nền thiên hà"
+);
+
+console.log("✅ 60. Kiểm thử Nền Động Bầu Trời Galaxy & Khung/Chữ Tương Phản Cao: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (60/60)!");
