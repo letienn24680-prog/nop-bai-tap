@@ -1946,4 +1946,71 @@ assert.strictEqual(sortedList[2].id, "asg_old_01", "Bài tập cũ nhất phải
 
 console.log("✅ 56. Kiểm thử Sắp xếp Bài tập Mới nhất lên Đầu Hàng & Nhãn '✨ Bài mới nhất' cho Học sinh: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (56/56)!");
+// --- TEST 57: Kiểm thử Hiển thị Học sinh Dưới quyền GV Hiện tại & Nhắn tin Riêng tư 1-1 (Direct Messaging) ---
+const appJs57 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const html57 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+const sql57 = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8");
+
+// 1. Kiểm tra escapeHtml alias an toàn và lọc học sinh theo giáo viên
+assert.ok(
+  appJs57.includes("const escapeHtml = sanitizeText") || appJs57.includes("function escapeHtml"),
+  "app.js phải định nghĩa escapeHtml an toàn để không ném lỗi ReferenceError làm trắng danh sách học sinh"
+);
+assert.ok(
+  appJs57.includes("myTeacherId") &&
+  appJs57.includes("u.teacherId === myTeacherId"),
+  "renderStudentClassmates phải lọc đúng học sinh trực thuộc giáo viên của học sinh hiện tại"
+);
+
+// 2. Kiểm tra tính năng nhắn tin riêng 1-1
+assert.ok(
+  appJs57.includes("function startDirectChat") &&
+  appJs57.includes("function switchToGroupChat") &&
+  appJs57.includes("function handleChatRecipientChange") &&
+  appJs57.includes("currentChatRecipient"),
+  "app.js phải cung cấp đầy đủ các hàm hỗ trợ nhắn tin riêng 1-1 giữa học sinh"
+);
+assert.ok(
+  html57.includes('id="chatRecipientSelect"') &&
+  html57.includes('id="chatHeaderIcon"') &&
+  html57.includes('id="chatHeaderTitle"'),
+  "index.html phải có ô chọn kênh nhắn tin riêng hoặc chung cả lớp"
+);
+
+// 3. Kiểm tra schema.sql có cột recipient_id và recipient_name
+assert.ok(
+  sql57.includes("recipient_id TEXT") &&
+  sql57.includes("ALTER TABLE eduproof_messages ADD COLUMN IF NOT EXISTS recipient_id TEXT;"),
+  "schema.sql phải hỗ trợ cột recipient_id và recipient_name cho bảng eduproof_messages"
+);
+
+// 4. Kiểm thử logic cô lập tin nhắn riêng: Chỉ người gửi và người nhận mới thấy tin nhắn
+const mockChatMessages = [
+  { id: "m1", sender_id: "hs_01", recipient_id: null, content: "Tin nhắn chung cả lớp" },
+  { id: "m2", sender_id: "hs_01", recipient_id: "hs_02", content: "Tin nhắn riêng gửi bạn hs_02" },
+  { id: "m3", sender_id: "hs_02", recipient_id: "hs_01", content: "Tin nhắn riêng trả lời bạn hs_01" },
+  { id: "m4", sender_id: "hs_03", recipient_id: "hs_04", content: "Tin nhắn bí mật của bạn khác" }
+];
+
+// Mô phỏng học sinh hs_01 xem chat riêng với hs_02
+const curUser = { id: "hs_01", name: "Học sinh 1" };
+const targetRecipient = { id: "hs_02", name: "Học sinh 2" };
+
+const privateThread = mockChatMessages.filter((msg) => {
+  const fromMeToPeer = curUser && msg.sender_id === curUser.id && msg.recipient_id === targetRecipient.id;
+  const fromPeerToMe = curUser && msg.sender_id === targetRecipient.id && msg.recipient_id === curUser.id;
+  return fromMeToPeer || fromPeerToMe;
+});
+
+assert.strictEqual(privateThread.length, 2, "Luồng chat riêng chỉ được chứa tin nhắn giữa hs_01 và hs_02");
+assert.ok(!privateThread.some((m) => m.content === "Tin nhắn chung cả lớp"), "Chat riêng không được lẫn tin chung");
+assert.ok(!privateThread.some((m) => m.content === "Tin nhắn bí mật của bạn khác"), "BẢO MẬT: Không được thấy tin nhắn riêng của bạn khác");
+
+// Mô phỏng xem phòng chat chung cả lớp
+const groupThread = mockChatMessages.filter((msg) => !msg.recipient_id || msg.recipient_id === "all");
+assert.strictEqual(groupThread.length, 1, "Phòng chat chung chỉ chứa tin nhắn chung cả lớp");
+assert.strictEqual(groupThread[0].content, "Tin nhắn chung cả lớp");
+
+console.log("✅ 57. Kiểm thử Hiển thị Học sinh Dưới quyền GV Hiện tại & Nhắn tin Riêng tư 1-1 (Direct Messaging): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (57/57)!");

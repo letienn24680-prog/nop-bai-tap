@@ -19,6 +19,8 @@ function sanitizeText(str) {
     .replace(/'/g, "&#039;");
 }
 
+const escapeHtml = sanitizeText;
+
 function sanitizeUrl(url) {
   if (!url) return "#";
   const trimmed = String(url).trim();
@@ -2049,6 +2051,7 @@ function renderCurrentView() {
 let studentActiveTab = "assignments";
 let liveChatMessages = []; // Lưu trong bộ nhớ RAM - Tuyệt đối không dùng localStorage
 let chatSyncTimer = null;
+let currentChatRecipient = null; // null = Chat chung cả lớp; { id, name } = Nhắn tin riêng 1-1
 
 function switchStudentTab(tab, btnElement) {
   studentActiveTab = tab || "assignments";
@@ -2083,6 +2086,7 @@ function switchStudentTab(tab, btnElement) {
   } else if (studentActiveTab === "chat") {
     if (titleEl) titleEl.innerText = "Phòng chat học sinh";
     if (descEl) descEl.innerText = "Trao đổi, thảo luận học tập trực tiếp cùng các bạn trong trường lớp.";
+    updateChatHeaderInfo();
     loadChatMessages();
     startChatAutoSync();
   } else if (studentActiveTab === "classmates") {
@@ -2101,15 +2105,29 @@ function renderStudentClassmates(searchQuery = "") {
   if (!grid) return;
 
   const q = (searchQuery || "").trim().toLowerCase();
+  const myTeacherId = currentUser ? currentUser.teacherId : null;
+  const myClass = currentUser ? currentUser.class : null;
 
-  // Lọc danh sách học sinh: chỉ lấy các tài khoản có role === 'student'
-  const peerStudents = users.filter((u) => {
+  // Lọc danh sách học sinh: hiển thị các học sinh dưới quyền của cùng giáo viên hiện tại (hoặc cùng lớp)
+  let peerStudents = users.filter((u) => {
     if (u.role !== "student") return false;
-    if (q) {
-      return (u.name || "").toLowerCase().includes(q);
-    }
-    return true;
-  }).sort((a, b) => (a.name || "").localeCompare(b.name || "", "vi"));
+    if (myTeacherId && u.teacherId && u.teacherId === myTeacherId) return true;
+    if (myClass && u.class && u.class === myClass) return true;
+    if (!myTeacherId && !myClass) return true;
+    return false;
+  });
+
+  // Fallback an toàn: nếu danh sách lọc theo GV/lớp trống (do cache hoặc dữ liệu cũ chưa map teacherId), hiển thị toàn bộ học sinh
+  if (peerStudents.length === 0) {
+    peerStudents = users.filter((u) => u.role === "student");
+  }
+
+  // Áp dụng tìm kiếm theo tên
+  if (q) {
+    peerStudents = peerStudents.filter((u) => (u.name || "").toLowerCase().includes(q));
+  }
+
+  peerStudents.sort((a, b) => (a.name || "").localeCompare(b.name || "", "vi"));
 
   if (peerStudents.length === 0) {
     grid.innerHTML = `
@@ -2127,7 +2145,7 @@ function renderStudentClassmates(searchQuery = "") {
     const isMe = currentUser && st.id === currentUser.id;
     const nameParts = (st.name || "Học sinh").trim().split(" ");
     const initial = nameParts[nameParts.length - 1][0].toUpperCase();
-    const className = st.class ? `Lớp ${escapeHtml(st.class)}` : "Chưa xếp lớp";
+    const className = st.class ? `Lớp ${sanitizeText(st.class)}` : "Chưa xếp lớp";
 
     return `
       <div class="classmate-card">
@@ -2135,7 +2153,7 @@ function renderStudentClassmates(searchQuery = "") {
         <div style="flex: 1; min-width: 0;">
           <div style="display: flex; align-items: center; gap: 0.4rem; justify-content: space-between;">
             <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-              ${escapeHtml(st.name || "Học sinh")}
+              ${sanitizeText(st.name || "Học sinh")}
             </span>
             ${isMe ? '<span class="badge" style="background: #e0e7ff; color: #3730a3; font-size: 0.68rem; padding: 0.1rem 0.4rem; border-radius: 999px; font-weight: 700;">Bạn</span>' : ''}
           </div>
@@ -2144,6 +2162,12 @@ function renderStudentClassmates(searchQuery = "") {
             <span>• Học sinh</span>
           </div>
         </div>
+        ${!isMe ? `
+          <button class="btn btn-primary btn-sm" onclick="startDirectChat('${st.id}', '${sanitizeText(st.name)}')" style="white-space: nowrap; padding: 0.4rem 0.75rem; font-size: 0.78rem; display: flex; align-items: center; gap: 0.35rem;" title="Nhắn tin riêng 1-1 với bạn này">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>Nhắn tin</span>
+          </button>
+        ` : ''}
       </div>
     `;
   }).join("");
@@ -2154,8 +2178,73 @@ function handleClassmateSearch(val) {
 }
 
 // ------------------------------------------
-// 4B. PHÒNG CHAT HỌC SINH (CLOUD SYNC - ZERO LOCALSTORAGE)
+// 4B. PHÒNG CHAT HỌC SINH (CLOUD SYNC - ZERO LOCALSTORAGE - NHẮN RIÊNG 1-1)
 // ------------------------------------------
+function startDirectChat(studentId, studentName) {
+  currentChatRecipient = { id: studentId, name: studentName };
+  switchStudentTab("chat");
+  updateChatHeaderInfo();
+  loadChatMessages(false);
+}
+
+function switchToGroupChat() {
+  currentChatRecipient = null;
+  updateChatHeaderInfo();
+  loadChatMessages(false);
+}
+
+function handleChatRecipientChange(recipientVal) {
+  if (!recipientVal || recipientVal === "all") {
+    currentChatRecipient = null;
+  } else {
+    const targetUser = users.find((u) => u.id === recipientVal);
+    if (targetUser) {
+      currentChatRecipient = { id: targetUser.id, name: targetUser.name };
+    }
+  }
+  updateChatHeaderInfo();
+  loadChatMessages(false);
+}
+
+function updateChatHeaderInfo() {
+  const iconEl = document.getElementById("chatHeaderIcon");
+  const titleEl = document.getElementById("chatHeaderTitle");
+  const descEl = document.getElementById("chatHeaderDesc");
+  const inputEl = document.getElementById("chatMessageInput");
+  const selectEl = document.getElementById("chatRecipientSelect");
+
+  if (selectEl) {
+    const myTeacherId = currentUser ? currentUser.teacherId : null;
+    const myClass = currentUser ? currentUser.class : null;
+    let peers = users.filter((u) => u.role === "student" && u.id !== (currentUser ? currentUser.id : ""));
+    if (myTeacherId) {
+      const filtered = peers.filter((u) => u.teacherId === myTeacherId || u.class === myClass);
+      if (filtered.length > 0) peers = filtered;
+    }
+    peers.sort((a, b) => (a.name || "").localeCompare(b.name || "", "vi"));
+
+    let optionsHtml = `<option value="all">📢 Chat chung cả lớp</option>`;
+    optionsHtml += peers.map((p) => {
+      const isSel = currentChatRecipient && currentChatRecipient.id === p.id ? "selected" : "";
+      return `<option value="${p.id}" ${isSel}>💬 ${sanitizeText(p.name)} (${p.class ? 'Lớp ' + sanitizeText(p.class) : 'HS'})</option>`;
+    }).join("");
+    selectEl.innerHTML = optionsHtml;
+    selectEl.value = currentChatRecipient ? currentChatRecipient.id : "all";
+  }
+
+  if (currentChatRecipient) {
+    if (iconEl) iconEl.innerText = "🔒";
+    if (titleEl) titleEl.innerHTML = `Nhắn tin riêng: <span style="color: #4F46E5;">${sanitizeText(currentChatRecipient.name)}</span>`;
+    if (descEl) descEl.innerText = "Chỉ 2 bạn nhìn thấy tin nhắn này • Bảo mật riêng tư đám mây";
+    if (inputEl) inputEl.placeholder = `Nhắn tin riêng tới ${currentChatRecipient.name}...`;
+  } else {
+    if (iconEl) iconEl.innerText = "💬";
+    if (titleEl) titleEl.innerText = "Phòng chat chung của các bạn học sinh";
+    if (descEl) descEl.innerText = "Đồng bộ đám mây trực tiếp Cloud • Toàn bộ thành viên đều xem và nhắn tin được";
+    if (inputEl) inputEl.placeholder = "Nhập tin nhắn gửi tới cả lớp...";
+  }
+}
+
 function startChatAutoSync() {
   stopChatAutoSync();
   chatSyncTimer = setInterval(() => {
@@ -2183,7 +2272,7 @@ async function loadChatMessages(isManualRefresh = false) {
         .from("eduproof_messages")
         .select("*")
         .order("created_at", { ascending: true })
-        .limit(200);
+        .limit(300);
 
       if (!error && Array.isArray(data)) {
         liveChatMessages = data;
@@ -2193,6 +2282,7 @@ async function loadChatMessages(isManualRefresh = false) {
     }
   }
 
+  updateChatHeaderInfo();
   renderChatMessagesList();
   if (isManualRefresh && window.showToastNotification) {
     showToastNotification("💬 Đã cập nhật tin nhắn mới nhất");
@@ -2203,20 +2293,44 @@ function renderChatMessagesList() {
   const box = document.getElementById("chatMessagesBox");
   if (!box) return;
 
-  if (!liveChatMessages || liveChatMessages.length === 0) {
-    box.innerHTML = `
-      <div style="text-align: center; margin: auto; padding: 2.5rem 1rem; color: var(--text-muted);">
-        <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">👋💬</div>
-        <p style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem;">Chưa có tin nhắn nào trong phòng chat</p>
-        <span style="font-size: 0.8rem;">Hãy gửi lời chào đầu tiên để cùng thảo luận bài học nhé!</span>
-      </div>
-    `;
+  // Lọc luồng tin nhắn: Chat riêng 1-1 hay Chat chung cả lớp
+  let chatThread = [];
+  if (currentChatRecipient) {
+    chatThread = (liveChatMessages || []).filter((msg) => {
+      const fromMeToPeer = currentUser && msg.sender_id === currentUser.id && msg.recipient_id === currentChatRecipient.id;
+      const fromPeerToMe = currentUser && msg.sender_id === currentChatRecipient.id && msg.recipient_id === currentUser.id;
+      return fromMeToPeer || fromPeerToMe;
+    });
+  } else {
+    chatThread = (liveChatMessages || []).filter((msg) => {
+      return !msg.recipient_id || msg.recipient_id === "all";
+    });
+  }
+
+  if (!chatThread || chatThread.length === 0) {
+    if (currentChatRecipient) {
+      box.innerHTML = `
+        <div style="text-align: center; margin: auto; padding: 2.5rem 1rem; color: var(--text-muted);">
+          <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🔒💬</div>
+          <p style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem;">Chưa có tin nhắn riêng với ${sanitizeText(currentChatRecipient.name)}</p>
+          <span style="font-size: 0.8rem;">Hãy gửi tin nhắn đầu tiên để cùng trao đổi riêng nhé!</span>
+        </div>
+      `;
+    } else {
+      box.innerHTML = `
+        <div style="text-align: center; margin: auto; padding: 2.5rem 1rem; color: var(--text-muted);">
+          <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">👋💬</div>
+          <p style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem;">Chưa có tin nhắn nào trong phòng chat chung</p>
+          <span style="font-size: 0.8rem;">Hãy gửi lời chào đầu tiên để cùng thảo luận bài học nhé!</span>
+        </div>
+      `;
+    }
     return;
   }
 
   const isAtBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 70;
 
-  box.innerHTML = liveChatMessages.map((msg) => {
+  box.innerHTML = chatThread.map((msg) => {
     const isSelf = currentUser && msg.sender_id === currentUser.id;
     const nameParts = (msg.sender_name || "Học sinh").trim().split(" ");
     const initial = nameParts[nameParts.length - 1][0].toUpperCase();
@@ -2233,18 +2347,20 @@ function renderChatMessagesList() {
       timeStr = "";
     }
 
-    const classBadge = msg.class ? `<span style="opacity: 0.85; font-size: 0.7rem; font-weight: 600;">[Lớp ${escapeHtml(msg.class)}]</span>` : "";
+    const classBadge = msg.class ? `<span style="opacity: 0.85; font-size: 0.7rem; font-weight: 600;">[Lớp ${sanitizeText(msg.class)}]</span>` : "";
+    const privateBadge = msg.recipient_id && msg.recipient_id !== "all" ? `<span style="font-size: 0.68rem; background: #e0e7ff; color: #3730a3; padding: 0.1rem 0.35rem; border-radius: 4px; font-weight: 600;">🔒 Riêng tư</span>` : "";
 
     return `
       <div class="chat-bubble-row ${isSelf ? 'self' : 'peer'}">
         ${!isSelf ? `<div class="chat-avatar">${initial}</div>` : ''}
         <div class="chat-bubble-content">
           <div class="chat-sender-meta">
-            ${!isSelf ? `<strong>${escapeHtml(msg.sender_name || "Bạn học")}</strong> ${classBadge}` : ''}
+            ${!isSelf ? `<strong>${sanitizeText(msg.sender_name || "Bạn học")}</strong> ${classBadge}` : ''}
+            ${privateBadge}
             <span>${timeStr}</span>
           </div>
           <div class="chat-bubble">
-            ${escapeHtml(msg.content)}
+            ${sanitizeText(msg.content)}
           </div>
         </div>
       </div>
@@ -2274,6 +2390,8 @@ async function handleSendChatMessage(event) {
     sender_id: currentUser.id,
     sender_name: currentUser.name || "Học sinh",
     sender_role: currentUser.role || "student",
+    recipient_id: currentChatRecipient ? currentChatRecipient.id : null,
+    recipient_name: currentChatRecipient ? currentChatRecipient.name : null,
     class: currentUser.class || "",
     content: content,
     created_at: new Date().toISOString()

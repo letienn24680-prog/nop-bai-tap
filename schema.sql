@@ -56,10 +56,16 @@ CREATE TABLE IF NOT EXISTS eduproof_messages (
   sender_id TEXT NOT NULL,
   sender_name TEXT NOT NULL,
   sender_role TEXT NOT NULL DEFAULT 'student',
+  recipient_id TEXT, -- NULL hoặc 'all' là chat chung cả lớp; nếu có id là chat riêng 1-1
+  recipient_name TEXT,
   class TEXT,
   content TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Tự động thêm cột recipient_id & recipient_name nếu bảng đã tạo từ trước
+ALTER TABLE eduproof_messages ADD COLUMN IF NOT EXISTS recipient_id TEXT;
+ALTER TABLE eduproof_messages ADD COLUMN IF NOT EXISTS recipient_name TEXT;
 
 -- ========================================================
 -- KÍCH HOẠT REALTIME CẬP NHẬT TỨC THÌ (Idempotent)

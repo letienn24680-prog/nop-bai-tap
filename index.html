@@ -257,18 +257,23 @@
       <!-- Tab 2: Phòng chat giữa các bạn học sinh (Đồng bộ Cloud, Không dùng LocalStorage) -->
       <div id="studentChatTab" style="display: none;">
         <div class="chat-card-container">
-          <div class="chat-header-bar">
+          <div class="chat-header-bar" style="flex-wrap: wrap; gap: 0.6rem;">
             <div style="display: flex; align-items: center; gap: 0.65rem;">
-              <span class="chat-header-icon">💬</span>
+              <span class="chat-header-icon" id="chatHeaderIcon">💬</span>
               <div>
-                <strong style="color: var(--text-main); font-size: 0.95rem;">Phòng chat chung của các bạn học sinh</strong>
-                <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">Đồng bộ đám mây trực tiếp Cloud • Toàn bộ thành viên đều xem và nhắn tin được</p>
+                <strong style="color: var(--text-main); font-size: 0.95rem;" id="chatHeaderTitle">Phòng chat chung của các bạn học sinh</strong>
+                <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);" id="chatHeaderDesc">Đồng bộ đám mây trực tiếp Cloud • Toàn bộ thành viên đều xem và nhắn tin được</p>
               </div>
             </div>
-            <button class="btn btn-secondary" onclick="loadChatMessages(true)" style="padding: 0.35rem 0.65rem; font-size: 0.8rem; display: flex; align-items: center; gap: 0.35rem;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-              <span>Làm mới</span>
-            </button>
+            <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; margin-left: auto;">
+              <select id="chatRecipientSelect" class="form-select" onchange="handleChatRecipientChange(this.value)" style="font-size: 0.8rem; padding: 0.35rem 0.65rem; max-width: 230px;" title="Chọn kênh nhắn tin: Chung cả lớp hoặc Nhắn riêng 1-1">
+                <option value="all">📢 Chat chung cả lớp</option>
+              </select>
+              <button class="btn btn-secondary" onclick="loadChatMessages(true)" style="padding: 0.35rem 0.65rem; font-size: 0.8rem; display: flex; align-items: center; gap: 0.35rem;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                <span>Làm mới</span>
+              </button>
+            </div>
           </div>
           <div id="chatMessagesBox" class="chat-messages-scroll">
             <!-- Rendered dynamically -->
@@ -1129,6 +1134,6 @@
   <script src="supabase-config.js?v=20261106_2320"></script>
 
   <!-- Core App Logic -->
-  <script src="app.js?v=20261107_0850"></script>
+  <script src="app.js?v=20261107_0855"></script>
 </body>
 </html>
