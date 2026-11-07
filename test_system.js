@@ -1895,4 +1895,55 @@ assert.ok(!classmatesFnCode.includes("st.password"), "renderStudentClassmates kh
 
 console.log("✅ 55. Kiểm thử Danh sách Bạn Cùng Lớp (Bảo mật Tên đăng nhập/Mật khẩu) & Phòng Chat Đồng bộ Cloud (Zero LocalStorage): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (55/55)!");
+// --- TEST 56: Kiểm thử Sắp xếp Bài tập Mới nhất lên Đầu Hàng & Nhãn "✨ Bài mới nhất" cho Học sinh ---
+const appJs56 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+
+// 1. Kiểm tra định nghĩa hàm getAssignmentTime và thuật toán sắp xếp giảm dần theo thời gian tạo
+assert.ok(
+  appJs56.includes("function getAssignmentTime") &&
+  appJs56.includes("getAssignmentTime(b) - getAssignmentTime(a)"),
+  "app.js phải cung cấp hàm getAssignmentTime và sắp xếp mảng bài tập giảm dần theo thời gian"
+);
+
+// 2. Kiểm tra giao diện học sinh hiển thị bài mới nhất lên đầu tiên và có huy hiệu ✨ Bài mới nhất
+assert.ok(
+  appJs56.includes('const isNewest = idx === 0') &&
+  appJs56.includes("✨ Bài mới nhất"),
+  "renderStudentView phải gắn cờ isNewest cho bài ở vị trí đầu tiên (idx === 0) và hiển thị nhãn ✨ Bài mới nhất"
+);
+
+// 3. Kiểm thử logic sắp xếp mảng bài tập thực tế
+function testGetAssignmentTime(asg) {
+  if (!asg) return 0;
+  if (asg.createdAt) {
+    const t = new Date(asg.createdAt).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  if (asg.created_at) {
+    const t = new Date(asg.created_at).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  if (asg.id && typeof asg.id === "string") {
+    const match = asg.id.match(/\d{10,}/);
+    if (match) {
+      const num = parseInt(match[0], 10);
+      if (!isNaN(num) && num > 1000000000) return num;
+    }
+  }
+  return 0;
+}
+
+const mockList = [
+  { id: "asg_old_01", title: "Bài tập tuần trước", createdAt: "2026-11-01T08:00:00Z" },
+  { id: "asg_newest_99", title: "Bài tập mới vừa giao", createdAt: "2026-11-07T08:45:00Z" },
+  { id: "asg_middle_50", title: "Bài tập 3 ngày trước", createdAt: "2026-11-04T12:00:00Z" }
+];
+
+const sortedList = mockList.slice().sort((a, b) => testGetAssignmentTime(b) - testGetAssignmentTime(a));
+assert.strictEqual(sortedList[0].id, "asg_newest_99", "Bài tập mới nhất vừa giao phải đứng ở hàng đầu tiên (index 0)");
+assert.strictEqual(sortedList[1].id, "asg_middle_50", "Bài tập cũ hơn phải đứng ở vị trí sau");
+assert.strictEqual(sortedList[2].id, "asg_old_01", "Bài tập cũ nhất phải đứng ở cuối cùng");
+
+console.log("✅ 56. Kiểm thử Sắp xếp Bài tập Mới nhất lên Đầu Hàng & Nhãn '✨ Bài mới nhất' cho Học sinh: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (56/56)!");

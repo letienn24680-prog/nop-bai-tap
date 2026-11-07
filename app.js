@@ -28,6 +28,31 @@ function sanitizeUrl(url) {
   return "#";
 }
 
+// Lấy mốc thời gian tạo của bài tập để sắp xếp bài mới nhất lên đầu tiên
+function getAssignmentTime(asg) {
+  if (!asg) return 0;
+  if (asg.createdAt) {
+    const t = new Date(asg.createdAt).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  if (asg.created_at) {
+    const t = new Date(asg.created_at).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  if (asg.id && typeof asg.id === "string") {
+    const match = asg.id.match(/\d{10,}/);
+    if (match) {
+      const num = parseInt(match[0], 10);
+      if (!isNaN(num) && num > 1000000000) return num;
+    }
+  }
+  if (asg.deadline) {
+    const t = new Date(asg.deadline).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  return 0;
+}
+
 const FALLBACK_PHOTO_SVG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' fill='none'%3E%3Crect width='48' height='48' rx='8' fill='%23EEF2FF'/%3E%3Cpath d='M14 18C14 16.8954 14.8954 16 16 16H20L22 13H26L28 16H32C33.1046 16 34 16.8954 34 18V32C34 33.1046 33.1046 34 32 34H16C14.8954 34 14 33.1046 14 32V18Z' stroke='%234F46E5' stroke-width='2.2' stroke-linejoin='round'/%3E%3Ccircle cx='24' cy='25' r='5' stroke='%234F46E5' stroke-width='2.2'/%3E%3C/svg%3E";
 
 function handlePhotoError(imgEl) {
@@ -400,6 +425,8 @@ function initData() {
       assignments.forEach((a) => {
         if (!a.teacherId) a.teacherId = "gvcn_ngo_ha";
       });
+      // Sắp xếp bài mới nhất luôn ở hàng đầu tiên
+      assignments.sort((a, b) => getAssignmentTime(b) - getAssignmentTime(a));
       if (!selectedCampaignId && assignments.length > 0) {
         selectedCampaignId = assignments[0].id;
       }
@@ -671,7 +698,7 @@ async function syncCloudData(notify = false) {
           allowLink: a.allow_link,
           allowNote: a.allow_note,
           createdAt: a.created_at
-        }));
+        })).sort((a, b) => getAssignmentTime(b) - getAssignmentTime(a));
         localStorage.setItem("eduproof_cloud_bootstrapped", "true");
       } else {
         const hasBootstrapped = localStorage.getItem("eduproof_cloud_bootstrapped");
@@ -2302,11 +2329,11 @@ function renderStudentView() {
   let submittedCount = 0;
   let gradedCount = 0;
 
-  const studentAssignments = assignments.filter(
-    (a) => a.teacherId === currentUser.teacherId || !a.teacherId
-  );
+  const studentAssignments = assignments
+    .filter((a) => a.teacherId === currentUser.teacherId || !a.teacherId)
+    .sort((a, b) => getAssignmentTime(b) - getAssignmentTime(a));
 
-  studentAssignments.forEach((asg) => {
+  studentAssignments.forEach((asg, idx) => {
     const sub = submissions.find((s) => s.assignmentId === asg.id && s.studentId === currentUser.id);
     let status = "pending";
     if (sub) {
@@ -2325,6 +2352,11 @@ function renderStudentView() {
 
     const card = document.createElement("div");
     card.className = "assignment-card";
+    const isNewest = idx === 0 && studentAssignments.length > 0;
+    if (isNewest) {
+      card.style.borderColor = "#6EE7B7";
+      card.style.boxShadow = "0 4px 16px rgba(16, 185, 129, 0.12)";
+    }
 
     let statusBadge = "";
     let actionBtn = "";
@@ -2394,7 +2426,10 @@ function renderStudentView() {
     card.innerHTML = `
       <div>
         <div class="card-top">
-          ${formatSubjectBadge(asg.subject)}
+          <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+            ${formatSubjectBadge(asg.subject)}
+            ${isNewest ? '<span class="badge" style="background: linear-gradient(135deg, #10B981, #059669); color: white; font-weight: 700; font-size: 0.7rem; padding: 0.18rem 0.5rem; border-radius: 999px; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);">✨ Bài mới nhất</span>' : ''}
+          </div>
           ${statusBadge}
         </div>
         <h3 class="card-title">${sanitizeText(asg.title)}</h3>
@@ -3112,7 +3147,7 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
   const container = document.getElementById("campaignDetailContainer");
   if (!container) return;
 
-  const myAssignments = myAssignmentsList || assignments.filter((a) => a.teacherId === currentUser.id);
+  const myAssignments = (myAssignmentsList || assignments.filter((a) => a.teacherId === currentUser.id)).slice().sort((a, b) => getAssignmentTime(b) - getAssignmentTime(a));
   const studentsList = myStudentsList || users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
 
   if (myAssignments.length === 0) {
@@ -3542,7 +3577,7 @@ function renderTeacherAssignments(myAssignmentsList) {
   const container = document.getElementById("teacherAssignmentsList");
   container.innerHTML = "";
 
-  const myAssignments = myAssignmentsList || assignments.filter((a) => a.teacherId === currentUser.id);
+  const myAssignments = (myAssignmentsList || assignments.filter((a) => a.teacherId === currentUser.id)).slice().sort((a, b) => getAssignmentTime(b) - getAssignmentTime(a));
 
   if (myAssignments.length === 0) {
     container.innerHTML = `<p style="color: var(--text-muted); font-size: 0.9rem;">Bạn chưa tạo bài tập nào. Hãy bấm "Tạo bài tập mới" ở góc trên.</p>`;
@@ -3813,7 +3848,7 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
   const detailContainer = document.getElementById("gradebookDetailContainer");
 
   const studentUsers = myStudentsList || users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
-  const myAssignments = myAssignmentsList || assignments.filter((a) => a.teacherId === currentUser.id);
+  const myAssignments = (myAssignmentsList || assignments.filter((a) => a.teacherId === currentUser.id)).slice().sort((a, b) => getAssignmentTime(b) - getAssignmentTime(a));
 
   if (myAssignments.length === 0) {
     if (selectBox) selectBox.innerHTML = `<option value="none">Chưa có bài tập nào được tạo</option>`;
@@ -4991,6 +5026,7 @@ async function confirmCreateAssignment() {
   };
 
   assignments.unshift(newAsg);
+  assignments.sort((a, b) => getAssignmentTime(b) - getAssignmentTime(a));
   selectedCampaignId = newAsg.id;
   localStorage.setItem("eduproof_selected_campaign", newAsg.id);
   persistData();
