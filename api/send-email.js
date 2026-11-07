@@ -12,13 +12,37 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { to, bcc, subject, text, html } = req.body || {};
+    const { to, bcc, subject, text, html, teacherName } = req.body || {};
     const recipients = Array.isArray(bcc) && bcc.length > 0 
       ? bcc 
       : (Array.isArray(to) ? to : (to ? [to] : []));
 
-    // Hỗ trợ tự động qua Resend nếu cấu hình RESEND_API_KEY trong Vercel Environment Variables
-    if (process.env.RESEND_API_KEY) {
+    // Cấu hình Mail ảo / Mail hệ thống chuyên nghiệp của EduProof (Bảo vệ tuyệt đối danh tính và email cá nhân của giáo viên)
+    const virtualSenderEmail = process.env.SYSTEM_VIRTUAL_EMAIL || process.env.SENDER_EMAIL || "thongbao@eduproof.vn";
+    const displayName = teacherName ? `${teacherName} (EduProof)` : "Hệ Thống Giáo Dục EduProof";
+    const fromField = `${displayName} <${virtualSenderEmail}>`;
+
+    // 1. Tự động gửi qua Brevo API (nếu có cấu hình BREVO_API_KEY)
+    if (process.env.BREVO_API_KEY && recipients.length > 0) {
+      await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "api-key": process.env.BREVO_API_KEY,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          sender: { name: displayName, email: virtualSenderEmail },
+          to: recipients.map((email) => ({ email })),
+          subject: subject || "[EduProof] Thông báo bài tập mới",
+          htmlContent: html || text,
+          textContent: text,
+          replyTo: { name: "EduProof Hỗ Trợ", email: "noreply@eduproof.vn" }
+        })
+      });
+    }
+
+    // 2. Tự động gửi qua Resend (nếu có cấu hình RESEND_API_KEY)
+    if (process.env.RESEND_API_KEY && recipients.length > 0) {
       await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
@@ -26,21 +50,24 @@ module.exports = async (req, res) => {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          from: process.env.EMAIL_FROM || "EduProof <onboarding@resend.dev>",
-          to: recipients.length > 0 ? recipients : ["notifications@eduproof.vn"],
+          from: process.env.EMAIL_FROM || `${displayName} <onboarding@resend.dev>`,
+          to: recipients,
           subject: subject || "[EduProof] Thông báo bài tập mới",
           html: html || text,
-          text: text
+          text: text,
+          reply_to: "noreply@eduproof.vn"
         })
       });
     }
 
-    console.log(`[EduProof Auto Email] Đã tự động gửi thông báo bài tập tới ${recipients.length} email:`, recipients);
+    console.log(`[EduProof Auto Email] Đã tự động gửi qua mail ảo '${fromField}' tới ${recipients.length} học sinh:`, recipients);
 
     return res.status(200).json({
       success: true,
+      sender: fromField,
+      virtualEmail: virtualSenderEmail,
       sentCount: recipients.length,
-      message: `Đã tự động gửi email thành công tới ${recipients.length} học sinh.`
+      message: `Đã tự động gửi thông báo qua mail ảo hệ thống ${fromField} thành công tới ${recipients.length} học sinh.`
     });
   } catch (err) {
     console.error("[EduProof Auto Email] Background dispatch error:", err);

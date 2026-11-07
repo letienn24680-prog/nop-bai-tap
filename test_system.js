@@ -2071,4 +2071,71 @@ sendEmailHandler(mockReq, mockRes).then(() => {
 
 console.log("✅ 58. Kiểm thử Tự động Gửi Email Thông báo Khi Tạo Bài Mới & Bỏ Popup Thủ công: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (58/58)!");
+// --- TEST 59: Kiểm thử Bảo mật Danh tính & Gửi Thư Qua Mail Ảo Hệ Thống (Virtual System Sender) ---
+const appJs59 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const apiCode59 = fs.readFileSync(path.join(__dirname, "api", "send-email.js"), "utf8");
+const html59 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+
+// 1. Kiểm tra cấu hình mail ảo trong api/send-email.js
+assert.ok(
+  apiCode59.includes("virtualSenderEmail") &&
+  apiCode59.includes("thongbao@eduproof.vn") &&
+  apiCode59.includes("fromField"),
+  "api/send-email.js phải cấu hình người gửi là mail ảo hệ thống EduProof (thongbao@eduproof.vn) để bảo vệ danh tính giáo viên"
+);
+
+// 2. Kiểm tra confirmRejectPhotoSubmission không gọi window.open(gmailUrl) làm lộ tài khoản cá nhân
+assert.ok(
+  !appJs59.includes("window.open(gmailUrl"),
+  "confirmRejectPhotoSubmission không được tự động mở cửa sổ Gmail cá nhân làm lộ email cá nhân của giáo viên"
+);
+assert.ok(
+  appJs59.includes('fetch("/api/send-email"'),
+  "app.js phải sử dụng fetch ngầm tới /api/send-email để gửi thư thông báo từ chối ảnh"
+);
+
+// 3. Kiểm tra ghi chú bảo mật trong index.html
+assert.ok(
+  html59.includes("Gửi qua mail ảo hệ thống (EduProof System Mail)"),
+  "index.html phải có ghi chú rõ ràng về việc gửi qua mail ảo hệ thống để người dùng yên tâm"
+);
+
+// 4. Kiểm thử chạy thử api/send-email.js với tên giáo viên và định danh mail ảo
+const sendEmailHandler59 = require(path.join(__dirname, "api", "send-email.js"));
+let mockStatus59 = 0;
+let mockResponseJson59 = null;
+const mockRes59 = {
+  setHeader: () => {},
+  status: (code) => {
+    mockStatus59 = code;
+    return {
+      json: (data) => { mockResponseJson59 = data; },
+      end: () => {}
+    };
+  }
+};
+const mockReq59 = {
+  method: "POST",
+  body: {
+    to: "hocsinh_nhantin@gmail.com",
+    teacherName: "Cô Ngô Hà",
+    subject: "[EduProof] Bài tập mới môn Hóa",
+    text: "Nội dung bài tập",
+    html: "<p>Nội dung</p>"
+  }
+};
+
+sendEmailHandler59(mockReq59, mockRes59).then(() => {
+  assert.strictEqual(mockStatus59, 200, "api/send-email.js phải trả về 200");
+  assert.strictEqual(mockResponseJson59.success, true);
+  assert.strictEqual(mockResponseJson59.virtualEmail, "thongbao@eduproof.vn");
+  assert.ok(
+    mockResponseJson59.sender.includes("Cô Ngô Hà (EduProof)") &&
+    mockResponseJson59.sender.includes("thongbao@eduproof.vn"),
+    "Người gửi hiển thị phải là Cô Ngô Hà (EduProof) kèm địa chỉ mail ảo hệ thống"
+  );
+});
+
+console.log("✅ 59. Kiểm thử Bảo mật Danh tính & Gửi Thư Qua Mail Ảo Hệ Thống (Virtual System Sender): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (59/59)!");

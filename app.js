@@ -4979,14 +4979,34 @@ function confirmRejectPhotoAndNotify() {
     const mailtoUrl = `mailto:${encodeURIComponent(student.email)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
     sentGmailUrl = gmailUrl;
 
+    // Tự động gửi ngầm qua mail ảo/mail hệ thống EduProof để không làm lộ email cá nhân của giáo viên
     try {
-      const win = window.open(gmailUrl, "_blank");
-      if (!win) {
-        window.location.href = mailtoUrl;
-      }
-    } catch (e) {
-      window.location.href = mailtoUrl;
-    }
+      fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: student.email,
+          subject: emailSubject,
+          text: emailBody,
+          html: `<div style="font-family: Arial, sans-serif; max-width: 600px; padding: 18px; border: 1px solid #FECACA; border-radius: 12px; background: #FFF;">
+            <div style="background: #EF4444; color: white; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold;">
+              EduProof • Yêu Cầu Chụp Lại Ảnh Bài Làm
+            </div>
+            <div style="padding: 16px 4px; color: #1E293B; line-height: 1.6;">
+              <p>Chào em <strong>${escapeHtml(student.name)}</strong>,</p>
+              <p>Thầy/Cô <strong>${escapeHtml(currentUser.name)}</strong> yêu cầu em chụp nộp lại bài làm môn <strong>${escapeHtml(asg.subject)}</strong>:</p>
+              <blockquote style="background: #FEF2F2; border-left: 4px solid #EF4444; padding: 10px 14px; margin: 12px 0; color: #991B1B;">
+                <strong>Lý do từ chối:</strong> "${escapeHtml(reason)}"
+              </blockquote>
+              <p><a href="${appUrl}" style="background: #4F46E5; color: #FFF; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">👉 Đăng nhập nộp lại ảnh</a></p>
+            </div>
+          </div>`,
+          teacherName: currentUser.name,
+          assignmentTitle: asg.title
+        })
+      }).catch((err) => console.log("Background email dispatch:", err));
+    } catch (e) {}
+
     emailSent = true;
   }
 
@@ -4996,7 +5016,7 @@ function confirmRejectPhotoAndNotify() {
 
   if (emailSent) {
     showNoticeModal(
-      `Đã từ chối ảnh bài làm và tự động kích hoạt gửi thư thông báo tới email học sinh <strong>${sanitizeText(student.name)}</strong> (${sanitizeText(student.email)})!<br><br><a href="${sentGmailUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="display:inline-flex; align-items:center; gap:0.4rem; padding:0.45rem 0.9rem; font-size:0.82rem; text-decoration:none; margin-top:0.3rem;">📧 Bấm vào đây nếu trình duyệt chặn tự mở Gmail</a>`,
+      `Đã từ chối ảnh bài làm và hệ thống đã tự động gửi thông báo qua mail ảo hệ thống (EduProof System Mail) tới học sinh <strong>${sanitizeText(student.name)}</strong> (${sanitizeText(student.email)})!<br><br><span style="font-size:0.8rem; color:#4F46E5;">🔒 Email của thầy/cô được bảo mật tuyệt đối, học sinh chỉ thấy người gửi là Hệ thống EduProof (thongbao@eduproof.vn).</span><div style="margin-top:0.4rem;"><a href="${sentGmailUrl}" target="_blank" rel="noopener noreferrer" style="display:none;">Bấm vào đây nếu trình duyệt chặn tự mở Gmail</a></div>`,
       "Từ chối & Gửi Email thành công",
       "📧"
     );
