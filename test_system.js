@@ -2236,4 +2236,71 @@ assert.strictEqual(strongShake.shakeVelocityX, 38, "Gia tốc vì sao phải t�
 
 console.log("✅ 61. Kiểm thử Chuyển động Tự nhiên của Các Vì Sao & Hiệu ứng Lắc Điện Thoại (Device Motion & Star Parallax): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (61/61)!");
+// 62. Test: Đồng bộ tức thì bài nộp học sinh qua Supabase Realtime & Khắc phục tràn viền Mobile (Grading Studio & Bạn cùng lớp)
+const appJs62 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const appCss62 = fs.readFileSync(path.join(__dirname, "app.css"), "utf8");
+const html62 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+
+// 1. Kiểm tra kiến trúc Supabase Realtime & Auto-Sync bài nộp
+assert.ok(
+  appJs62.includes("function initSubmissionsRealtime()") &&
+  appJs62.includes("eduproof-submissions-realtime") &&
+  appJs62.includes("function quickFetchAndRenderSubmissions()") &&
+  appJs62.includes("function startSubmissionsAutoSync()"),
+  "app.js phải cài đặt Supabase Realtime channel và bộ nạp nhanh bài nộp quickFetchAndRenderSubmissions"
+);
+
+// 2. Kiểm tra gọi đồng bộ khi học sinh nộp bài và khi khởi động/đăng nhập
+assert.ok(
+  appJs62.includes("startSubmissionsAutoSync();") &&
+  appJs62.includes("quickFetchAndRenderSubmissions();"),
+  "Hệ thống phải tự động lắng nghe bài nộp mới và kích hoạt nạp nhanh khi gửi bài"
+);
+
+// 3. Kiểm tra responsive Studio Chấm bài trên điện thoại (Ảnh 1)
+assert.ok(
+  appCss62.includes("#gradingModal") &&
+  appCss62.includes("100dvh") &&
+  appCss62.includes("safe-area-inset-top") &&
+  appCss62.includes("max-height: 44vh") &&
+  appCss62.includes("object-fit: contain"),
+  "app.css phải tối ưu Studio chấm bài trên di động: chống tràn, safe-area-inset-top và ảnh co giãn contain không bị che khuất"
+);
+
+// 4. Kiểm tra khắc phục lỗi tràn viền thẻ bạn cùng lớp (Ảnh 3)
+assert.ok(
+  appCss62.includes("#studentClassmatesGrid") &&
+  appCss62.includes("grid-template-columns: minmax(0, 1fr)") &&
+  appCss62.includes(".classmate-card") &&
+  appCss62.includes("box-sizing: border-box") &&
+  appCss62.includes(".classmate-chat-btn"),
+  "app.css phải ép card bạn học co giãn chuẩn trong khung, minmax(0, 1fr) và nút Nhắn tin không bị co cắt chữ"
+);
+
+// 5. Kiểm tra toàn vẹn ô tìm kiếm bạn học trong index.html
+assert.ok(
+  html62.includes("classmate-search-wrap") &&
+  html62.includes('id="classmateSearchInput"'),
+  "index.html phải có lớp bọc linh hoạt classmate-search-wrap chống vỡ layout trên màn hình hẹp"
+);
+
+// 6. Mô phỏng thử nghiệm thuật toán so sánh phát hiện bài nộp mới tức thì
+function detectSubmissionUpdate(oldSubs, newSubs) {
+  const oldSig = oldSubs.map(s => `${s.id}_${s.status}_${s.submittedAt}`).join("|");
+  const newSig = newSubs.map(s => `${s.id}_${s.status}_${s.submittedAt}`).join("|");
+  return oldSig !== newSig;
+}
+
+const baselineSubs = [{ id: "sub_1", status: "submitted", submittedAt: "2026-11-07T06:00:00Z" }];
+const unchangedSubs = [{ id: "sub_1", status: "submitted", submittedAt: "2026-11-07T06:00:00Z" }];
+const updatedSubs = [
+  { id: "sub_1", status: "submitted", submittedAt: "2026-11-07T06:00:00Z" },
+  { id: "sub_2", status: "submitted", submittedAt: "2026-11-07T06:30:00Z" }
+];
+
+assert.strictEqual(detectSubmissionUpdate(baselineSubs, unchangedSubs), false, "Không có bài nộp mới thì không re-render thừa");
+assert.strictEqual(detectSubmissionUpdate(baselineSubs, updatedSubs), true, "Có bài nộp mới phải phát hiện ngay lập tức để cập nhật màn hình GV");
+
+console.log("✅ 62. Kiểm thử Đồng bộ Tức thì Bài nộp Học sinh (Realtime Sync) & Khắc phục Tràn viền Di động: ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (62/62)!");

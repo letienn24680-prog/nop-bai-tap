@@ -565,6 +565,7 @@ function initData() {
 
   // Khởi động đồng bộ dữ liệu với Supabase Cloud
   syncCloudData(false);
+  startSubmissionsAutoSync();
 }
 
 function persistData() {
@@ -767,6 +768,137 @@ async function syncCloudData(notify = false) {
 }
 
 // ==========================================
+// 1.5 REALTIME SUBMISSIONS & INSTANT CLOUD SYNC
+// ==========================================
+
+let submissionsRealtimeChannel = null;
+let submissionsSyncTimer = null;
+let isQuickFetchingSubmissions = false;
+
+function showToastNotification(msg) {
+  let toast = document.getElementById("eduproofToastNotification");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "eduproofToastNotification";
+    toast.style.cssText = "position: fixed; bottom: 1.5rem; right: 1.5rem; background: rgba(15, 23, 42, 0.95); color: #FFFFFF; padding: 0.65rem 1.15rem; border-radius: 9999px; font-size: 0.85rem; font-weight: 600; box-shadow: 0 10px 25px rgba(0,0,0,0.3); z-index: 9999; pointer-events: none; transition: opacity 0.3s ease, transform 0.3s ease; transform: translateY(20px); opacity: 0; border: 1px solid rgba(255,255,255,0.15); max-width: 90vw;";
+    document.body.appendChild(toast);
+  }
+  toast.innerText = msg;
+  toast.style.transform = "translateY(0)";
+  toast.style.opacity = "1";
+  if (toast._timer) clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => {
+    toast.style.transform = "translateY(20px)";
+    toast.style.opacity = "0";
+  }, 3200);
+}
+window.showToastNotification = showToastNotification;
+
+function initSubmissionsRealtime() {
+  const sb = getSupabase();
+  if (!sb || submissionsRealtimeChannel) return;
+  try {
+    if (typeof sb.channel === "function") {
+      submissionsRealtimeChannel = sb
+        .channel("eduproof-submissions-realtime")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "eduproof_submissions" },
+          () => {
+            quickFetchAndRenderSubmissions();
+          }
+        )
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            console.log("⚡ Supabase Realtime bài nộp học sinh đã sẵn sàng");
+          }
+        });
+    }
+  } catch (err) {
+    console.warn("Lỗi đăng ký Realtime Submissions:", err);
+  }
+}
+
+async function quickFetchAndRenderSubmissions() {
+  if (isQuickFetchingSubmissions) return;
+  const sb = getSupabase();
+  if (!sb) return;
+
+  isQuickFetchingSubmissions = true;
+  try {
+    const { data, error } = await sb
+      .from("eduproof_submissions")
+      .select("*")
+      .order("submitted_at", { ascending: false });
+
+    if (!error && Array.isArray(data)) {
+      const prevLen = submissions.length;
+      const prevSig = submissions.map((s) => `${s.id}_${s.status}_${s.submittedAt}_${(s.photos || []).length}_${s.resubmitRequested}`).join("|");
+
+      submissions = data.map((s) => ({
+        id: s.id,
+        assignmentId: s.assignment_id,
+        studentId: s.student_id,
+        studentName: s.student_name,
+        submittedAt: s.submitted_at,
+        status: s.status,
+        photos: normalizePhotos(s.photos),
+        linkProof: s.link_proof || "",
+        studentNote: s.student_note || "",
+        annotations: s.annotations || {},
+        grade: s.grade,
+        feedback: s.feedback || "",
+        resubmitRequested: s.resubmit_requested || false
+      }));
+
+      persistData();
+
+      const newSig = submissions.map((s) => `${s.id}_${s.status}_${s.submittedAt}_${(s.photos || []).length}_${s.resubmitRequested}`).join("|");
+
+      if (prevSig !== newSig) {
+        renderCurrentView();
+        if (currentUser && (currentUser.role === "teacher" || currentUser.role === "admin")) {
+          if (data.length > prevLen && window.showToastNotification) {
+            showToastNotification("📸 Có bài nộp hoặc ảnh minh chứng mới vừa được gửi!");
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Lỗi đồng bộ nhanh bài nộp:", err);
+  } finally {
+    isQuickFetchingSubmissions = false;
+  }
+}
+
+function startSubmissionsAutoSync() {
+  initSubmissionsRealtime();
+  if (!submissionsSyncTimer) {
+    submissionsSyncTimer = setInterval(() => {
+      if (currentUser) {
+        quickFetchAndRenderSubmissions();
+      }
+    }, 3000);
+  }
+}
+
+function stopSubmissionsAutoSync() {
+  if (submissionsSyncTimer) {
+    clearInterval(submissionsSyncTimer);
+    submissionsSyncTimer = null;
+  }
+  if (submissionsRealtimeChannel) {
+    try {
+      const sb = getSupabase();
+      if (sb && typeof sb.removeChannel === "function") {
+        sb.removeChannel(submissionsRealtimeChannel);
+      }
+    } catch (e) {}
+    submissionsRealtimeChannel = null;
+  }
+}
+
+// ==========================================
 // 2. AUTHENTICATION & USER MANAGEMENT
 // ==========================================
 
@@ -818,6 +950,7 @@ function hideLoginScreen() {
 function logout() {
   currentUser = null;
   stopChatAutoSync();
+  stopSubmissionsAutoSync();
   liveChatMessages = [];
   studentActiveTab = "assignments";
   localStorage.removeItem(DB_KEY_AUTH);
@@ -907,6 +1040,7 @@ async function handleLoginFormSubmit(event) {
     renderCurrentView();
     // Đồng bộ danh sách học sinh theo quyền sau khi đăng nhập thành công
     syncCloudData(false);
+    startSubmissionsAutoSync();
   } else {
     alert("Sai tên đăng nhập hoặc mật khẩu! Học sinh vui lòng nhận tài khoản từ giáo viên.");
   }
@@ -2150,21 +2284,21 @@ function renderStudentClassmates(searchQuery = "") {
     return `
       <div class="classmate-card">
         <div class="classmate-avatar">${initial}</div>
-        <div style="flex: 1; min-width: 0;">
-          <div style="display: flex; align-items: center; gap: 0.4rem; justify-content: space-between;">
-            <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+        <div style="flex: 1 1 auto; min-width: 0; overflow: hidden;">
+          <div style="display: flex; align-items: center; gap: 0.35rem; justify-content: space-between;">
+            <span style="font-weight: 700; color: var(--text-main); font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%;">
               ${sanitizeText(st.name || "Học sinh")}
             </span>
-            ${isMe ? '<span class="badge" style="background: #e0e7ff; color: #3730a3; font-size: 0.68rem; padding: 0.1rem 0.4rem; border-radius: 999px; font-weight: 700;">Bạn</span>' : ''}
+            ${isMe ? '<span class="badge" style="background: #e0e7ff; color: #3730a3; font-size: 0.68rem; padding: 0.1rem 0.35rem; border-radius: 999px; font-weight: 700; flex-shrink: 0;">Bạn</span>' : ''}
           </div>
-          <div style="font-size: 0.78rem; color: var(--text-muted); display: flex; gap: 0.4rem; align-items: center; margin-top: 0.25rem;">
-            <span class="badge" style="background: #f1f5f9; color: #475569; font-size: 0.72rem; padding: 0.12rem 0.45rem; border-radius: 4px; font-weight: 600;">${className}</span>
-            <span>• Học sinh</span>
+          <div style="font-size: 0.76rem; color: var(--text-muted); display: flex; gap: 0.35rem; align-items: center; margin-top: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            <span class="badge" style="background: #f1f5f9; color: #475569; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 600; flex-shrink: 0;">${className}</span>
+            <span style="overflow: hidden; text-overflow: ellipsis;">• Học sinh</span>
           </div>
         </div>
         ${!isMe ? `
-          <button class="btn btn-primary btn-sm" onclick="startDirectChat('${st.id}', '${sanitizeText(st.name)}')" style="white-space: nowrap; padding: 0.4rem 0.75rem; font-size: 0.78rem; display: flex; align-items: center; gap: 0.35rem;" title="Nhắn tin riêng 1-1 với bạn này">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <button class="btn btn-primary btn-sm classmate-chat-btn" onclick="startDirectChat('${st.id}', '${sanitizeText(st.name)}')" style="white-space: nowrap; flex-shrink: 0; padding: 0.35rem 0.65rem; font-size: 0.76rem; display: flex; align-items: center; gap: 0.3rem;" title="Nhắn tin riêng 1-1 với bạn này">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             <span>Nhắn tin</span>
           </button>
         ` : ''}
@@ -3074,6 +3208,7 @@ async function confirmSubmitAssignment() {
     closeSubmitModal();
     renderStudentView();
     alert(isResubmitting ? "🎉 Chúc mừng! Bạn đã nộp lại bài tập thành công (Ảnh mới đã thay thế ảnh cũ)." : "🎉 Chúc mừng! Bạn đã nộp bài tập thành công.");
+    quickFetchAndRenderSubmissions();
     syncCloudData(false);
   } finally {
     isSubmitting = false;
@@ -4853,6 +4988,7 @@ function saveAndReturnGrade() {
 
   closeGradingStudio();
   renderCurrentView();
+  quickFetchAndRenderSubmissions();
   alert(requestResubmit ? "Đã gửi thông báo yêu cầu học sinh chụp nộp lại!" : "✅ Đã xác nhận học sinh đã hoàn thành bài làm!");
 }
 
@@ -5013,6 +5149,7 @@ function confirmRejectPhotoAndNotify() {
   closeRejectPhotoModal();
   closeGradingStudio();
   renderCurrentView();
+  quickFetchAndRenderSubmissions();
 
   if (emailSent) {
     showNoticeModal(

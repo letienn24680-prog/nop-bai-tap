@@ -10,7 +10,7 @@
   <meta http-equiv="Expires" content="0">
   <title>EduProof - Nộp & Chấm Bài Tập Minh Chứng</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234F46E5'/%3E%3Cpath d='M16 5L4 11.5L16 18L28 11.5L16 5Z' fill='white'/%3E%3Cpath d='M8 14.5V20.5C8 24 11.5 26.5 16 26.5C20.5 26.5 24 24 24 20.5V14.5L16 19L8 14.5Z' fill='white' fill-opacity='0.85'/%3E%3Cpath d='M26 13.5V22' stroke='%23FDE047' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='26' cy='22.5' r='1.5' fill='%23FDE047'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="app.css?v=20261107_1010">
+  <link rel="stylesheet" href="app.css?v=20261107_1330">
   <script>
     // Ghi đè alert của trình duyệt sang popup trong trang web ngay lập tức
     window.alert = function(msg) {
@@ -306,7 +306,7 @@
               <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main);">Danh sách bạn cùng lớp</h3>
               <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">Chỉ hiển thị họ tên và lớp. Bảo mật tuyệt đối thông tin đăng nhập.</p>
             </div>
-            <div style="position: relative; min-width: 260px;">
+            <div class="classmate-search-wrap" style="position: relative; width: 100%; max-width: 100%; min-width: 0; flex: 1 1 240px;">
               <input type="text" id="classmateSearchInput" class="form-input" placeholder="🔍 Tìm theo họ tên bạn học..." oninput="handleClassmateSearch(this.value)" style="padding-left: 2rem;" />
               <svg style="position: absolute; left: 0.65rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             </div>
@@ -1147,6 +1147,6 @@
   <script src="supabase-config.js?v=20261106_2320"></script>
 
   <!-- Core App Logic -->
-  <script src="app.js?v=20261107_1010"></script>
+  <script src="app.js?v=20261107_1330"></script>
 </body>
 </html>
