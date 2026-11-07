@@ -5297,4 +5297,174 @@ async function confirmCreateAssignment() {
   showNoticeModal(successNote, "Tạo bài tập thành công", "🎉");
 }
 
-window.addEventListener("DOMContentLoaded", initData);
+// ==========================================
+// 8. GALAXY STARS DYNAMIC MOTION & DEVICE SHAKE / TILT PARALLAX
+// ==========================================
+function initGalaxyMotion() {
+  const canvas = document.getElementById("galaxyStarsCanvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  let width = (canvas.width = window.innerWidth);
+  let height = (canvas.height = window.innerHeight);
+
+  function resizeCanvas() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  }
+  window.addEventListener("resize", resizeCanvas, { passive: true });
+
+  const starCount = Math.min(130, Math.max(60, Math.floor((width * height) / 8500)));
+  const stars = [];
+  const starColors = ["#FFFFFF", "#E0E7FF", "#C7D2FE", "#DDD6FE", "#FDE047", "#F472B6"];
+
+  for (let i = 0; i < starCount; i++) {
+    stars.push({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: (Math.random() - 0.5) * 0.45,
+      vy: (Math.random() - 0.5) * 0.45,
+      size: Math.random() * 2.2 + 0.6,
+      color: starColors[Math.floor(Math.random() * starColors.length)],
+      alpha: Math.random() * 0.7 + 0.3,
+      baseAlpha: Math.random() * 0.6 + 0.3,
+      twinkleSpeed: Math.random() * 0.04 + 0.015,
+      twinklePhase: Math.random() * Math.PI * 2,
+      layer: Math.random() * 1.8 + 0.6 // Tầng chiều sâu thị sai (Parallax depth: 0.6 đến 2.4)
+    });
+  }
+
+  let tiltX = 0, tiltY = 0;
+  let targetTiltX = 0, targetTiltY = 0;
+  let shakeVelocityX = 0, shakeVelocityY = 0;
+  let lastAccX = 0, lastAccY = 0, lastAccZ = 0;
+  let lastMotionTime = 0;
+
+  // 1. Cảm biến con quay hồi chuyển khi nghiêng hoặc lắc điện thoại (DeviceOrientation & DeviceMotion)
+  function handleOrientation(e) {
+    if (e.gamma !== null && e.beta !== null) {
+      // gamma: nghiêng trái / phải (-90 đến +90)
+      // beta: nghiêng trước / sau
+      targetTiltX = Math.max(-45, Math.min(45, e.gamma)) * 1.6;
+      targetTiltY = Math.max(-45, Math.min(45, e.beta - 45)) * 1.6;
+    }
+  }
+
+  function handleMotion(e) {
+    const acc = e.accelerationIncludingGravity || e.acceleration;
+    if (!acc) return;
+    const now = Date.now();
+    if (now - lastMotionTime > 70) {
+      const dx = (acc.x || 0) - lastAccX;
+      const dy = (acc.y || 0) - lastAccY;
+      const dz = (acc.z || 0) - lastAccZ;
+      const shakeForce = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      // Khi lắc điện thoại (lực shake > 11), các vì sao giật và trôi dạt mạnh theo gia tốc lắc
+      if (shakeForce > 11) {
+        shakeVelocityX = dx * 3.8;
+        shakeVelocityY = dy * 3.8;
+      }
+      lastAccX = acc.x || 0;
+      lastAccY = acc.y || 0;
+      lastAccZ = acc.z || 0;
+      lastMotionTime = now;
+    }
+  }
+
+  window.addEventListener("deviceorientation", handleOrientation, true);
+  window.addEventListener("devicemotion", handleMotion, true);
+
+  // Fallback xin cấp quyền cảm biến con quay trên iOS (Safari 13+)
+  function requestGyroPermission() {
+    if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
+      DeviceOrientationEvent.requestPermission()
+        .then((resp) => {
+          if (resp === "granted") {
+            window.addEventListener("deviceorientation", handleOrientation, true);
+            window.addEventListener("devicemotion", handleMotion, true);
+          }
+        })
+        .catch(() => {});
+    }
+  }
+  window.addEventListener("touchstart", requestGyroPermission, { once: true, passive: true });
+  window.addEventListener("click", requestGyroPermission, { once: true, passive: true });
+
+  // 2. Fallback trỏ chuột máy tính (Mouse Parallax)
+  window.addEventListener("mousemove", (e) => {
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    targetTiltX = ((e.clientX - cx) / cx) * 32;
+    targetTiltY = ((e.clientY - cy) / cy) * 32;
+  }, { passive: true });
+
+  const nebulaEl = document.querySelector(".galaxy-nebula");
+
+  // 3. Vòng lặp chuyển động 60FPS mượt mà của các vì sao
+  function renderGalaxy() {
+    ctx.clearRect(0, 0, width, height);
+
+    // Damping chuyển động mượt mà (lerp)
+    tiltX += (targetTiltX - tiltX) * 0.08;
+    tiltY += (targetTiltY - tiltY) * 0.08;
+
+    // Giảm dần quán tính lực xóc khi lắc điện thoại
+    shakeVelocityX *= 0.92;
+    shakeVelocityY *= 0.92;
+
+    // Dịch chuyển nhẹ tinh vân vũ trụ theo góc nghiêng
+    if (nebulaEl) {
+      nebulaEl.style.transform = `translate3d(${tiltX * 0.15}px, ${tiltY * 0.15}px, 0)`;
+    }
+
+    for (let i = 0; i < stars.length; i++) {
+      const s = stars[i];
+
+      // Di chuyển tự nhiên + lực gia tốc khi lắc
+      s.x += s.vx + shakeVelocityX * (s.layer * 0.15);
+      s.y += s.vy + shakeVelocityY * (s.layer * 0.15);
+
+      // Quấn vòng màn hình
+      if (s.x < 0) s.x = width;
+      else if (s.x > width) s.x = 0;
+      if (s.y < 0) s.y = height;
+      else if (s.y > height) s.y = 0;
+
+      // Nhấp nháy độ sáng
+      s.twinklePhase += s.twinkleSpeed;
+      s.alpha = s.baseAlpha + Math.sin(s.twinklePhase) * 0.35;
+      if (s.alpha < 0.1) s.alpha = 0.1;
+      if (s.alpha > 1) s.alpha = 1;
+
+      // Vị trí vẽ có tính độ sâu thị sai (Parallax) theo góc nghiêng
+      const drawX = s.x + tiltX * s.layer;
+      const drawY = s.y + tiltY * s.layer;
+
+      ctx.beginPath();
+      ctx.arc(drawX, drawY, s.size, 0, Math.PI * 2);
+      ctx.fillStyle = s.color;
+      ctx.globalAlpha = s.alpha;
+      ctx.fill();
+
+      // Hào quang lấp lánh cho các vì sao to
+      if (s.size > 1.8) {
+        ctx.beginPath();
+        ctx.arc(drawX, drawY, s.size * 2.2, 0, Math.PI * 2);
+        ctx.fillStyle = s.color;
+        ctx.globalAlpha = s.alpha * 0.25;
+        ctx.fill();
+      }
+    }
+
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(renderGalaxy);
+  }
+
+  requestAnimationFrame(renderGalaxy);
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  initData();
+  initGalaxyMotion();
+});

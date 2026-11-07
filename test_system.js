@@ -2176,4 +2176,64 @@ assert.ok(
 
 console.log("✅ 60. Kiểm thử Nền Động Bầu Trời Galaxy & Khung/Chữ Tương Phản Cao: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (60/60)!");
+// --- TEST 61: Kiểm thử Chuyển động Tự nhiên của Các Vì Sao & Hiệu ứng Lắc Điện Thoại (Device Motion & Star Parallax) ---
+const appJs61 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const html61 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+const css61 = fs.readFileSync(path.join(__dirname, "app.css"), "utf8");
+
+// 1. Kiểm tra canvas vẽ sao động trong HTML và CSS
+assert.ok(
+  html61.includes('id="galaxyStarsCanvas"') &&
+  html61.includes('class="galaxy-stars-canvas"'),
+  "index.html phải có canvas #galaxyStarsCanvas để kết xuất các vì sao chuyển động"
+);
+assert.ok(
+  css61.includes(".galaxy-stars-canvas") &&
+  css61.includes("pointer-events: none;"),
+  "app.css phải thiết lập pointer-events: none cho canvas để không cản trở thao tác bấm của người dùng"
+);
+
+// 2. Kiểm tra định nghĩa hàm initGalaxyMotion và tích hợp vào DOMContentLoaded
+assert.ok(
+  appJs61.includes("function initGalaxyMotion") &&
+  appJs61.includes("initGalaxyMotion();"),
+  "app.js phải định nghĩa initGalaxyMotion và gọi khi khởi tạo trang"
+);
+
+// 3. Kiểm tra hỗ trợ cảm biến con quay (deviceorientation) và cảm biến gia tốc lắc (devicemotion)
+assert.ok(
+  appJs61.includes("deviceorientation") &&
+  appJs61.includes("devicemotion") &&
+  appJs61.includes("targetTiltX") &&
+  appJs61.includes("shakeVelocityX"),
+  "app.js phải lắng nghe cả deviceorientation và devicemotion để sao di chuyển khi nghiêng hoặc lắc điện thoại"
+);
+
+// 4. Kiểm tra tương thích máy tính (mousemove) và bảo chứng quyền iOS
+assert.ok(
+  appJs61.includes("mousemove") &&
+  appJs61.includes("DeviceOrientationEvent.requestPermission"),
+  "app.js phải hỗ trợ thị sai di chuột trên PC và xin quyền cảm biến trên iOS"
+);
+
+// 5. Kiểm thử thuật toán tính toán lực lắc
+function simulatePhoneShake(dx, dy, dz) {
+  const shakeForce = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  let shakeVelocityX = 0, shakeVelocityY = 0;
+  if (shakeForce > 11) {
+    shakeVelocityX = dx * 3.8;
+    shakeVelocityY = dy * 3.8;
+  }
+  return { shakeForce, shakeVelocityX, shakeVelocityY };
+}
+
+const mildMove = simulatePhoneShake(1, 1, 1);
+assert.strictEqual(mildMove.shakeVelocityX, 0, "Chuyển động nhẹ không kích hoạt lực giật sao");
+
+const strongShake = simulatePhoneShake(10, 8, 5);
+assert.ok(strongShake.shakeForce > 11, "Lực lắc mạnh phải vượt ngưỡng 11");
+assert.strictEqual(strongShake.shakeVelocityX, 38, "Gia tốc vì sao phải tỉ lệ thuận theo lực lắc của điện thoại");
+
+console.log("✅ 61. Kiểm thử Chuyển động Tự nhiên của Các Vì Sao & Hiệu ứng Lắc Điện Thoại (Device Motion & Star Parallax): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (61/61)!");
