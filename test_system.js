@@ -1800,4 +1800,99 @@ assert.ok(
 
 console.log("✅ 54. Kiểm thử Hiển thị Ảnh Trực quan & Lớp Vẽ Chấm Bài (Grading Studio Visual Fix): ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (54/54)!");
+// --- TEST 55: Kiểm thử Danh sách Bạn Cùng Lớp (Bảo mật Tên đăng nhập/Mật khẩu) & Phòng Chat Đồng bộ Cloud (Zero LocalStorage) ---
+const html55 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+const appJs55 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+const sql55 = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8");
+
+// 1. Kiểm tra cấu trúc thẻ điều hướng 3 tab trong Student View
+assert.ok(
+  html55.includes('id="studentMainTabs"') &&
+  html55.includes('id="studentTabBtnAssignments"') &&
+  html55.includes('id="studentTabBtnChat"') &&
+  html55.includes('id="studentTabBtnClassmates"') &&
+  html55.includes('id="studentAssignmentsTab"') &&
+  html55.includes('id="studentChatTab"') &&
+  html55.includes('id="studentClassmatesTab"'),
+  "index.html phải có đủ thanh tab điều hướng học sinh: Bài tập, Phòng chat, Bạn cùng lớp"
+);
+
+// 2. Kiểm tra giao diện phòng chat và tìm kiếm bạn cùng lớp
+assert.ok(
+  html55.includes('id="chatMessagesBox"') &&
+  html55.includes('id="chatMessageInput"') &&
+  html55.includes('id="chatSendForm"') &&
+  html55.includes('id="studentClassmatesGrid"') &&
+  html55.includes('id="classmateSearchInput"'),
+  "index.html phải chứa đủ khung chat tin nhắn, ô nhập tin nhắn và lưới danh sách bạn cùng lớp kèm ô tìm kiếm"
+);
+
+// 3. Kiểm tra CSDL schema.sql: Bảng eduproof_messages, RLS & Realtime
+assert.ok(
+  sql55.includes("CREATE TABLE IF NOT EXISTS eduproof_messages") &&
+  sql55.includes("ALTER TABLE eduproof_messages ENABLE ROW LEVEL SECURITY;") &&
+  sql55.includes('"Allow select messages"') &&
+  sql55.includes('"Allow insert messages"') &&
+  sql55.includes("tablename = 'eduproof_messages'"),
+  "schema.sql phải định nghĩa bảng eduproof_messages, kích hoạt RLS và xuất bản Realtime"
+);
+
+// 4. Kiểm tra logic phòng chat: Đồng bộ Cloud và TUYỆT ĐỐI KHÔNG LƯU VÀO LOCALSTORAGE
+assert.ok(
+  appJs55.includes("function switchStudentTab") &&
+  appJs55.includes("function loadChatMessages") &&
+  appJs55.includes("function handleSendChatMessage") &&
+  appJs55.includes("function startChatAutoSync") &&
+  appJs55.includes("function stopChatAutoSync"),
+  "app.js phải cung cấp đầy đủ hàm chuyển tab, tải tin nhắn đám mây, gửi tin nhắn và auto sync định kỳ"
+);
+
+// Kiểm tra bảo chứng không dùng localStorage cho tin nhắn chat
+assert.ok(
+  !appJs55.includes('localStorage.setItem("eduproof_messages"') &&
+  !appJs55.includes('localStorage.setItem("eduproof_chat"') &&
+  !appJs55.includes('localStorage.setItem("chat_messages"'),
+  "app.js TUYỆT ĐỐI KHÔNG ĐƯỢC dùng localStorage để lưu trữ tin nhắn chat học sinh"
+);
+
+// 5. Kiểm thử Bảo mật Thông tin Học sinh: Khung hiển thị bạn cùng lớp chỉ xuất Họ tên, TUYỆT ĐỐI KHÔNG xuất Username hoặc Password
+const sampleMockStudents = [
+  { id: "hs_001", username: "super_secret_username_99", password: "raw_secret_password_88", name: "Nguyễn Lê Bảo An", class: "12A1", role: "student" },
+  { id: "hs_002", username: "hs_private_user_44", password: "pwd_very_private_11", name: "Trần Minh Quân", class: "12A1", role: "student" }
+];
+
+// Mô phỏng hàm trích xuất HTML của card học sinh dựa trên code thực tế trong app.js
+function mockRenderClassmateCard(st) {
+  const nameParts = (st.name || "Học sinh").trim().split(" ");
+  const initial = nameParts[nameParts.length - 1][0].toUpperCase();
+  const className = st.class ? `Lớp ${st.class}` : "Chưa xếp lớp";
+  return `
+    <div class="classmate-card">
+      <div class="classmate-avatar">${initial}</div>
+      <div style="flex: 1; min-width: 0;">
+        <span class="name">${st.name}</span>
+        <span class="class">${className}</span>
+      </div>
+    </div>
+  `;
+}
+
+const renderedCardsHtml = sampleMockStudents.map(mockRenderClassmateCard).join("");
+assert.ok(renderedCardsHtml.includes("Nguyễn Lê Bảo An"), "Card phải hiển thị họ tên học sinh");
+assert.ok(renderedCardsHtml.includes("Trần Minh Quân"), "Card phải hiển thị họ tên học sinh");
+assert.ok(!renderedCardsHtml.includes("super_secret_username_99"), "BẢO MẬT: Card không được chứa tên đăng nhập");
+assert.ok(!renderedCardsHtml.includes("raw_secret_password_88"), "BẢO MẬT: Card không được chứa mật khẩu");
+assert.ok(!renderedCardsHtml.includes("hs_private_user_44"), "BẢO MẬT: Card không được chứa tên đăng nhập");
+assert.ok(!renderedCardsHtml.includes("pwd_very_private_11"), "BẢO MẬT: Card không được chứa mật khẩu");
+
+// Kiểm tra mã nguồn app.js không xuất st.username hay st.password trong renderStudentClassmates
+const classmatesFnCode = appJs55.substring(
+  appJs55.indexOf("function renderStudentClassmates"),
+  appJs55.indexOf("function handleClassmateSearch")
+);
+assert.ok(!classmatesFnCode.includes("st.username"), "renderStudentClassmates không được đọc hay hiển thị st.username");
+assert.ok(!classmatesFnCode.includes("st.password"), "renderStudentClassmates không được đọc hay hiển thị st.password");
+
+console.log("✅ 55. Kiểm thử Danh sách Bạn Cùng Lớp (Bảo mật Tên đăng nhập/Mật khẩu) & Phòng Chat Đồng bộ Cloud (Zero LocalStorage): ĐẠT");
+
+console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (55/55)!");

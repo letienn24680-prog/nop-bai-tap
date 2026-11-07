@@ -788,6 +788,9 @@ function hideLoginScreen() {
 
 function logout() {
   currentUser = null;
+  stopChatAutoSync();
+  liveChatMessages = [];
+  studentActiveTab = "assignments";
   localStorage.removeItem(DB_KEY_AUTH);
   sessionStorage.removeItem(DB_KEY_AUTH);
   localStorage.removeItem("eduproof_teacher_tab");
@@ -2008,29 +2011,286 @@ function renderCurrentView() {
   } else if (isTeacher) {
     renderTeacherView();
   } else {
-    renderStudentView();
+    switchStudentTab(studentActiveTab || "assignments");
   }
 }
 
 // ==========================================
-// 4. STUDENT VIEW LOGIC
+// 4. STUDENT VIEW LOGIC & NAVIGATION TABS
 // ==========================================
+
+let studentActiveTab = "assignments";
+let liveChatMessages = []; // Lưu trong bộ nhớ RAM - Tuyệt đối không dùng localStorage
+let chatSyncTimer = null;
+
+function switchStudentTab(tab, btnElement) {
+  studentActiveTab = tab || "assignments";
+
+  const tabBtns = document.querySelectorAll("#studentTabBtnAssignments, #studentTabBtnChat, #studentTabBtnClassmates");
+  tabBtns.forEach((b) => b.classList.remove("active"));
+
+  if (btnElement) {
+    btnElement.classList.add("active");
+  } else {
+    const targetId = studentActiveTab === "chat" ? "studentTabBtnChat" : (studentActiveTab === "classmates" ? "studentTabBtnClassmates" : "studentTabBtnAssignments");
+    const targetBtn = document.getElementById(targetId);
+    if (targetBtn) targetBtn.classList.add("active");
+  }
+
+  const asgTab = document.getElementById("studentAssignmentsTab");
+  const chatTab = document.getElementById("studentChatTab");
+  const clsTab = document.getElementById("studentClassmatesTab");
+
+  if (asgTab) asgTab.style.display = studentActiveTab === "assignments" ? "block" : "none";
+  if (chatTab) chatTab.style.display = studentActiveTab === "chat" ? "block" : "none";
+  if (clsTab) clsTab.style.display = studentActiveTab === "classmates" ? "block" : "none";
+
+  const titleEl = document.getElementById("studentViewTitle");
+  const descEl = document.getElementById("studentViewDesc");
+
+  if (studentActiveTab === "assignments") {
+    if (titleEl) titleEl.innerText = "Bài tập của tôi";
+    if (descEl) descEl.innerText = "Chụp ảnh vở bài làm hoặc đính kèm minh chứng để nộp đúng hạn.";
+    stopChatAutoSync();
+    renderStudentView();
+  } else if (studentActiveTab === "chat") {
+    if (titleEl) titleEl.innerText = "Phòng chat học sinh";
+    if (descEl) descEl.innerText = "Trao đổi, thảo luận học tập trực tiếp cùng các bạn trong trường lớp.";
+    loadChatMessages();
+    startChatAutoSync();
+  } else if (studentActiveTab === "classmates") {
+    if (titleEl) titleEl.innerText = "Danh sách bạn cùng lớp";
+    if (descEl) descEl.innerText = "Chỉ hiển thị họ và tên học sinh, bảo mật tuyệt đối tài khoản & mật khẩu.";
+    stopChatAutoSync();
+    renderStudentClassmates();
+  }
+}
+
+// ------------------------------------------
+// 4A. BẠN CÙNG LỚP (BẢO MẬT USERNAME & MẬT KHẨU)
+// ------------------------------------------
+function renderStudentClassmates(searchQuery = "") {
+  const grid = document.getElementById("studentClassmatesGrid");
+  if (!grid) return;
+
+  const q = (searchQuery || "").trim().toLowerCase();
+
+  // Lọc danh sách học sinh: chỉ lấy các tài khoản có role === 'student'
+  const peerStudents = users.filter((u) => {
+    if (u.role !== "student") return false;
+    if (q) {
+      return (u.name || "").toLowerCase().includes(q);
+    }
+    return true;
+  }).sort((a, b) => (a.name || "").localeCompare(b.name || "", "vi"));
+
+  if (peerStudents.length === 0) {
+    grid.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+        <p style="font-size: 1.05rem; font-weight: 600; margin-bottom: 0.25rem;">🔍 Không tìm thấy bạn học sinh nào phù hợp</p>
+        <span style="font-size: 0.8rem;">Hãy thử tìm kiếm với họ tên khác</span>
+      </div>
+    `;
+    return;
+  }
+
+  // BẢO MẬT TUYỆT ĐỐI: CHỈ XUẤT HỌ TÊN VÀ LỚP.
+  // TUYỆT ĐỐI KHÔNG render username hay password ra bất kỳ thẻ HTML hay dataset nào!
+  grid.innerHTML = peerStudents.map((st) => {
+    const isMe = currentUser && st.id === currentUser.id;
+    const nameParts = (st.name || "Học sinh").trim().split(" ");
+    const initial = nameParts[nameParts.length - 1][0].toUpperCase();
+    const className = st.class ? `Lớp ${escapeHtml(st.class)}` : "Chưa xếp lớp";
+
+    return `
+      <div class="classmate-card">
+        <div class="classmate-avatar">${initial}</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; align-items: center; gap: 0.4rem; justify-content: space-between;">
+            <span style="font-weight: 700; color: var(--text-main); font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              ${escapeHtml(st.name || "Học sinh")}
+            </span>
+            ${isMe ? '<span class="badge" style="background: #e0e7ff; color: #3730a3; font-size: 0.68rem; padding: 0.1rem 0.4rem; border-radius: 999px; font-weight: 700;">Bạn</span>' : ''}
+          </div>
+          <div style="font-size: 0.78rem; color: var(--text-muted); display: flex; gap: 0.4rem; align-items: center; margin-top: 0.25rem;">
+            <span class="badge" style="background: #f1f5f9; color: #475569; font-size: 0.72rem; padding: 0.12rem 0.45rem; border-radius: 4px; font-weight: 600;">${className}</span>
+            <span>• Học sinh</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function handleClassmateSearch(val) {
+  renderStudentClassmates(val);
+}
+
+// ------------------------------------------
+// 4B. PHÒNG CHAT HỌC SINH (CLOUD SYNC - ZERO LOCALSTORAGE)
+// ------------------------------------------
+function startChatAutoSync() {
+  stopChatAutoSync();
+  chatSyncTimer = setInterval(() => {
+    if (studentActiveTab === "chat" && currentUser) {
+      loadChatMessages(false);
+    }
+  }, 4000);
+}
+
+function stopChatAutoSync() {
+  if (chatSyncTimer) {
+    clearInterval(chatSyncTimer);
+    chatSyncTimer = null;
+  }
+}
+
+async function loadChatMessages(isManualRefresh = false) {
+  const box = document.getElementById("chatMessagesBox");
+  if (!box) return;
+
+  const sb = getSupabase();
+  if (sb) {
+    try {
+      const { data, error } = await sb
+        .from("eduproof_messages")
+        .select("*")
+        .order("created_at", { ascending: true })
+        .limit(200);
+
+      if (!error && Array.isArray(data)) {
+        liveChatMessages = data;
+      }
+    } catch (e) {
+      console.warn("Lỗi đồng bộ tin nhắn Cloud:", e);
+    }
+  }
+
+  renderChatMessagesList();
+  if (isManualRefresh && window.showToastNotification) {
+    showToastNotification("💬 Đã cập nhật tin nhắn mới nhất");
+  }
+}
+
+function renderChatMessagesList() {
+  const box = document.getElementById("chatMessagesBox");
+  if (!box) return;
+
+  if (!liveChatMessages || liveChatMessages.length === 0) {
+    box.innerHTML = `
+      <div style="text-align: center; margin: auto; padding: 2.5rem 1rem; color: var(--text-muted);">
+        <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">👋💬</div>
+        <p style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem;">Chưa có tin nhắn nào trong phòng chat</p>
+        <span style="font-size: 0.8rem;">Hãy gửi lời chào đầu tiên để cùng thảo luận bài học nhé!</span>
+      </div>
+    `;
+    return;
+  }
+
+  const isAtBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 70;
+
+  box.innerHTML = liveChatMessages.map((msg) => {
+    const isSelf = currentUser && msg.sender_id === currentUser.id;
+    const nameParts = (msg.sender_name || "Học sinh").trim().split(" ");
+    const initial = nameParts[nameParts.length - 1][0].toUpperCase();
+
+    let timeStr = "";
+    try {
+      const d = new Date(msg.created_at);
+      const hours = String(d.getHours()).padStart(2, "0");
+      const mins = String(d.getMinutes()).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      timeStr = `${hours}:${mins} ${day}/${month}`;
+    } catch (e) {
+      timeStr = "";
+    }
+
+    const classBadge = msg.class ? `<span style="opacity: 0.85; font-size: 0.7rem; font-weight: 600;">[Lớp ${escapeHtml(msg.class)}]</span>` : "";
+
+    return `
+      <div class="chat-bubble-row ${isSelf ? 'self' : 'peer'}">
+        ${!isSelf ? `<div class="chat-avatar">${initial}</div>` : ''}
+        <div class="chat-bubble-content">
+          <div class="chat-sender-meta">
+            ${!isSelf ? `<strong>${escapeHtml(msg.sender_name || "Bạn học")}</strong> ${classBadge}` : ''}
+            <span>${timeStr}</span>
+          </div>
+          <div class="chat-bubble">
+            ${escapeHtml(msg.content)}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  if (isAtBottom) {
+    box.scrollTop = box.scrollHeight;
+  }
+}
+
+async function handleSendChatMessage(event) {
+  if (event) event.preventDefault();
+  const input = document.getElementById("chatMessageInput");
+  const sendBtn = document.getElementById("chatSendBtn");
+  if (!input) return;
+
+  const content = input.value.trim();
+  if (!content) return;
+  if (!currentUser) {
+    alert("Vui lòng đăng nhập để gửi tin nhắn.");
+    return;
+  }
+
+  const newMsg = {
+    id: "msg_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6),
+    sender_id: currentUser.id,
+    sender_name: currentUser.name || "Học sinh",
+    sender_role: currentUser.role || "student",
+    class: currentUser.class || "",
+    content: content,
+    created_at: new Date().toISOString()
+  };
+
+  // Cập nhật giao diện RAM tức thì - TUYỆT ĐỐI KHÔNG DÙNG LOCALSTORAGE
+  liveChatMessages.push(newMsg);
+  input.value = "";
+  renderChatMessagesList();
+  const box = document.getElementById("chatMessagesBox");
+  if (box) box.scrollTop = box.scrollHeight;
+
+  // Đẩy tin nhắn lên Supabase Cloud Database
+  const sb = getSupabase();
+  if (sb) {
+    try {
+      if (sendBtn) sendBtn.disabled = true;
+      const { error } = await sb.from("eduproof_messages").insert([newMsg]);
+      if (error) {
+        console.warn("Lỗi gửi tin nhắn Cloud:", error);
+      }
+    } catch (e) {
+      console.warn("Ngoại lệ khi đẩy tin nhắn lên Cloud:", e);
+    } finally {
+      if (sendBtn) sendBtn.disabled = false;
+    }
+  }
+}
 
 function filterStudentAssignments(filter, btnElement) {
   studentFilter = filter;
   localStorage.setItem("eduproof_student_filter", filter);
-  document.querySelectorAll("#studentView .tab-btn").forEach((b) => b.classList.remove("active"));
+  document.querySelectorAll("#studentAssignmentsTab .tab-btn").forEach((b) => b.classList.remove("active"));
   if (btnElement) {
     btnElement.classList.add("active");
   } else {
-    const btn = document.querySelector(`#studentView .tab-btn[onclick*="'${filter}'"]`);
+    const btn = document.querySelector(`#studentAssignmentsTab .tab-btn[onclick*="'${filter}'"]`);
     if (btn) btn.classList.add("active");
   }
   renderStudentView();
 }
 
 function renderStudentView() {
-  document.querySelectorAll("#studentView .tab-btn").forEach((b) => {
+  document.querySelectorAll("#studentAssignmentsTab .tab-btn").forEach((b) => {
     const isMatch = b.getAttribute("onclick") && b.getAttribute("onclick").includes(`'${studentFilter}'`);
     b.classList.toggle("active", Boolean(isMatch));
   });

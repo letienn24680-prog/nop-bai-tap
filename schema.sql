@@ -50,6 +50,17 @@ CREATE TABLE IF NOT EXISTS eduproof_submissions (
   resubmit_requested BOOLEAN DEFAULT FALSE
 );
 
+-- 4. Bảng phòng chat học sinh (Toàn bộ tin nhắn đồng bộ trực tiếp qua Cloud, không dùng LocalStorage)
+CREATE TABLE IF NOT EXISTS eduproof_messages (
+  id TEXT PRIMARY KEY,
+  sender_id TEXT NOT NULL,
+  sender_name TEXT NOT NULL,
+  sender_role TEXT NOT NULL DEFAULT 'student',
+  class TEXT,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ========================================================
 -- KÍCH HOẠT REALTIME CẬP NHẬT TỨC THÌ (Idempotent)
 -- ========================================================
@@ -75,6 +86,13 @@ BEGIN
   ) THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE eduproof_submissions;
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND tablename = 'eduproof_messages'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE eduproof_messages;
+  END IF;
 END $$;
 
 -- ========================================================
@@ -83,6 +101,7 @@ END $$;
 ALTER TABLE eduproof_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE eduproof_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE eduproof_submissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE eduproof_messages ENABLE ROW LEVEL SECURITY;
 
 -- 1. Bảng eduproof_users: Bảo vệ tài khoản Admin không bị xóa
 DROP POLICY IF EXISTS "Public all users" ON eduproof_users;
@@ -113,9 +132,19 @@ CREATE POLICY "Allow insert submissions" ON eduproof_submissions FOR INSERT TO a
 CREATE POLICY "Allow update submissions" ON eduproof_submissions FOR UPDATE TO anon, authenticated USING (true);
 CREATE POLICY "Allow delete submissions" ON eduproof_submissions FOR DELETE TO anon, authenticated USING (true);
 
+-- 4. Bảng eduproof_messages: Phòng chat học sinh
+DROP POLICY IF EXISTS "Allow select messages" ON eduproof_messages;
+DROP POLICY IF EXISTS "Allow insert messages" ON eduproof_messages;
+DROP POLICY IF EXISTS "Allow delete messages" ON eduproof_messages;
+
+CREATE POLICY "Allow select messages" ON eduproof_messages FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow insert messages" ON eduproof_messages FOR INSERT TO anon, authenticated WITH CHECK (length(content) > 0 AND length(content) <= 2000);
+CREATE POLICY "Allow delete messages" ON eduproof_messages FOR DELETE TO anon, authenticated USING (true);
+
 GRANT ALL ON TABLE eduproof_users TO anon, authenticated;
 GRANT ALL ON TABLE eduproof_assignments TO anon, authenticated;
 GRANT ALL ON TABLE eduproof_submissions TO anon, authenticated;
+GRANT ALL ON TABLE eduproof_messages TO anon, authenticated;
 
 -- ========================================================
 -- CẤU HÌNH SUPABASE STORAGE CHO ẢNH MINH CHỨNG (BUCKET: proofs)

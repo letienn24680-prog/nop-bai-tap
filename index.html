@@ -195,41 +195,111 @@
     <section id="studentView">
       <div class="view-header">
         <div>
-          <h1 class="view-title">Bài tập của tôi</h1>
-          <p class="view-desc">Chụp ảnh vở bài làm hoặc đính kèm minh chứng để nộp đúng hạn.</p>
+          <h1 class="view-title" id="studentViewTitle">Bài tập của tôi</h1>
+          <p class="view-desc" id="studentViewDesc">Chụp ảnh vở bài làm hoặc đính kèm minh chứng để nộp đúng hạn.</p>
         </div>
         <div class="badge-status status-submitted" id="studentStatsBadge">
           Đang tải dữ liệu...
         </div>
       </div>
 
-      <!-- Filters -->
-      <div class="filter-tabs">
-        <button class="tab-btn active" onclick="filterStudentAssignments('all', this)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-          <span class="tab-label-full">Tất cả bài tập</span>
-          <span class="tab-label-short">Tất cả</span>
+      <!-- Student Navigation Tabs (Bài tập | Phòng chat | Bạn cùng lớp) -->
+      <div class="filter-tabs" id="studentMainTabs" style="margin-bottom: 1.25rem;">
+        <button class="tab-btn active" id="studentTabBtnAssignments" onclick="switchStudentTab('assignments', this)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          <span class="tab-label-full">Bài tập của tôi</span>
+          <span class="tab-label-short">Bài tập</span>
         </button>
-        <button class="tab-btn" onclick="filterStudentAssignments('pending', this)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <span class="tab-label-full">Chưa nộp (Cần làm)</span>
-          <span class="tab-label-short">Cần làm</span>
+        <button class="tab-btn" id="studentTabBtnChat" onclick="switchStudentTab('chat', this)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span class="tab-label-full">Phòng chat học sinh</span>
+          <span class="tab-label-short">Phòng chat</span>
         </button>
-        <button class="tab-btn" onclick="filterStudentAssignments('submitted', this)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          <span class="tab-label-full">Đã nộp / Chờ chấm</span>
-          <span class="tab-label-short">Đã nộp</span>
-        </button>
-        <button class="tab-btn" onclick="filterStudentAssignments('graded', this)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          <span class="tab-label-full">Đã kiểm tra & Nhận xét</span>
-          <span class="tab-label-short">Đã xem</span>
+        <button class="tab-btn" id="studentTabBtnClassmates" onclick="switchStudentTab('classmates', this)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="tab-label-full">Bạn cùng lớp</span>
+          <span class="tab-label-short">Bạn học</span>
         </button>
       </div>
 
-      <!-- Grid of Assignments -->
-      <div class="assignment-grid" id="studentAssignmentsList">
-        <!-- Rendered dynamically -->
+      <!-- Tab 1: Bài tập của tôi -->
+      <div id="studentAssignmentsTab">
+        <!-- Filters -->
+        <div class="filter-tabs">
+          <button class="tab-btn active" onclick="filterStudentAssignments('all', this)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            <span class="tab-label-full">Tất cả bài tập</span>
+            <span class="tab-label-short">Tất cả</span>
+          </button>
+          <button class="tab-btn" onclick="filterStudentAssignments('pending', this)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span class="tab-label-full">Chưa nộp (Cần làm)</span>
+            <span class="tab-label-short">Cần làm</span>
+          </button>
+          <button class="tab-btn" onclick="filterStudentAssignments('submitted', this)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span class="tab-label-full">Đã nộp / Chờ chấm</span>
+            <span class="tab-label-short">Đã nộp</span>
+          </button>
+          <button class="tab-btn" onclick="filterStudentAssignments('graded', this)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span class="tab-label-full">Đã kiểm tra & Nhận xét</span>
+            <span class="tab-label-short">Đã xem</span>
+          </button>
+        </div>
+
+        <!-- Grid of Assignments -->
+        <div class="assignment-grid" id="studentAssignmentsList">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- Tab 2: Phòng chat giữa các bạn học sinh (Đồng bộ Cloud, Không dùng LocalStorage) -->
+      <div id="studentChatTab" style="display: none;">
+        <div class="chat-card-container">
+          <div class="chat-header-bar">
+            <div style="display: flex; align-items: center; gap: 0.65rem;">
+              <span class="chat-header-icon">💬</span>
+              <div>
+                <strong style="color: var(--text-main); font-size: 0.95rem;">Phòng chat chung của các bạn học sinh</strong>
+                <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">Đồng bộ đám mây trực tiếp Cloud • Toàn bộ thành viên đều xem và nhắn tin được</p>
+              </div>
+            </div>
+            <button class="btn btn-secondary" onclick="loadChatMessages(true)" style="padding: 0.35rem 0.65rem; font-size: 0.8rem; display: flex; align-items: center; gap: 0.35rem;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              <span>Làm mới</span>
+            </button>
+          </div>
+          <div id="chatMessagesBox" class="chat-messages-scroll">
+            <!-- Rendered dynamically -->
+          </div>
+          <form id="chatSendForm" onsubmit="handleSendChatMessage(event)" class="chat-input-bar">
+            <input type="text" id="chatMessageInput" class="form-input" placeholder="Nhập tin nhắn gửi tới cả lớp..." maxlength="500" required autocomplete="off" />
+            <button type="submit" id="chatSendBtn" class="btn btn-primary" style="padding: 0.65rem 1.25rem; white-space: nowrap; display: flex; align-items: center; gap: 0.4rem;">
+              <span>Gửi</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Tab 3: Bạn cùng lớp (Chỉ xem họ tên và lớp, KHÔNG xem username/password) -->
+      <div id="studentClassmatesTab" style="display: none;">
+        <div style="background: white; border-radius: var(--radius-lg); border: 1px solid var(--border-color); padding: 1.25rem; box-shadow: var(--shadow-sm);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+              <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main);">Danh sách bạn cùng lớp</h3>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">Chỉ hiển thị họ tên và lớp. Bảo mật tuyệt đối thông tin đăng nhập.</p>
+            </div>
+            <div style="position: relative; min-width: 260px;">
+              <input type="text" id="classmateSearchInput" class="form-input" placeholder="🔍 Tìm theo họ tên bạn học..." oninput="handleClassmateSearch(this.value)" style="padding-left: 2rem;" />
+              <svg style="position: absolute; left: 0.65rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
+          </div>
+          <div class="assignment-grid" id="studentClassmatesGrid">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1059,6 +1129,6 @@
   <script src="supabase-config.js?v=20261106_2320"></script>
 
   <!-- Core App Logic -->
-  <script src="app.js?v=20261106_2350"></script>
+  <script src="app.js?v=20261107_0845"></script>
 </body>
 </html>
