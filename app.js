@@ -3497,6 +3497,9 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
         <button class="btn btn-primary btn-sm campaign-action-btn" onclick="remindAllUnsubmittedByEmail('${currentAsg.id}', this)" title="Tự động gửi email nhắc bài 1 chạm tới tất cả học sinh chưa nộp">
           📧 Nhắc Email (${unsubmittedWithEmailCount})
         </button>
+        <button class="btn btn-secondary btn-sm campaign-action-btn" onclick="openEmailConfigModal()" title="Cài đặt API gửi email tự động (Resend/Brevo)">
+          ⚙️ Cài API Mail
+        </button>
         <button class="btn btn-secondary btn-sm campaign-action-btn" onclick="exportCampaignReport('${currentAsg.id}')" title="Xuất file Excel báo cáo tiến độ nộp minh chứng cho Đoàn trường / BGH">
           📊 Xuất Excel
         </button>
@@ -3820,6 +3823,22 @@ function copyUnsubmittedStudents(assignmentId) {
   }
 }
 
+function getStoredEmailApiKey() {
+  try {
+    return localStorage.getItem("eduproof_email_api_key") || "";
+  } catch (e) {
+    return "";
+  }
+}
+
+function getStoredEmailSender() {
+  try {
+    return localStorage.getItem("eduproof_email_sender") || "";
+  } catch (e) {
+    return "";
+  }
+}
+
 async function remindStudent(studentId, assignmentId, btnElement = null) {
   const student = users.find((u) => u.id === studentId);
   const asg = assignments.find((a) => a.id === assignmentId);
@@ -3888,40 +3907,34 @@ async function remindStudent(studentId, assignmentId, btnElement = null) {
           text: emailBody,
           html: emailHtml,
           teacherName: teacherDisplayName,
-          assignmentTitle: asg.title
+          assignmentTitle: asg.title,
+          apiKey: getStoredEmailApiKey(),
+          senderEmail: getStoredEmailSender()
         })
       })
         .then((res) => res.json())
         .then((data) => {
-          console.log("✅ [EduProof Auto Remind Email] Đã tự động gửi email nhắc bài:", data);
+          console.log("✅ [EduProof Auto Remind Email] Server response:", data);
+          handleRemindDispatchResult(data, student, asg, deadlineStr, emailSubject, emailBody);
         })
         .catch((err) => {
           console.log("ℹ️ [EduProof Auto Remind Email] Background dispatch:", err);
+          handleRemindDispatchResult({ actualSent: false, error: err.message }, student, asg, deadlineStr, emailSubject, emailBody);
+        })
+        .finally(() => {
+          if (btnElement) {
+            btnElement.innerText = "📢 Nhắc nộp bài";
+            btnElement.disabled = false;
+          }
         });
     } catch (e) {
       console.warn("Lỗi gửi email nhắc nhở:", e);
-    }
-
-    if (btnElement) {
-      btnElement.innerText = "✅ Đã nhắc Email";
-      setTimeout(() => {
+      handleRemindDispatchResult({ actualSent: false, error: e.message }, student, asg, deadlineStr, emailSubject, emailBody);
+      if (btnElement) {
         btnElement.innerText = "📢 Nhắc nộp bài";
         btnElement.disabled = false;
-      }, 3500);
+      }
     }
-
-    if (window.showToastNotification) {
-      showToastNotification(`📧 Đã tự động gửi email nhắc nộp bài cho ${student.name}`);
-    }
-
-    showNoticeModal(
-      `✅ Đã tự động gửi email nhắc nhở nộp bài đến học sinh <strong>${sanitizeText(student.name)}</strong> (${sanitizeText(studentEmail)})!<br><br>` +
-      `📌 Bài tập: <strong>${sanitizeText(asg.title)}</strong> (Môn ${sanitizeText(asg.subject)})<br>` +
-      `⏰ Hạn nộp: <strong style="color:#DC2626;">${deadlineStr}</strong><br><br>` +
-      `<span style="font-size:0.8rem; color:#4F46E5;">🔒 <strong>Chỉ 1 chạm:</strong> Hệ thống đã tự động gửi ngầm qua mail ảo hệ thống (thongbao@eduproof.vn). Giáo viên không cần phải chuyển sang Gmail để bấm gửi thủ công. Email cá nhân của thầy/cô được bảo mật tuyệt đối.</span>`,
-      "Đã gửi email nhắc bài thành công",
-      "📧"
-    );
   } else {
     if (btnElement) {
       btnElement.innerText = "⚠️ Chưa có Email";
@@ -4017,40 +4030,34 @@ async function remindAllUnsubmittedByEmail(assignmentId, btnElement = null) {
         html: emailHtml,
         teacherName: teacherDisplayName,
         assignmentTitle: asg.title,
-        studentCount: emailsList.length
+        studentCount: emailsList.length,
+        apiKey: getStoredEmailApiKey(),
+        senderEmail: getStoredEmailSender()
       })
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log("✅ [EduProof Auto Remind Email Batch] Đã gửi:", data);
+        console.log("✅ [EduProof Auto Remind Email Batch] Server response:", data);
+        handleBatchRemindDispatchResult(data, emailsList, asg, deadlineStr, emailSubject, emailBody);
       })
       .catch((err) => {
         console.log("ℹ️ [EduProof Auto Remind Email Batch] Dispatch error:", err);
+        handleBatchRemindDispatchResult({ actualSent: false, error: err.message }, emailsList, asg, deadlineStr, emailSubject, emailBody);
+      })
+      .finally(() => {
+        if (btnElement) {
+          btnElement.innerText = `📧 Nhắc Email (${emailsList.length})`;
+          btnElement.disabled = false;
+        }
       });
   } catch (e) {
     console.warn("Lỗi gửi batch email nhắc nhở:", e);
-  }
-
-  if (btnElement) {
-    btnElement.innerText = "✅ Đã gửi";
-    setTimeout(() => {
+    handleBatchRemindDispatchResult({ actualSent: false, error: e.message }, emailsList, asg, deadlineStr, emailSubject, emailBody);
+    if (btnElement) {
       btnElement.innerText = `📧 Nhắc Email (${emailsList.length})`;
       btnElement.disabled = false;
-    }, 3500);
+    }
   }
-
-  if (window.showToastNotification) {
-    showToastNotification(`📧 Đã gửi email nhắc bài cho ${emailsList.length} học sinh`);
-  }
-
-  showNoticeModal(
-    `✅ Đã tự động gửi email nhắc nhở nộp bài đến <strong>${emailsList.length}</strong> học sinh chưa nộp bài có email!<br><br>` +
-    `📌 Bài tập: <strong>${sanitizeText(asg.title)}</strong><br>` +
-    `⏰ Hạn nộp: <strong style="color:#DC2626;">${deadlineStr}</strong><br><br>` +
-    `<span style="font-size:0.8rem; color:#4F46E5;">🔒 <strong>Chỉ 1 chạm:</strong> Toàn bộ email được gửi ngầm qua mail ảo hệ thống (thongbao@eduproof.vn). Giáo viên không cần mở Gmail để xác nhận.</span>`,
-    "Đã gửi email nhắc bài thành công",
-    "📧"
-  );
 }
 
 function copyAssignmentShareLink(assignmentId) {
@@ -4064,6 +4071,228 @@ function copyAssignmentShareLink(assignmentId) {
     navigator.clipboard.writeText(msg).catch(() => {});
   }
   showNoticeModal(`Đã sao chép link và thông báo bài tập!\n\n"${msg}"\n\nThầy/Cô có thể dán vào nhóm Zalo lớp.`, "Đã sao chép thông báo bài tập", "📋");
+}
+
+// ==========================================
+// EMAIL NOTIFICATION DISPATCH HELPERS & CONFIG
+// ==========================================
+
+function openDirectGmailCompose(encodedTo, encodedSubject, encodedBody) {
+  const to = decodeURIComponent(encodedTo || "");
+  const subject = decodeURIComponent(encodedSubject || "");
+  const body = decodeURIComponent(encodedBody || "");
+  const targetComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(targetComposeUrl, "_blank", "noopener,noreferrer");
+}
+
+function openBatchGmailCompose(encodedBcc, encodedSubject, encodedBody) {
+  const bcc = decodeURIComponent(encodedBcc || "");
+  const subject = decodeURIComponent(encodedSubject || "");
+  const body = decodeURIComponent(encodedBody || "");
+  const targetComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&bcc=${encodeURIComponent(bcc)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(targetComposeUrl, "_blank", "noopener,noreferrer");
+}
+
+function handleRemindDispatchResult(data, student, asg, deadlineStr, emailSubject, emailBody) {
+  if (data && data.actualSent) {
+    if (window.showToastNotification) {
+      showToastNotification(`📧 Đã gửi email nhắc bài cho ${student.name}`);
+    }
+    showNoticeModal(
+      `✅ Đã tự động gửi email nhắc nhở nộp bài đến học sinh <strong>${sanitizeText(student.name)}</strong> (${sanitizeText(student.email)}) qua hệ thống gửi thư đám mây (${data.provider || "Resend"})!<br><br>` +
+      `📌 Bài tập: <strong>${sanitizeText(asg.title)}</strong> (Môn ${sanitizeText(asg.subject)})<br>` +
+      `⏰ Hạn nộp: <strong style="color:#DC2626;">${deadlineStr}</strong><br><br>` +
+      `<span style="font-size:0.8rem; color:#4F46E5;">🔒 <strong>Chỉ 1 chạm:</strong> Hệ thống đã tự động gửi ngầm qua mail ảo hệ thống (${data.virtualEmail || "thongbao@eduproof.vn"}). Giáo viên không cần mở Gmail để xác nhận. Email cá nhân của thầy/cô được bảo mật tuyệt đối.</span>`,
+      "Đã gửi email nhắc bài thành công",
+      "📧"
+    );
+  } else {
+    const encTo = encodeURIComponent(student.email || "");
+    const encSu = encodeURIComponent(emailSubject || "");
+    const encBody = encodeURIComponent(emailBody || "");
+    const directGmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encTo}&su=${encSu}&body=${encBody}`;
+
+    showNoticeModal(
+      `<div style="text-align: left; line-height: 1.6;">` +
+      `<div style="background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 8px; padding: 12px; margin-bottom: 12px; color: #92400E;">` +
+        `<strong>⚠️ Máy chủ Vercel chưa cấu hình API Key dịch vụ gửi thư (Resend / Brevo)!</strong><br>` +
+        `Hệ thống chưa thể đưa thư trực tiếp vào hòm thư Gmail của học sinh <strong>${sanitizeText(student.name)}</strong> (<code>${sanitizeText(student.email)}</code>) nếu chưa có API Key kết nối.` +
+      `</div>` +
+      `<p style="font-weight: 600; color: #1E293B; margin-bottom: 8px;">👉 Thầy/Cô có 2 cách cực kỳ nhanh để gửi ngay:</p>` +
+      `<div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; margin-bottom: 10px;">` +
+        `<div style="font-weight: 700; color: #4338CA; margin-bottom: 4px;">Cách 1: Gửi nhanh qua Gmail (1 Chạm - Không cần cài đặt)</div>` +
+        `<p style="font-size: 0.83rem; color: #64748B; margin-bottom: 8px;">Hệ thống đã chuẩn bị sẵn địa chỉ nhận, tiêu đề và nội dung bài tập đầy đủ. Bấm nút dưới để mở Gmail và chỉ cần bấm Gửi:</p>` +
+        `<a href="${directGmailUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none; padding: 7px 14px; font-size: 0.85rem; border-radius: 6px;">` +
+          `🚀 Mở Gmail gửi ngay (1 chạm)` +
+        `</a>` +
+      `</div>` +
+      `<div style="background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 8px; padding: 12px;">` +
+        `<div style="font-weight: 700; color: #15803D; margin-bottom: 4px;">Cách 2: Cài mã gửi tự động (Hoàn toàn miễn phí)</div>` +
+        `<p style="font-size: 0.83rem; color: #166534; margin-bottom: 8px;">Dán mã API Key Resend (miễn phí 3.000 mail/tháng tại resend.com). Sau khi lưu, mọi lần bấm Nhắc bài & Tạo bài mới sẽ tự động gửi ngầm 100% không cần mở Gmail!</p>` +
+        `<button class="btn btn-secondary" onclick="closeNoticeModal(); openEmailConfigModal();" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 0.85rem; border-radius: 6px;">` +
+          `⚙️ Cài đặt API Key gửi ngầm` +
+        `</button>` +
+      `</div>` +
+      `</div>`,
+      "Chưa cấu hình API gửi thư ngầm",
+      "📢"
+    );
+  }
+}
+
+function handleBatchRemindDispatchResult(data, emailsList, asg, deadlineStr, emailSubject, emailBody) {
+  if (data && data.actualSent) {
+    if (window.showToastNotification) {
+      showToastNotification(`📧 Đã gửi email nhắc bài cho ${emailsList.length} học sinh`);
+    }
+    showNoticeModal(
+      `✅ Đã tự động gửi email nhắc nhở nộp bài đến <strong>${emailsList.length}</strong> học sinh chưa nộp bài có email qua đám mây (${data.provider || "Resend"})!<br><br>` +
+      `📌 Bài tập: <strong>${sanitizeText(asg.title)}</strong><br>` +
+      `⏰ Hạn nộp: <strong style="color:#DC2626;">${deadlineStr}</strong><br><br>` +
+      `<span style="font-size:0.8rem; color:#4F46E5;">🔒 <strong>Chỉ 1 chạm:</strong> Toàn bộ email được gửi ngầm qua mail ảo hệ thống (${data.virtualEmail || "thongbao@eduproof.vn"}). Giáo viên không cần mở Gmail để xác nhận.</span>`,
+      "Đã gửi email nhắc bài thành công",
+      "📧"
+    );
+  } else {
+    const encBcc = encodeURIComponent(emailsList.join(","));
+    const encSu = encodeURIComponent(emailSubject || "");
+    const encBody = encodeURIComponent(emailBody || "");
+    const directGmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&bcc=${encBcc}&su=${encSu}&body=${encBody}`;
+
+    showNoticeModal(
+      `<div style="text-align: left; line-height: 1.6;">` +
+      `<div style="background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 8px; padding: 12px; margin-bottom: 12px; color: #92400E;">` +
+        `<strong>⚠️ Máy chủ Vercel chưa cấu hình API Key dịch vụ gửi thư (Resend / Brevo)!</strong><br>` +
+        `Hệ thống chưa thể đưa thư trực tiếp vào hòm thư Gmail của ${emailsList.length} học sinh nếu chưa có API Key kết nối.` +
+      `</div>` +
+      `<p style="font-weight: 600; color: #1E293B; margin-bottom: 8px;">👉 Thầy/Cô có 2 cách cực kỳ nhanh để gửi ngay:</p>` +
+      `<div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; margin-bottom: 10px;">` +
+        `<div style="font-weight: 700; color: #4338CA; margin-bottom: 4px;">Cách 1: Gửi nhanh qua Gmail (1 Chạm - Gửi ẩn danh BCC)</div>` +
+        `<p style="font-size: 0.83rem; color: #64748B; margin-bottom: 8px;">Hệ thống đã gom toàn bộ ${emailsList.length} email học sinh vào ô BCC (bảo mật tuyệt đối danh tính), kèm tiêu đề và nội dung bài tập:</p>` +
+        `<a href="${directGmailUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none; padding: 7px 14px; font-size: 0.85rem; border-radius: 6px;">` +
+          `🚀 Mở Gmail gửi hàng loạt (1 chạm)` +
+        `</a>` +
+      `</div>` +
+      `<div style="background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 8px; padding: 12px;">` +
+        `<div style="font-weight: 700; color: #15803D; margin-bottom: 4px;">Cách 2: Cài mã gửi tự động (Hoàn toàn miễn phí)</div>` +
+        `<p style="font-size: 0.83rem; color: #166534; margin-bottom: 8px;">Dán mã API Key Resend (miễn phí 3.000 mail/tháng). Sau khi lưu, mọi lần nhắc bài & tạo bài mới sẽ tự động gửi ngầm 100% không cần mở Gmail!</p>` +
+        `<button class="btn btn-secondary" onclick="closeNoticeModal(); openEmailConfigModal();" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 0.85rem; border-radius: 6px;">` +
+          `⚙️ Cài đặt API Key gửi ngầm` +
+        `</button>` +
+      `</div>` +
+      `</div>`,
+      "Chưa cấu hình API gửi thư ngầm",
+      "📢"
+    );
+  }
+}
+
+function openEmailConfigModal() {
+  const modal = document.getElementById("emailConfigModal");
+  if (!modal) return;
+  const keyInput = document.getElementById("emailApiKeyInput");
+  const senderInput = document.getElementById("emailSenderInput");
+  const statusDiv = document.getElementById("emailConfigStatus");
+  if (keyInput) keyInput.value = getStoredEmailApiKey();
+  if (senderInput) senderInput.value = getStoredEmailSender();
+  if (statusDiv) {
+    statusDiv.style.display = "none";
+    statusDiv.innerHTML = "";
+  }
+  modal.style.display = "flex";
+}
+
+function closeEmailConfigModal() {
+  const modal = document.getElementById("emailConfigModal");
+  if (modal) modal.style.display = "none";
+}
+
+function saveEmailApiKey() {
+  const keyInput = document.getElementById("emailApiKeyInput");
+  const senderInput = document.getElementById("emailSenderInput");
+  const statusDiv = document.getElementById("emailConfigStatus");
+  const key = keyInput ? keyInput.value.trim() : "";
+  const sender = senderInput ? senderInput.value.trim() : "";
+
+  try {
+    if (key) {
+      localStorage.setItem("eduproof_email_api_key", key);
+    } else {
+      localStorage.removeItem("eduproof_email_api_key");
+    }
+    if (sender) {
+      localStorage.setItem("eduproof_email_sender", sender);
+    } else {
+      localStorage.removeItem("eduproof_email_sender");
+    }
+
+    if (statusDiv) {
+      statusDiv.style.display = "block";
+      statusDiv.innerHTML = '<span style="color: #16A34A; font-weight: 600;">✅ Đã lưu cấu hình API Key thành công!</span>';
+    }
+    if (window.showToastNotification) {
+      showToastNotification("✅ Đã lưu cấu hình Email API!");
+    }
+    setTimeout(() => {
+      closeEmailConfigModal();
+    }, 1200);
+  } catch (err) {
+    if (statusDiv) {
+      statusDiv.style.display = "block";
+      statusDiv.innerHTML = '<span style="color: #DC2626;">Lỗi lưu cấu hình: ' + escapeHtml(err.message) + '</span>';
+    }
+  }
+}
+
+async function testEmailDispatch() {
+  const keyInput = document.getElementById("emailApiKeyInput");
+  const senderInput = document.getElementById("emailSenderInput");
+  const statusDiv = document.getElementById("emailConfigStatus");
+  const key = keyInput ? keyInput.value.trim() : "";
+  const sender = senderInput ? senderInput.value.trim() : "";
+
+  if (!key) {
+    if (statusDiv) {
+      statusDiv.style.display = "block";
+      statusDiv.innerHTML = '<span style="color: #DC2626; font-weight: 600;">⚠️ Vui lòng nhập API Key trước khi bấm gửi thử.</span>';
+    }
+    return;
+  }
+
+  const targetEmail = (currentUser && currentUser.email) ? currentUser.email : "letienn24680@gmail.com";
+  if (statusDiv) {
+    statusDiv.style.display = "block";
+    statusDiv.innerHTML = '<span style="color: #4F46E5;">⏳ Đang gửi email kiểm tra kết nối đến <strong>' + targetEmail + '</strong>...</span>';
+  }
+
+  try {
+    const res = await fetch("/api/send-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: targetEmail,
+        subject: "[EduProof] Kiểm tra kết nối API gửi thư thành công",
+        text: "Xin chào! Đây là email kiểm tra từ hệ thống EduProof để xác nhận API Key hoạt động chính xác.",
+        html: `<div style="font-family: Arial, sans-serif; padding: 16px; border: 1px solid #C7D2FE; border-radius: 8px; background: #F8FAFC;">
+          <h3 style="color: #4338CA; margin-top: 0;">🎉 Kết nối API gửi thư EduProof thành công!</h3>
+          <p>Mã API Key của bạn đã hoạt động chính xác. Từ nay về sau, toàn bộ thông báo bài tập mới và nhắc nhở nộp bài sẽ được gửi ngầm tự động 100%.</p>
+        </div>`,
+        apiKey: key,
+        senderEmail: sender,
+        teacherName: currentUser ? currentUser.name : "EduProof"
+      })
+    });
+    const data = await res.json();
+    if (data.actualSent) {
+      statusDiv.innerHTML = '<span style="color: #16A34A; font-weight: 700;">🎉 Tuyệt vời! Đã gửi thư thử nghiệm thành công tới ' + targetEmail + '. Bạn hãy mở hộp thư Gmail để kiểm tra nhé!</span>';
+    } else {
+      statusDiv.innerHTML = '<span style="color: #DC2626; font-weight: 600;">⚠️ Không thể gửi: ' + escapeHtml(data.errorDetails || data.message || "API Key không hợp lệ") + '</span>';
+    }
+  } catch (err) {
+    if (statusDiv) {
+      statusDiv.innerHTML = '<span style="color: #DC2626;">Lỗi mạng: ' + escapeHtml(err.message) + '</span>';
+    }
+  }
 }
 
 // Assignments Management
@@ -5363,7 +5592,9 @@ function confirmRejectPhotoAndNotify() {
             </div>
           </div>`,
           teacherName: currentUser.name,
-          assignmentTitle: asg.title
+          assignmentTitle: asg.title,
+          apiKey: getStoredEmailApiKey(),
+          senderEmail: getStoredEmailSender()
         })
       }).catch((err) => console.log("Background email dispatch:", err));
     } catch (e) {}
@@ -5457,7 +5688,9 @@ async function autoDispatchAssignmentEmail(assignment, recipientStudents) {
         html: emailHtml,
         assignmentTitle: assignment.title,
         teacherName: currentUser.name,
-        studentCount: emailsList.length
+        studentCount: emailsList.length,
+        apiKey: getStoredEmailApiKey(),
+        senderEmail: getStoredEmailSender()
       })
     })
       .then((res) => res.json())
