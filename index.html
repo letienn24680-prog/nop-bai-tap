@@ -278,7 +278,7 @@
           <div id="chatMessagesBox" class="chat-messages-scroll">
             <!-- Rendered dynamically -->
           </div>
-          <form id="chatSendForm" onsubmit="handleSendChatMessage(event)" class="chat-input-bar">
+          <form id="chatSendForm" onsubmit="event.preventDefault(); handleSendChatMessage(event); return false;" class="chat-input-bar">
             <input type="text" id="chatMessageInput" class="form-input" placeholder="Nhập tin nhắn gửi tới cả lớp..." maxlength="500" required autocomplete="off" />
             <button type="submit" id="chatSendBtn" class="btn btn-primary" style="padding: 0.65rem 1.25rem; white-space: nowrap; display: flex; align-items: center; gap: 0.4rem;">
               <span>Gửi</span>
@@ -1134,6 +1134,6 @@
   <script src="supabase-config.js?v=20261106_2320"></script>
 
   <!-- Core App Logic -->
-  <script src="app.js?v=20261107_0855"></script>
+  <script src="app.js?v=20261107_0900"></script>
 </body>
 </html>

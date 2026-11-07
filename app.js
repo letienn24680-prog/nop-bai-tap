@@ -2275,7 +2275,12 @@ async function loadChatMessages(isManualRefresh = false) {
         .limit(300);
 
       if (!error && Array.isArray(data)) {
-        liveChatMessages = data;
+        // Hợp nhất dữ liệu Cloud với các tin nhắn vừa gửi gần đây để không bị mất khi insert đang chạy
+        const cloudIds = new Set(data.map((m) => m.id));
+        const pendingLocal = (liveChatMessages || []).filter(
+          (m) => !cloudIds.has(m.id) && (Date.now() - new Date(m.created_at).getTime() < 30000)
+        );
+        liveChatMessages = [...data, ...pendingLocal];
       }
     } catch (e) {
       console.warn("Lỗi đồng bộ tin nhắn Cloud:", e);
@@ -2373,16 +2378,21 @@ function renderChatMessagesList() {
 }
 
 async function handleSendChatMessage(event) {
-  if (event) event.preventDefault();
+  if (event) {
+    try {
+      event.preventDefault();
+      event.stopPropagation();
+    } catch (e) {}
+  }
   const input = document.getElementById("chatMessageInput");
   const sendBtn = document.getElementById("chatSendBtn");
-  if (!input) return;
+  if (!input) return false;
 
   const content = input.value.trim();
-  if (!content) return;
+  if (!content) return false;
   if (!currentUser) {
     alert("Vui lòng đăng nhập để gửi tin nhắn.");
-    return;
+    return false;
   }
 
   const newMsg = {
@@ -2402,7 +2412,11 @@ async function handleSendChatMessage(event) {
   input.value = "";
   renderChatMessagesList();
   const box = document.getElementById("chatMessagesBox");
-  if (box) box.scrollTop = box.scrollHeight;
+  if (box) {
+    requestAnimationFrame(() => {
+      box.scrollTop = box.scrollHeight;
+    });
+  }
 
   // Đẩy tin nhắn lên Supabase Cloud Database
   const sb = getSupabase();
@@ -2419,6 +2433,8 @@ async function handleSendChatMessage(event) {
       if (sendBtn) sendBtn.disabled = false;
     }
   }
+
+  return false;
 }
 
 function filterStudentAssignments(filter, btnElement) {
