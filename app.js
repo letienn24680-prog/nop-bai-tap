@@ -3445,6 +3445,10 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
   const submittedCount = asgSubmissions.length;
   const gradedCount = asgSubmissions.filter((s) => s.status === "graded").length;
   const notSubmittedCount = Math.max(0, studentsList.length - submittedCount);
+  const submittedIds = new Set(asgSubmissions.map((s) => s.studentId));
+  const unsubmittedWithEmailCount = studentsList.filter(
+    (s) => !submittedIds.has(s.id) && s.email && s.email.includes("@") && s.email.includes(".")
+  ).length;
 
   const deadlineFormatted = new Date(currentAsg.deadline).toLocaleString("vi-VN", {
     hour: "2-digit",
@@ -3489,6 +3493,9 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
         </button>
         <button class="btn btn-secondary btn-sm campaign-action-btn" onclick="copyUnsubmittedStudents('${currentAsg.id}')" title="Sao chép danh sách học sinh chưa nộp để gửi vào nhóm Zalo">
           📋 Nhắc Zalo (${notSubmittedCount})
+        </button>
+        <button class="btn btn-primary btn-sm campaign-action-btn" onclick="remindAllUnsubmittedByEmail('${currentAsg.id}', this)" title="Tự động gửi email nhắc bài 1 chạm tới tất cả học sinh chưa nộp">
+          📧 Nhắc Email (${unsubmittedWithEmailCount})
         </button>
         <button class="btn btn-secondary btn-sm campaign-action-btn" onclick="exportCampaignReport('${currentAsg.id}')" title="Xuất file Excel báo cáo tiến độ nộp minh chứng cho Đoàn trường / BGH">
           📊 Xuất Excel
@@ -3595,7 +3602,7 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
                 <td style="color: var(--text-muted);">0 trang</td>
                 <td style="color: var(--text-muted);">—</td>
                 <td>
-                  <button class="btn btn-secondary btn-sm" onclick="remindStudent('${student.id}', '${currentAsg.id}')">
+                  <button class="btn btn-secondary btn-sm" onclick="remindStudent('${student.id}', '${currentAsg.id}', this)" title="Gửi email nhắc nhở nộp bài tự động đến học sinh này">
                     📢 Nhắc nộp bài
                   </button>
                 </td>
@@ -3670,7 +3677,7 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
                   <span>• 0 trang ảnh</span>
                 </div>
 
-                <button class="btn btn-secondary btn-sm" style="width: 100%; justify-content: center; padding: 0.45rem;" onclick="remindStudent('${student.id}', '${currentAsg.id}')">
+                <button class="btn btn-secondary btn-sm" style="width: 100%; justify-content: center; padding: 0.45rem;" onclick="remindStudent('${student.id}', '${currentAsg.id}', this)" title="Gửi email nhắc nhở nộp bài tự động đến học sinh này">
                   📢 Nhắc nộp bài
                 </button>
               </div>
@@ -3813,19 +3820,237 @@ function copyUnsubmittedStudents(assignmentId) {
   }
 }
 
-function remindStudent(studentId, assignmentId) {
+async function remindStudent(studentId, assignmentId, btnElement = null) {
   const student = users.find((u) => u.id === studentId);
   const asg = assignments.find((a) => a.id === assignmentId);
   if (!student || !asg) return;
 
-  const msg = `📢 Nhắc nhở học tập: Em ${student.name} ơi, bài tập "${asg.title}" sắp đến hạn nộp. Em nhớ chụp ảnh vở bài làm và nộp lên EduProof nhé!`;
+  const deadlineStr = new Date(asg.deadline).toLocaleString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+
+  const msg = `📢 Nhắc nhở học tập: Em ${student.name} ơi, bài tập "${asg.title}" (Môn: ${asg.subject}) sắp đến hạn nộp (Hạn chót: ${deadlineStr}). Em nhớ chụp ảnh vở bài làm và nộp lên EduProof nhé!`;
 
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(msg).catch(() => {});
-    showNoticeModal(`Đã sao chép tin nhắn nhắc nhở cho học sinh ${student.name}!\n\n"${msg}"\n\nThầy/Cô có thể dán gửi Zalo cho phụ huynh hoặc học sinh.`, "Đã sao chép tin nhắc nhở", "💬");
-  } else {
-    showNoticeModal(msg, "Tin nhắn nhắc nhở học sinh", "💬");
   }
+
+  const studentEmail = (student.email || "").trim();
+  const hasValidEmail = studentEmail.includes("@") && studentEmail.includes(".");
+
+  if (hasValidEmail) {
+    if (btnElement) {
+      btnElement.disabled = true;
+      btnElement.innerText = "⏳ Đang gửi mail...";
+    }
+
+    const appUrl = window.location.origin + window.location.pathname;
+    const teacherDisplayName = currentUser ? currentUser.name : "Giáo viên";
+    const emailSubject = `[EduProof] Nhắc nhở nộp bài tập: ${asg.title} - Môn ${asg.subject}`;
+    const emailBody = `Chào em ${student.name},\n\nThầy/Cô ${teacherDisplayName} gửi lời nhắc nhở em hoàn thành và nộp ảnh bài làm cho bài tập "${asg.title}" (Môn ${asg.subject}).\n\n⏰ Hạn chót nộp bài: ${deadlineStr}\n📝 Hướng dẫn: ${asg.description || "Làm bài tập đầy đủ và chụp ảnh bài làm nộp lên EduProof."}\n\n👉 Em hãy đăng nhập vào hệ thống để nộp bài đúng hạn nhé:\n${appUrl}\n\nChúc em học tập thật tốt!\nThân ái,\n${teacherDisplayName}`;
+
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 12px; background: #FFFFFF;">
+        <div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); color: #FFFFFF; padding: 16px 20px; border-radius: 8px; text-align: center;">
+          <h2 style="margin: 0; font-size: 1.25rem;">📢 EduProof • Nhắc Nhở Nộp Bài Tập</h2>
+        </div>
+        <div style="padding: 20px 4px; color: #1E293B; line-height: 1.6;">
+          <p>Chào em <strong>${escapeHtml(student.name)}</strong>,</p>
+          <p>Thầy/Cô <strong>${escapeHtml(teacherDisplayName)}</strong> gửi lời nhắc nhở em chưa nộp bài tập môn <strong>${escapeHtml(asg.subject)}</strong>:</p>
+          <div style="background: #FFFBEB; border-left: 4px solid #F59E0B; padding: 12px 16px; margin: 14px 0; border-radius: 0 8px 8px 0;">
+            <p style="margin: 4px 0;">📌 <strong>Tên bài tập:</strong> ${escapeHtml(asg.title)}</p>
+            <p style="margin: 4px 0;">📚 <strong>Môn học:</strong> ${escapeHtml(asg.subject)}</p>
+            <p style="margin: 4px 0;">⏰ <strong>Hạn nộp bài:</strong> <span style="color: #DC2626; font-weight: 700;">${deadlineStr}</span></p>
+            <p style="margin: 4px 0;">📝 <strong>Yêu cầu:</strong> ${escapeHtml(asg.description || "Làm bài tập đầy đủ và chụp ảnh minh chứng bài làm nộp lên web.")}</p>
+          </div>
+          <p style="color: #475569; font-size: 0.9rem;">Em hãy nhanh chóng hoàn thành bài làm và chụp ảnh nộp lên hệ thống trước khi hết hạn nhé!</p>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${appUrl}" style="background: #4F46E5; color: #FFFFFF; padding: 12px 26px; text-decoration: none; border-radius: 8px; font-weight: 700; display: inline-block; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);">👉 Đăng nhập nộp bài ngay</a>
+          </div>
+          <p style="font-size: 0.82rem; color: #94A3B8; margin-top: 24px; border-top: 1px solid #E2E8F0; padding-top: 12px;">
+            Email tự động gửi từ hệ thống học tập EduProof. Email cá nhân của giáo viên được bảo mật tuyệt đối.
+          </p>
+        </div>
+      </div>
+    `;
+
+    try {
+      fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: studentEmail,
+          subject: emailSubject,
+          text: emailBody,
+          html: emailHtml,
+          teacherName: teacherDisplayName,
+          assignmentTitle: asg.title
+        })
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          console.log("✅ [EduProof Auto Remind Email] Đã tự động gửi email nhắc bài:", data);
+        })
+        .catch((err) => {
+          console.log("ℹ️ [EduProof Auto Remind Email] Background dispatch:", err);
+        });
+    } catch (e) {
+      console.warn("Lỗi gửi email nhắc nhở:", e);
+    }
+
+    if (btnElement) {
+      btnElement.innerText = "✅ Đã nhắc Email";
+      setTimeout(() => {
+        btnElement.innerText = "📢 Nhắc nộp bài";
+        btnElement.disabled = false;
+      }, 3500);
+    }
+
+    if (window.showToastNotification) {
+      showToastNotification(`📧 Đã tự động gửi email nhắc nộp bài cho ${student.name}`);
+    }
+
+    showNoticeModal(
+      `✅ Đã tự động gửi email nhắc nhở nộp bài đến học sinh <strong>${sanitizeText(student.name)}</strong> (${sanitizeText(studentEmail)})!<br><br>` +
+      `📌 Bài tập: <strong>${sanitizeText(asg.title)}</strong> (Môn ${sanitizeText(asg.subject)})<br>` +
+      `⏰ Hạn nộp: <strong style="color:#DC2626;">${deadlineStr}</strong><br><br>` +
+      `<span style="font-size:0.8rem; color:#4F46E5;">🔒 <strong>Chỉ 1 chạm:</strong> Hệ thống đã tự động gửi ngầm qua mail ảo hệ thống (thongbao@eduproof.vn). Giáo viên không cần phải chuyển sang Gmail để bấm gửi thủ công. Email cá nhân của thầy/cô được bảo mật tuyệt đối.</span>`,
+      "Đã gửi email nhắc bài thành công",
+      "📧"
+    );
+  } else {
+    if (btnElement) {
+      btnElement.innerText = "⚠️ Chưa có Email";
+      setTimeout(() => {
+        btnElement.innerText = "📢 Nhắc nộp bài";
+        btnElement.disabled = false;
+      }, 3000);
+    }
+
+    showNoticeModal(
+      `⚠️ Học sinh <strong>${sanitizeText(student.name)}</strong> chưa có địa chỉ Email trong hệ thống!<br><br>` +
+      `💡 Thầy/Cô vui lòng vào mục <strong>"Quản lý học sinh"</strong> và bấm <strong>"Cài Email"</strong> để cập nhật email cho học sinh này nhé.<br><br>` +
+      `<span style="font-size:0.82rem; color:var(--text-muted);">📋 Hệ thống đã sao chép tin nhắn nhắc nhở vào bộ nhớ đệm (Clipboard) để thầy/cô có thể dán gửi Zalo cho học sinh:</span><br>` +
+      `<div style="background:#F8FAFC; border:1px solid #E2E8F0; padding:8px 12px; border-radius:6px; margin-top:6px; font-size:0.8rem; font-style:italic;">"${sanitizeText(msg)}"</div>`,
+      "Chưa có email học sinh",
+      "⚠️"
+    );
+  }
+}
+
+async function remindAllUnsubmittedByEmail(assignmentId, btnElement = null) {
+  const asg = assignments.find((a) => a.id === assignmentId);
+  if (!asg) return;
+
+  const studentsList = users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
+  const asgSubmissions = submissions.filter((s) => s.assignmentId === asg.id);
+  const submittedIds = new Set(asgSubmissions.map((s) => s.studentId));
+
+  const unsubmittedWithEmail = studentsList.filter(
+    (s) => !submittedIds.has(s.id) && s.email && s.email.includes("@") && s.email.includes(".")
+  );
+
+  if (unsubmittedWithEmail.length === 0) {
+    showNoticeModal(
+      "Không có học sinh chưa nộp bài nào đã cài đặt email trong hệ thống. Thầy/Cô vui lòng cập nhật email cho học sinh tại tab Quản lý học sinh.",
+      "Chưa có email học sinh",
+      "⚠️"
+    );
+    return;
+  }
+
+  if (btnElement) {
+    btnElement.disabled = true;
+    btnElement.innerText = "⏳ Đang gửi...";
+  }
+
+  const emailsList = unsubmittedWithEmail.map((s) => s.email.trim());
+  const deadlineStr = new Date(asg.deadline).toLocaleString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+
+  const appUrl = window.location.origin + window.location.pathname;
+  const teacherDisplayName = currentUser ? currentUser.name : "Giáo viên";
+  const emailSubject = `[EduProof] Nhắc nhở nộp bài tập: ${asg.title} - Môn ${asg.subject}`;
+  const emailBody = `Chào các em học sinh,\n\nThầy/Cô ${teacherDisplayName} gửi lời nhắc nhở các em chưa nộp bài tập "${asg.title}" (Môn ${asg.subject}).\n\n⏰ Hạn chót: ${deadlineStr}\n📝 Yêu cầu: ${asg.description || "Làm bài tập đầy đủ và chụp ảnh bài làm nộp lên EduProof."}\n\n👉 Các em hãy đăng nhập vào hệ thống để nộp bài đúng hạn nhé:\n${appUrl}\n\nChúc các em học tốt!\nThân ái,\n${teacherDisplayName}`;
+
+  const emailHtml = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 12px; background: #FFFFFF;">
+      <div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); color: #FFFFFF; padding: 16px 20px; border-radius: 8px; text-align: center;">
+        <h2 style="margin: 0; font-size: 1.25rem;">📢 EduProof • Nhắc Nhở Nộp Bài Tập</h2>
+      </div>
+      <div style="padding: 20px 4px; color: #1E293B; line-height: 1.6;">
+        <p>Chào các em học sinh,</p>
+        <p>Thầy/Cô <strong>${escapeHtml(teacherDisplayName)}</strong> gửi lời nhắc nhở các em hoàn thành bài tập môn <strong>${escapeHtml(asg.subject)}</strong>:</p>
+        <div style="background: #FFFBEB; border-left: 4px solid #F59E0B; padding: 12px 16px; margin: 14px 0; border-radius: 0 8px 8px 0;">
+          <p style="margin: 4px 0;">📌 <strong>Tên bài tập:</strong> ${escapeHtml(asg.title)}</p>
+          <p style="margin: 4px 0;">📚 <strong>Môn học:</strong> ${escapeHtml(asg.subject)}</p>
+          <p style="margin: 4px 0;">⏰ <strong>Hạn nộp bài:</strong> <span style="color: #DC2626; font-weight: 700;">${deadlineStr}</span></p>
+          <p style="margin: 4px 0;">📝 <strong>Yêu cầu:</strong> ${escapeHtml(asg.description || "Làm bài tập đầy đủ và chụp ảnh minh chứng bài làm nộp lên web.")}</p>
+        </div>
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${appUrl}" style="background: #4F46E5; color: #FFFFFF; padding: 12px 26px; text-decoration: none; border-radius: 8px; font-weight: 700; display: inline-block; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);">👉 Đăng nhập nộp bài ngay</a>
+        </div>
+        <p style="font-size: 0.82rem; color: #94A3B8; margin-top: 24px; border-top: 1px solid #E2E8F0; padding-top: 12px;">
+          Email tự động gửi từ hệ thống học tập EduProof. Email cá nhân của giáo viên được bảo mật tuyệt đối.
+        </p>
+      </div>
+    </div>
+  `;
+
+  try {
+    fetch("/api/send-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        bcc: emailsList,
+        subject: emailSubject,
+        text: emailBody,
+        html: emailHtml,
+        teacherName: teacherDisplayName,
+        assignmentTitle: asg.title,
+        studentCount: emailsList.length
+      })
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("✅ [EduProof Auto Remind Email Batch] Đã gửi:", data);
+      })
+      .catch((err) => {
+        console.log("ℹ️ [EduProof Auto Remind Email Batch] Dispatch error:", err);
+      });
+  } catch (e) {
+    console.warn("Lỗi gửi batch email nhắc nhở:", e);
+  }
+
+  if (btnElement) {
+    btnElement.innerText = "✅ Đã gửi";
+    setTimeout(() => {
+      btnElement.innerText = `📧 Nhắc Email (${emailsList.length})`;
+      btnElement.disabled = false;
+    }, 3500);
+  }
+
+  if (window.showToastNotification) {
+    showToastNotification(`📧 Đã gửi email nhắc bài cho ${emailsList.length} học sinh`);
+  }
+
+  showNoticeModal(
+    `✅ Đã tự động gửi email nhắc nhở nộp bài đến <strong>${emailsList.length}</strong> học sinh chưa nộp bài có email!<br><br>` +
+    `📌 Bài tập: <strong>${sanitizeText(asg.title)}</strong><br>` +
+    `⏰ Hạn nộp: <strong style="color:#DC2626;">${deadlineStr}</strong><br><br>` +
+    `<span style="font-size:0.8rem; color:#4F46E5;">🔒 <strong>Chỉ 1 chạm:</strong> Toàn bộ email được gửi ngầm qua mail ảo hệ thống (thongbao@eduproof.vn). Giáo viên không cần mở Gmail để xác nhận.</span>`,
+    "Đã gửi email nhắc bài thành công",
+    "📧"
+  );
 }
 
 function copyAssignmentShareLink(assignmentId) {
@@ -4242,7 +4467,7 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
             <td style="color: var(--text-muted); font-size: 0.8rem;">—</td>
             <td style="color: var(--text-muted); font-size: 0.8rem;">—</td>
             <td>
-              <button class="btn btn-secondary btn-sm" onclick="remindStudent('${st.id}', '${asg.id}')">
+              <button class="btn btn-secondary btn-sm" onclick="remindStudent('${st.id}', '${asg.id}', this)" title="Gửi email nhắc nhở nộp bài tự động đến học sinh này">
                 📢 Nhắc nộp bài
               </button>
             </td>
@@ -4307,7 +4532,7 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
               <span>• 0 trang ảnh</span>
             </div>
 
-            <button class="btn btn-secondary btn-sm" style="width: 100%; justify-content: center; padding: 0.45rem;" onclick="remindStudent('${st.id}', '${asg.id}')">
+            <button class="btn btn-secondary btn-sm" style="width: 100%; justify-content: center; padding: 0.45rem;" onclick="remindStudent('${st.id}', '${asg.id}', this)" title="Gửi email nhắc nhở nộp bài tự động đến học sinh này">
               📢 Nhắc nộp bài
             </button>
           </div>

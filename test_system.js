@@ -2303,4 +2303,82 @@ assert.strictEqual(detectSubmissionUpdate(baselineSubs, updatedSubs), true, "Có
 
 console.log("✅ 62. Kiểm thử Đồng bộ Tức thì Bài nộp Học sinh (Realtime Sync) & Khắc phục Tràn viền Di động: ĐẠT");
 
-console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (62/62)!");
+// 63. Test: Tự động gửi Email Nhắc nộp bài 1 Chạm (Automated Background Remind Email Dispatch)
+const appJs63 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+
+// 1. Kiểm tra cấu trúc hàm remindStudent và remindAllUnsubmittedByEmail
+assert.ok(
+  appJs63.includes("async function remindStudent(studentId, assignmentId") &&
+  appJs63.includes("async function remindAllUnsubmittedByEmail(assignmentId"),
+  "app.js phải cung cấp hàm nhắc nộp bài cá nhân và nhắc hàng loạt qua email"
+);
+
+// 2. Kiểm tra việc gửi ngầm qua API /api/send-email trong 1 lần nhấn (không mở Gmail xác nhận thủ công)
+const remindFnCode = appJs63.substring(
+  appJs63.indexOf("async function remindStudent"),
+  appJs63.indexOf("function copyAssignmentShareLink")
+);
+
+assert.ok(
+  remindFnCode.includes('fetch("/api/send-email"') &&
+  remindFnCode.includes("studentEmail") &&
+  remindFnCode.includes("teacherName") &&
+  remindFnCode.includes("assignmentTitle"),
+  "remindStudent phải tự động fetch tới /api/send-email với email học sinh và thông tin bài tập"
+);
+
+assert.ok(
+  !remindFnCode.includes("window.open") &&
+  !remindFnCode.includes("mail.google.com"),
+  "remindStudent tuyệt đối không được mở tab Gmail hay bắt giáo viên bấm xác nhận gửi thủ công"
+);
+
+// 3. Kiểm tra thông báo hướng dẫn khi học sinh chưa cài đặt Email
+assert.ok(
+  remindFnCode.includes("chưa có địa chỉ Email") || remindFnCode.includes("chưa được cài đặt địa chỉ Email"),
+  "remindStudent phải thông báo rõ ràng kèm hướng dẫn cài Email khi học sinh chưa có email"
+);
+
+// 4. Kiểm tra nút Nhắc nộp bài trong bảng và thẻ di động có gắn chức năng gửi
+assert.ok(
+  appJs63.includes("remindStudent('${student.id}', '${currentAsg.id}', this)") ||
+  appJs63.includes("remindStudent('${st.id}', '${asg.id}', this)"),
+  "Các nút '📢 Nhắc nộp bài' phải truyền phần tử nút để hiển thị phản hồi trạng thái gửi tức thì"
+);
+
+// 5. Kiểm thử chạy thật Serverless Function api/send-email.js với thông báo nhắc bài
+const sendEmailHandler63 = require(path.join(__dirname, "api", "send-email.js"));
+let mockStatus63 = 0;
+let mockResponseJson63 = null;
+
+const mockReq63 = {
+  method: "POST",
+  body: {
+    to: "hocsinh_chuanop@gmail.com",
+    subject: "[EduProof] Nhắc nhở nộp bài tập: Nộp hình ảnh minh chứng - Môn Hoạt động KHKT",
+    text: "Chào em, Thầy/Cô nhắc nhở em chưa nộp bài tập. Vui lòng nộp đúng hạn.",
+    teacherName: "Cô Ngô Hà"
+  }
+};
+
+const mockRes63 = {
+  setHeader: () => {},
+  status: (code) => {
+    mockStatus63 = code;
+    return {
+      json: (data) => {
+        mockResponseJson63 = data;
+      },
+      end: () => {}
+    };
+  }
+};
+
+sendEmailHandler63(mockReq63, mockRes63).then(() => {
+  assert.strictEqual(mockStatus63, 200, "api/send-email.js phải trả về mã 200");
+  assert.strictEqual(mockResponseJson63.success, true, "Phản hồi gửi mail phải thành công");
+  assert.strictEqual(mockResponseJson63.virtualEmail, "thongbao@eduproof.vn", "Phải sử dụng mail ảo hệ thống");
+  assert.strictEqual(mockResponseJson63.sentCount, 1, "Số lượng người nhận phải là 1 học sinh");
+  console.log("✅ 63. Kiểm thử Tự động Gửi Email Nhắc nộp bài 1 Chạm (Không mở Gmail): ĐẠT");
+  console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (63/63)!");
+});
