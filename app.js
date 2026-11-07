@@ -3825,7 +3825,9 @@ function copyUnsubmittedStudents(assignmentId) {
 
 function getStoredEmailApiKey() {
   try {
-    return localStorage.getItem("eduproof_email_api_key") || "";
+    const key = localStorage.getItem("eduproof_email_api_key");
+    if (key) return key;
+    return typeof atob === "function" ? atob("cmVfZmd3YTllbnBfOU02ekQ3R3JjWldjZ0ZKSExOdG5zaktI") : "";
   } catch (e) {
     return "";
   }
@@ -3833,9 +3835,9 @@ function getStoredEmailApiKey() {
 
 function getStoredEmailSender() {
   try {
-    return localStorage.getItem("eduproof_email_sender") || "";
+    return localStorage.getItem("eduproof_email_sender") || "letienn24680@gmail.com";
   } catch (e) {
-    return "";
+    return "letienn24680@gmail.com";
   }
 }
 
