@@ -1100,19 +1100,19 @@
 
   <!-- ==================== MODAL 8: IN-APP NOTICE / DIALOG POPUP ==================== -->
   <div id="noticeModal" class="modal-overlay" style="display: none; z-index: 9999;" onclick="if (event.target === this) closeNoticeModal()">
-    <div class="modal-content" style="max-width: 440px; padding: 0; border-radius: 18px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.25); border: 1px solid #C7D2FE;">
-      <div style="background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%); padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #C7D2FE;">
-        <div style="display: flex; align-items: center; gap: 0.6rem;">
-          <span id="noticeModalIcon" style="font-size: 1.25rem;">✨</span>
-          <strong id="noticeModalTitle" style="font-size: 0.95rem; color: #1E1B4B;">Thông báo hệ thống</strong>
+    <div class="modal-content" style="max-width: 490px; width: 92%; padding: 0; border-radius: 20px; overflow: hidden; box-shadow: 0 25px 60px -12px rgba(99, 102, 241, 0.35); border: 1px solid #C7D2FE; background: #FFFFFF;">
+      <div id="noticeModalHeader" style="background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%); padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #C7D2FE;">
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <span id="noticeModalIcon" style="font-size: 1.25rem; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; background: rgba(255, 255, 255, 0.9); box-shadow: 0 2px 6px rgba(0,0,0,0.06);">✨</span>
+          <strong id="noticeModalTitle" style="font-size: 0.98rem; color: #1E1B4B; font-weight: 700;">Thông báo hệ thống</strong>
         </div>
-        <button class="tool-icon-btn" onclick="closeNoticeModal()" style="color: #475569;">✕</button>
+        <button class="tool-icon-btn" onclick="closeNoticeModal()" style="color: #64748B; background: rgba(255, 255, 255, 0.8); border-radius: 8px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid #CBD5E1; cursor: pointer;">✕</button>
       </div>
       <div class="modal-body" style="padding: 1.25rem;">
-        <div id="noticeModalContent" style="font-size: 0.88rem; line-height: 1.6; color: #1E293B; white-space: pre-wrap; word-break: break-word;"></div>
+        <div id="noticeModalContent" style="font-size: 0.88rem; line-height: 1.6; color: #1E293B; word-break: break-word;"></div>
       </div>
-      <div class="modal-footer" style="padding: 0.75rem 1.25rem; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: flex-end;">
-        <button class="btn btn-primary" onclick="closeNoticeModal()" style="padding: 0.5rem 1.5rem; font-size: 0.85rem;">
+      <div class="modal-footer" style="padding: 0.8rem 1.25rem; background: #F8FAFC; border-top: 1px solid #E2E8F0; display: flex; justify-content: flex-end;">
+        <button class="btn btn-primary" onclick="closeNoticeModal()" style="padding: 0.55rem 1.75rem; font-size: 0.88rem; border-radius: 10px; font-weight: 600; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);">
           Đã hiểu
         </button>
       </div>

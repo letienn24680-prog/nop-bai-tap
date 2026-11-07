@@ -150,8 +150,17 @@ function showNoticeModal(message, title = "Thông báo hệ thống", icon = "")
   }
 
   if (titleEl) titleEl.innerText = displayTitle;
-  if (contentEl) contentEl.innerText = str;
   if (iconEl) iconEl.innerText = displayIcon;
+
+  if (contentEl) {
+    if (str.includes("<") && str.includes(">")) {
+      contentEl.style.whiteSpace = "normal";
+      contentEl.innerHTML = str;
+    } else {
+      contentEl.style.whiteSpace = "pre-wrap";
+      contentEl.innerText = str;
+    }
+  }
 
   modal.style.display = "flex";
 }
@@ -3946,14 +3955,24 @@ async function remindStudent(studentId, assignmentId, btnElement = null) {
       }, 3000);
     }
 
-    showNoticeModal(
-      `⚠️ Học sinh <strong>${sanitizeText(student.name)}</strong> chưa có địa chỉ Email trong hệ thống!<br><br>` +
-      `💡 Thầy/Cô vui lòng vào mục <strong>"Quản lý học sinh"</strong> và bấm <strong>"Cài Email"</strong> để cập nhật email cho học sinh này nhé.<br><br>` +
-      `<span style="font-size:0.82rem; color:var(--text-muted);">📋 Hệ thống đã sao chép tin nhắn nhắc nhở vào bộ nhớ đệm (Clipboard) để thầy/cô có thể dán gửi Zalo cho học sinh:</span><br>` +
-      `<div style="background:#F8FAFC; border:1px solid #E2E8F0; padding:8px 12px; border-radius:6px; margin-top:6px; font-size:0.8rem; font-style:italic;">"${sanitizeText(msg)}"</div>`,
-      "Chưa có email học sinh",
-      "⚠️"
-    );
+    const noEmailContent = `
+      <div style="display: flex; flex-direction: column; gap: 12px; font-family: inherit;">
+        <div style="background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 12px; padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px;">
+          <span style="font-size: 1.3rem;">⚠️</span>
+          <div style="font-size: 0.88rem; color: #92400E; line-height: 1.5;">
+            Học sinh <strong>${sanitizeText(student.name)}</strong> chưa có địa chỉ Email trong hệ thống!
+          </div>
+        </div>
+        <p style="font-size: 0.84rem; color: #475569; margin: 0; line-height: 1.5;">
+          💡 Thầy/Cô vui lòng vào mục <strong>"Quản lý học sinh"</strong> và bấm <strong>"Cài Email"</strong> để cập nhật email cho học sinh này nhé.
+        </p>
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 12px;">
+          <div style="font-size: 0.8rem; font-weight: 600; color: #64748B; margin-bottom: 4px;">📋 Đã sao chép tin nhắn vào Clipboard để gửi Zalo:</div>
+          <div style="font-size: 0.82rem; color: #1E293B; font-style: italic;">"${sanitizeText(msg)}"</div>
+        </div>
+      </div>
+    `;
+    showNoticeModal(noEmailContent, "Chưa có email học sinh", "⚠️");
   }
 }
 
@@ -4100,14 +4119,46 @@ function handleRemindDispatchResult(data, student, asg, deadlineStr, emailSubjec
     if (window.showToastNotification) {
       showToastNotification(`📧 Đã gửi email nhắc bài cho ${student.name}`);
     }
-    showNoticeModal(
-      `✅ Đã tự động gửi email nhắc nhở nộp bài đến học sinh <strong>${sanitizeText(student.name)}</strong> (${sanitizeText(student.email)}) qua hệ thống gửi thư đám mây (${data.provider || "Resend"})!<br><br>` +
-      `📌 Bài tập: <strong>${sanitizeText(asg.title)}</strong> (Môn ${sanitizeText(asg.subject)})<br>` +
-      `⏰ Hạn nộp: <strong style="color:#DC2626;">${deadlineStr}</strong><br><br>` +
-      `<span style="font-size:0.8rem; color:#4F46E5;">🔒 <strong>Chỉ 1 chạm:</strong> Hệ thống đã tự động gửi ngầm qua mail ảo hệ thống (${data.virtualEmail || "thongbao@eduproof.vn"}). Giáo viên không cần mở Gmail để xác nhận. Email cá nhân của thầy/cô được bảo mật tuyệt đối.</span>`,
-      "Đã gửi email nhắc bài thành công",
-      "📧"
-    );
+    const htmlContent = `
+      <div style="display: flex; flex-direction: column; gap: 12px; font-family: inherit;">
+        <div style="background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%); border: 1px solid #A7F3D0; border-radius: 12px; padding: 13px 15px; display: flex; align-items: center; gap: 12px;">
+          <div style="width: 36px; height: 36px; border-radius: 50%; background: #10B981; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.25);">
+            ✓
+          </div>
+          <div>
+            <div style="font-size: 0.95rem; font-weight: 700; color: #065F46;">Đã gửi email nhắc bài thành công!</div>
+            <div style="font-size: 0.82rem; color: #047857;">Thư nhắc nộp bài đã được chuyển thẳng tới hòm thư của học sinh.</div>
+          </div>
+        </div>
+
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 13px 15px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 7px; border-bottom: 1px dashed #E2E8F0;">
+            <span style="font-size: 0.82rem; color: #64748B;">Học sinh:</span>
+            <span style="font-size: 0.88rem; font-weight: 700; color: #0F172A;">${sanitizeText(student.name)}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 7px; border-bottom: 1px dashed #E2E8F0;">
+            <span style="font-size: 0.82rem; color: #64748B;">Hộp thư nhận:</span>
+            <span style="font-size: 0.84rem; font-weight: 600; color: #2563EB; font-family: monospace;">${sanitizeText(student.email)}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 7px; border-bottom: 1px dashed #E2E8F0;">
+            <span style="font-size: 0.82rem; color: #64748B;">Bài tập:</span>
+            <span style="font-size: 0.84rem; font-weight: 600; color: #1E293B; text-align: right; max-width: 60%;">${sanitizeText(asg.title)} (${sanitizeText(asg.subject)})</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.82rem; color: #64748B;">Hạn nộp:</span>
+            <span style="font-size: 0.85rem; font-weight: 700; color: #DC2626;">⏰ ${deadlineStr}</span>
+          </div>
+        </div>
+
+        <div style="background: #EEF2FF; border: 1px solid #C7D2FE; border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1rem;">🔒</span>
+          <span style="font-size: 0.8rem; color: #4338CA; line-height: 1.4;">
+            <strong>Chỉ 1 chạm:</strong> Đã gửi ngầm qua mail ảo hệ thống (<code>${data.virtualEmail || "thongbao@eduproof.vn"}</code>). Email cá nhân của giáo viên được bảo mật tuyệt đối.
+          </span>
+        </div>
+      </div>
+    `;
+    showNoticeModal(htmlContent, "Đã gửi email nhắc bài thành công", "📧");
   } else {
     const encTo = encodeURIComponent(student.email || "");
     const encSu = encodeURIComponent(emailSubject || "");
@@ -4147,14 +4198,42 @@ function handleBatchRemindDispatchResult(data, emailsList, asg, deadlineStr, ema
     if (window.showToastNotification) {
       showToastNotification(`📧 Đã gửi email nhắc bài cho ${emailsList.length} học sinh`);
     }
-    showNoticeModal(
-      `✅ Đã tự động gửi email nhắc nhở nộp bài đến <strong>${emailsList.length}</strong> học sinh chưa nộp bài có email qua đám mây (${data.provider || "Resend"})!<br><br>` +
-      `📌 Bài tập: <strong>${sanitizeText(asg.title)}</strong><br>` +
-      `⏰ Hạn nộp: <strong style="color:#DC2626;">${deadlineStr}</strong><br><br>` +
-      `<span style="font-size:0.8rem; color:#4F46E5;">🔒 <strong>Chỉ 1 chạm:</strong> Toàn bộ email được gửi ngầm qua mail ảo hệ thống (${data.virtualEmail || "thongbao@eduproof.vn"}). Giáo viên không cần mở Gmail để xác nhận.</span>`,
-      "Đã gửi email nhắc bài thành công",
-      "📧"
-    );
+    const htmlContent = `
+      <div style="display: flex; flex-direction: column; gap: 12px; font-family: inherit;">
+        <div style="background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%); border: 1px solid #A7F3D0; border-radius: 12px; padding: 13px 15px; display: flex; align-items: center; gap: 12px;">
+          <div style="width: 36px; height: 36px; border-radius: 50%; background: #10B981; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.25);">
+            ✓
+          </div>
+          <div>
+            <div style="font-size: 0.95rem; font-weight: 700; color: #065F46;">Đã gửi email nhắc bài thành công!</div>
+            <div style="font-size: 0.82rem; color: #047857;">Toàn bộ học sinh chưa nộp bài có email đã nhận được thư.</div>
+          </div>
+        </div>
+
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 13px 15px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 7px; border-bottom: 1px dashed #E2E8F0;">
+            <span style="font-size: 0.82rem; color: #64748B;">Số lượng học sinh:</span>
+            <span style="font-size: 0.88rem; font-weight: 700; color: #0F172A;">${emailsList.length} học sinh</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 7px; border-bottom: 1px dashed #E2E8F0;">
+            <span style="font-size: 0.82rem; color: #64748B;">Bài tập:</span>
+            <span style="font-size: 0.84rem; font-weight: 600; color: #1E293B; text-align: right; max-width: 60%;">${sanitizeText(asg.title)} (${sanitizeText(asg.subject)})</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.82rem; color: #64748B;">Hạn nộp:</span>
+            <span style="font-size: 0.85rem; font-weight: 700; color: #DC2626;">⏰ ${deadlineStr}</span>
+          </div>
+        </div>
+
+        <div style="background: #EEF2FF; border: 1px solid #C7D2FE; border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1rem;">🔒</span>
+          <span style="font-size: 0.8rem; color: #4338CA; line-height: 1.4;">
+            <strong>Chỉ 1 chạm:</strong> Toàn bộ email gửi ngầm qua mail ảo hệ thống (<code>${data.virtualEmail || "thongbao@eduproof.vn"}</code>). Email cá nhân của giáo viên được bảo mật tuyệt đối.
+          </span>
+        </div>
+      </div>
+    `;
+    showNoticeModal(htmlContent, "Đã gửi email nhắc bài thành công", "📧");
   } else {
     const encBcc = encodeURIComponent(emailsList.join(","));
     const encSu = encodeURIComponent(emailSubject || "");
