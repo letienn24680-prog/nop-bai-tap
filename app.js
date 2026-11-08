@@ -3863,7 +3863,10 @@ async function remindStudent(studentId, assignmentId, btnElement = null) {
     year: "numeric"
   });
 
-  const msg = `📢 Nhắc nhở học tập: Em ${student.name} ơi, bài tập "${asg.title}" (Môn: ${asg.subject}) sắp đến hạn nộp (Hạn chót: ${deadlineStr}). Em nhớ chụp ảnh vở bài làm và nộp lên EduProof nhé!`;
+  const studentUsername = student.username || student.id || "";
+  const studentPassword = student.password || "123456";
+
+  const msg = `📢 Nhắc nhở học tập: Em ${student.name} ơi, bài tập "${asg.title}" (Môn: ${asg.subject}) sắp đến hạn nộp (Hạn chót: ${deadlineStr}).\n🔑 Tài khoản đăng nhập EduProof:\n- Tên đăng nhập: ${studentUsername}\n- Mật khẩu: ${studentPassword}\nEm nhớ đăng nhập chụp ảnh vở bài làm và nộp lên EduProof nhé!`;
 
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(msg).catch(() => {});
@@ -3881,7 +3884,7 @@ async function remindStudent(studentId, assignmentId, btnElement = null) {
     const appUrl = window.location.origin + window.location.pathname;
     const teacherDisplayName = currentUser ? currentUser.name : "Giáo viên";
     const emailSubject = `[EduProof] Nhắc nhở nộp bài tập: ${asg.title} - Môn ${asg.subject}`;
-    const emailBody = `Chào em ${student.name},\n\nThầy/Cô ${teacherDisplayName} gửi lời nhắc nhở em hoàn thành và nộp ảnh bài làm cho bài tập "${asg.title}" (Môn ${asg.subject}).\n\n⏰ Hạn chót nộp bài: ${deadlineStr}\n📝 Hướng dẫn: ${asg.description || "Làm bài tập đầy đủ và chụp ảnh bài làm nộp lên EduProof."}\n\n👉 Em hãy đăng nhập vào hệ thống để nộp bài đúng hạn nhé:\n${appUrl}\n\nChúc em học tập thật tốt!\nThân ái,\n${teacherDisplayName}`;
+    const emailBody = `Chào em ${student.name},\n\nThầy/Cô ${teacherDisplayName} gửi lời nhắc nhở em hoàn thành và nộp ảnh bài làm cho bài tập "${asg.title}" (Môn ${asg.subject}).\n\n⏰ Hạn chót nộp bài: ${deadlineStr}\n📝 Hướng dẫn: ${asg.description || "Làm bài tập đầy đủ và chụp ảnh bài làm nộp lên EduProof."}\n\n🔑 Thông tin tài khoản đăng nhập EduProof của em:\n- Tên đăng nhập: ${studentUsername}\n- Mật khẩu: ${studentPassword}\n\n👉 Em hãy đăng nhập vào hệ thống để nộp bài đúng hạn nhé:\n${appUrl}\n\nChúc em học tập thật tốt!\nThân ái,\n${teacherDisplayName}`;
 
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 12px; background: #FFFFFF;">
@@ -3896,6 +3899,11 @@ async function remindStudent(studentId, assignmentId, btnElement = null) {
             <p style="margin: 4px 0;">📚 <strong>Môn học:</strong> ${escapeHtml(asg.subject)}</p>
             <p style="margin: 4px 0;">⏰ <strong>Hạn nộp bài:</strong> <span style="color: #DC2626; font-weight: 700;">${deadlineStr}</span></p>
             <p style="margin: 4px 0;">📝 <strong>Yêu cầu:</strong> ${escapeHtml(asg.description || "Làm bài tập đầy đủ và chụp ảnh minh chứng bài làm nộp lên web.")}</p>
+          </div>
+          <div style="background: #F1F5F9; border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px 16px; margin: 14px 0;">
+            <p style="margin: 0 0 6px 0; font-weight: 700; color: #334155; font-size: 0.92rem;">🔑 Thông tin tài khoản đăng nhập EduProof của em:</p>
+            <p style="margin: 3px 0; font-size: 0.88rem; color: #1E293B;">• <strong>Tên đăng nhập:</strong> <code style="background: #E2E8F0; padding: 2px 6px; border-radius: 4px; font-weight: 700; color: #4F46E5;">${escapeHtml(studentUsername)}</code></p>
+            <p style="margin: 3px 0; font-size: 0.88rem; color: #1E293B;">• <strong>Mật khẩu:</strong> <code style="background: #E2E8F0; padding: 2px 6px; border-radius: 4px; font-weight: 700; color: #0F172A;">${escapeHtml(studentPassword)}</code></p>
           </div>
           <p style="color: #475569; font-size: 0.9rem;">Em hãy nhanh chóng hoàn thành bài làm và chụp ảnh nộp lên hệ thống trước khi hết hạn nhé!</p>
           <div style="text-align: center; margin: 24px 0;">
@@ -4014,37 +4022,59 @@ async function remindAllUnsubmittedByEmail(assignmentId, btnElement = null) {
   const appUrl = window.location.origin + window.location.pathname;
   const teacherDisplayName = currentUser ? currentUser.name : "Giáo viên";
   const emailSubject = `[EduProof] Nhắc nhở nộp bài tập: ${asg.title} - Môn ${asg.subject}`;
-  const emailBody = `Chào các em học sinh,\n\nThầy/Cô ${teacherDisplayName} gửi lời nhắc nhở các em chưa nộp bài tập "${asg.title}" (Môn ${asg.subject}).\n\n⏰ Hạn chót: ${deadlineStr}\n📝 Yêu cầu: ${asg.description || "Làm bài tập đầy đủ và chụp ảnh bài làm nộp lên EduProof."}\n\n👉 Các em hãy đăng nhập vào hệ thống để nộp bài đúng hạn nhé:\n${appUrl}\n\nChúc các em học tốt!\nThân ái,\n${teacherDisplayName}`;
 
-  const emailHtml = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 12px; background: #FFFFFF;">
-      <div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); color: #FFFFFF; padding: 16px 20px; border-radius: 8px; text-align: center;">
-        <h2 style="margin: 0; font-size: 1.25rem;">📢 EduProof • Nhắc Nhở Nộp Bài Tập</h2>
-      </div>
-      <div style="padding: 20px 4px; color: #1E293B; line-height: 1.6;">
-        <p>Chào các em học sinh,</p>
-        <p>Thầy/Cô <strong>${escapeHtml(teacherDisplayName)}</strong> gửi lời nhắc nhở các em hoàn thành bài tập môn <strong>${escapeHtml(asg.subject)}</strong>:</p>
-        <div style="background: #FFFBEB; border-left: 4px solid #F59E0B; padding: 12px 16px; margin: 14px 0; border-radius: 0 8px 8px 0;">
-          <p style="margin: 4px 0;">📌 <strong>Tên bài tập:</strong> ${escapeHtml(asg.title)}</p>
-          <p style="margin: 4px 0;">📚 <strong>Môn học:</strong> ${escapeHtml(asg.subject)}</p>
-          <p style="margin: 4px 0;">⏰ <strong>Hạn nộp bài:</strong> <span style="color: #DC2626; font-weight: 700;">${deadlineStr}</span></p>
-          <p style="margin: 4px 0;">📝 <strong>Yêu cầu:</strong> ${escapeHtml(asg.description || "Làm bài tập đầy đủ và chụp ảnh minh chứng bài làm nộp lên web.")}</p>
+  // Chuẩn bị danh sách theo lô cá nhân hóa: mỗi học sinh nhận đúng tên đăng nhập & mật khẩu của mình
+  const batchItems = unsubmittedWithEmail.map((s) => {
+    const sUsername = s.username || s.id || "";
+    const sPassword = s.password || "123456";
+    const sText = `Chào em ${s.name},\n\nThầy/Cô ${teacherDisplayName} gửi lời nhắc nhở em chưa nộp bài tập "${asg.title}" (Môn ${asg.subject}).\n\n⏰ Hạn chót: ${deadlineStr}\n📝 Yêu cầu: ${asg.description || "Làm bài tập đầy đủ và chụp ảnh bài làm nộp lên EduProof."}\n\n🔑 Thông tin tài khoản đăng nhập EduProof của em:\n- Tên đăng nhập: ${sUsername}\n- Mật khẩu: ${sPassword}\n\n👉 Em hãy đăng nhập vào hệ thống để nộp bài đúng hạn nhé:\n${appUrl}\n\nChúc em học tốt!\nThân ái,\n${teacherDisplayName}`;
+
+    const sHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 12px; background: #FFFFFF;">
+        <div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); color: #FFFFFF; padding: 16px 20px; border-radius: 8px; text-align: center;">
+          <h2 style="margin: 0; font-size: 1.25rem;">📢 EduProof • Nhắc Nhở Nộp Bài Tập</h2>
         </div>
-        <div style="text-align: center; margin: 24px 0;">
-          <a href="${appUrl}" style="background: #4F46E5; color: #FFFFFF; padding: 12px 26px; text-decoration: none; border-radius: 8px; font-weight: 700; display: inline-block; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);">👉 Đăng nhập nộp bài ngay</a>
+        <div style="padding: 20px 4px; color: #1E293B; line-height: 1.6;">
+          <p>Chào em <strong>${escapeHtml(s.name)}</strong>,</p>
+          <p>Thầy/Cô <strong>${escapeHtml(teacherDisplayName)}</strong> gửi lời nhắc nhở em hoàn thành bài tập môn <strong>${escapeHtml(asg.subject)}</strong>:</p>
+          <div style="background: #FFFBEB; border-left: 4px solid #F59E0B; padding: 12px 16px; margin: 14px 0; border-radius: 0 8px 8px 0;">
+            <p style="margin: 4px 0;">📌 <strong>Tên bài tập:</strong> ${escapeHtml(asg.title)}</p>
+            <p style="margin: 4px 0;">📚 <strong>Môn học:</strong> ${escapeHtml(asg.subject)}</p>
+            <p style="margin: 4px 0;">⏰ <strong>Hạn nộp bài:</strong> <span style="color: #DC2626; font-weight: 700;">${deadlineStr}</span></p>
+            <p style="margin: 4px 0;">📝 <strong>Yêu cầu:</strong> ${escapeHtml(asg.description || "Làm bài tập đầy đủ và chụp ảnh minh chứng bài làm nộp lên web.")}</p>
+          </div>
+          <div style="background: #F1F5F9; border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px 16px; margin: 14px 0;">
+            <p style="margin: 0 0 6px 0; font-weight: 700; color: #334155; font-size: 0.92rem;">🔑 Thông tin tài khoản đăng nhập EduProof của em:</p>
+            <p style="margin: 3px 0; font-size: 0.88rem; color: #1E293B;">• <strong>Tên đăng nhập:</strong> <code style="background: #E2E8F0; padding: 2px 6px; border-radius: 4px; font-weight: 700; color: #4F46E5;">${escapeHtml(sUsername)}</code></p>
+            <p style="margin: 3px 0; font-size: 0.88rem; color: #1E293B;">• <strong>Mật khẩu:</strong> <code style="background: #E2E8F0; padding: 2px 6px; border-radius: 4px; font-weight: 700; color: #0F172A;">${escapeHtml(sPassword)}</code></p>
+          </div>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${appUrl}" style="background: #4F46E5; color: #FFFFFF; padding: 12px 26px; text-decoration: none; border-radius: 8px; font-weight: 700; display: inline-block; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);">👉 Đăng nhập nộp bài ngay</a>
+          </div>
+          <p style="font-size: 0.82rem; color: #94A3B8; margin-top: 24px; border-top: 1px solid #E2E8F0; padding-top: 12px;">
+            Email tự động gửi từ hệ thống học tập EduProof. Email cá nhân của giáo viên được bảo mật tuyệt đối.
+          </p>
         </div>
-        <p style="font-size: 0.82rem; color: #94A3B8; margin-top: 24px; border-top: 1px solid #E2E8F0; padding-top: 12px;">
-          Email tự động gửi từ hệ thống học tập EduProof. Email cá nhân của giáo viên được bảo mật tuyệt đối.
-        </p>
       </div>
-    </div>
-  `;
+    `;
+
+    return {
+      to: s.email.trim(),
+      subject: emailSubject,
+      text: sText,
+      html: sHtml
+    };
+  });
+
+  const emailBody = `Chào các em học sinh,\n\nThầy/Cô ${teacherDisplayName} gửi lời nhắc nhở các em chưa nộp bài tập "${asg.title}" (Môn ${asg.subject}).\n\n⏰ Hạn chót: ${deadlineStr}\n📝 Yêu cầu: ${asg.description || "Làm bài tập đầy đủ và chụp ảnh bài làm nộp lên EduProof."}\n\n👉 Các em hãy đăng nhập vào hệ thống bằng tài khoản và mật khẩu được cấp để nộp bài đúng hạn nhé:\n${appUrl}\n\nChúc các em học tốt!\nThân ái,\n${teacherDisplayName}`;
+  const emailHtml = batchItems.length > 0 ? batchItems[0].html : "";
 
   try {
     fetch("/api/send-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        items: batchItems,
         bcc: emailsList,
         subject: emailSubject,
         text: emailBody,
@@ -4139,6 +4169,10 @@ function handleRemindDispatchResult(data, student, asg, deadlineStr, emailSubjec
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 7px; border-bottom: 1px dashed #E2E8F0;">
             <span style="font-size: 0.82rem; color: #64748B;">Hộp thư nhận:</span>
             <span style="font-size: 0.84rem; font-weight: 600; color: #2563EB; font-family: monospace;">${sanitizeText(student.email)}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 7px; border-bottom: 1px dashed #E2E8F0;">
+            <span style="font-size: 0.82rem; color: #64748B;">Tài khoản / Mật khẩu:</span>
+            <span style="font-size: 0.84rem; font-weight: 700; color: #4F46E5; font-family: monospace;">${sanitizeText(student.username || student.id)} / ${sanitizeText(student.password || "123456")}</span>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 7px; border-bottom: 1px dashed #E2E8F0;">
             <span style="font-size: 0.82rem; color: #64748B;">Bài tập:</span>
@@ -5643,8 +5677,10 @@ function confirmRejectPhotoAndNotify() {
   let sentGmailUrl = "";
   if (student.email && student.email.includes("@") && student.email.includes(".")) {
     const appUrl = window.location.origin + window.location.pathname;
+    const studentUsername = student.username || student.id || "";
+    const studentPassword = student.password || "123456";
     const emailSubject = `[EduProof] Yêu cầu nộp lại ảnh bài làm - Môn ${asg.subject}: ${asg.title}`;
-    const emailBody = `Chào em ${student.name},\n\nThầy/Cô ${currentUser.name} đã kiểm tra ảnh bài làm của em cho bài tập "${asg.title}" (Môn ${asg.subject}).\n\n🚫 LÝ DO TỪ CHỐI ẢNH: "${reason}"\n\n👉 Em hãy đăng nhập vào hệ thống EduProof để chụp lại ảnh bài làm rõ nét hơn và gửi lại cho thầy/cô nhé:\n${appUrl}\n\nChúc em học tốt!\nThân ái,\n${currentUser.name}`;
+    const emailBody = `Chào em ${student.name},\n\nThầy/Cô ${currentUser.name} đã kiểm tra ảnh bài làm của em cho bài tập "${asg.title}" (Môn ${asg.subject}).\n\n🚫 LÝ DO TỪ CHỐI ẢNH: "${reason}"\n\n🔑 Thông tin tài khoản đăng nhập EduProof của em:\n- Tên đăng nhập: ${studentUsername}\n- Mật khẩu: ${studentPassword}\n\n👉 Em hãy đăng nhập vào hệ thống EduProof để chụp lại ảnh bài làm rõ nét hơn và gửi lại cho thầy/cô nhé:\n${appUrl}\n\nChúc em học tốt!\nThân ái,\n${currentUser.name}`;
 
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(student.email)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
     const mailtoUrl = `mailto:${encodeURIComponent(student.email)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
@@ -5669,6 +5705,11 @@ function confirmRejectPhotoAndNotify() {
               <blockquote style="background: #FEF2F2; border-left: 4px solid #EF4444; padding: 10px 14px; margin: 12px 0; color: #991B1B;">
                 <strong>Lý do từ chối:</strong> "${escapeHtml(reason)}"
               </blockquote>
+              <div style="background: #F1F5F9; border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px 16px; margin: 14px 0;">
+                <p style="margin: 0 0 6px 0; font-weight: 700; color: #334155; font-size: 0.92rem;">🔑 Thông tin tài khoản đăng nhập EduProof của em:</p>
+                <p style="margin: 3px 0; font-size: 0.88rem; color: #1E293B;">• <strong>Tên đăng nhập:</strong> <code style="background: #E2E8F0; padding: 2px 6px; border-radius: 4px; font-weight: 700; color: #4F46E5;">${escapeHtml(studentUsername)}</code></p>
+                <p style="margin: 3px 0; font-size: 0.88rem; color: #1E293B;">• <strong>Mật khẩu:</strong> <code style="background: #E2E8F0; padding: 2px 6px; border-radius: 4px; font-weight: 700; color: #0F172A;">${escapeHtml(studentPassword)}</code></p>
+              </div>
               <p><a href="${appUrl}" style="background: #4F46E5; color: #FFF; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">👉 Đăng nhập nộp lại ảnh</a></p>
             </div>
           </div>`,
@@ -5735,34 +5776,59 @@ async function autoDispatchAssignmentEmail(assignment, recipientStudents) {
   const appUrl = window.location.origin + window.location.pathname;
 
   const emailSubject = `[EduProof] Bài tập mới: ${assignment.title} - Môn ${assignment.subject}`;
-  const emailBody = `Chào các em học sinh,\n\nThầy/Cô ${currentUser.name} vừa giao bài tập mới trên hệ thống EduProof:\n\n📌 Tiêu đề bài tập: ${assignment.title}\n📚 Môn học: ${assignment.subject}\n⏰ Hạn nộp: ${deadlineStr}\n📝 Hướng dẫn: ${assignment.description || "Làm bài tập đầy đủ và chụp ảnh vở bài làm nộp lên EduProof."}\n\n👉 Các em hãy đăng nhập vào hệ thống để nộp bài đúng hạn nhé:\n${appUrl}\n\nChúc các em làm bài tốt!\nThân ái,\n${currentUser.name}`;
 
-  const emailHtml = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 18px; border: 1px solid #E2E8F0; border-radius: 12px; background: #FFFFFF;">
-      <div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); padding: 16px; border-radius: 8px; color: #FFF; text-align: center;">
-        <h2 style="margin: 0; font-size: 1.25rem;">EduProof • Thông Báo Bài Tập Mới</h2>
-      </div>
-      <div style="padding: 16px 4px; color: #1E293B; line-height: 1.6;">
-        <p>Chào các em học sinh,</p>
-        <p>Thầy/Cô <strong>${escapeHtml(currentUser.name)}</strong> vừa giao bài tập mới:</p>
-        <div style="background: #F8FAFC; border-left: 4px solid #4F46E5; padding: 10px 14px; margin: 12px 0; border-radius: 0 8px 8px 0;">
-          <p style="margin: 3px 0;">📌 <strong>Đề bài:</strong> ${escapeHtml(assignment.title)}</p>
-          <p style="margin: 3px 0;">📚 <strong>Môn học:</strong> ${escapeHtml(assignment.subject)}</p>
-          <p style="margin: 3px 0;">⏰ <strong>Hạn nộp:</strong> <span style="color: #DC2626; font-weight: 700;">${deadlineStr}</span></p>
-          <p style="margin: 3px 0;">📝 <strong>Yêu cầu:</strong> ${escapeHtml(assignment.description || "Làm bài tập và chụp ảnh vở nộp lên web.")}</p>
+  // Chuẩn bị danh sách theo lô cá nhân hóa: mỗi học sinh nhận đúng tên đăng nhập & mật khẩu của mình
+  const batchItems = recipientStudents.map((s) => {
+    const sUsername = s.username || s.id || "";
+    const sPassword = s.password || "123456";
+    const sBody = `Chào em ${s.name},\n\nThầy/Cô ${currentUser.name} vừa giao bài tập mới trên hệ thống EduProof:\n\n📌 Tiêu đề bài tập: ${assignment.title}\n📚 Môn học: ${assignment.subject}\n⏰ Hạn nộp: ${deadlineStr}\n📝 Hướng dẫn: ${assignment.description || "Làm bài tập đầy đủ và chụp ảnh vở bài làm nộp lên EduProof."}\n\n🔑 Thông tin tài khoản đăng nhập EduProof của em:\n- Tên đăng nhập: ${sUsername}\n- Mật khẩu: ${sPassword}\n\n👉 Em hãy đăng nhập vào hệ thống để nộp bài đúng hạn nhé:\n${appUrl}\n\nChúc em làm bài tốt!\nThân ái,\n${currentUser.name}`;
+
+    const sHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 18px; border: 1px solid #E2E8F0; border-radius: 12px; background: #FFFFFF;">
+        <div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); padding: 16px; border-radius: 8px; color: #FFF; text-align: center;">
+          <h2 style="margin: 0; font-size: 1.25rem;">EduProof • Thông Báo Bài Tập Mới</h2>
         </div>
-        <div style="text-align: center; margin: 20px 0;">
-          <a href="${appUrl}" style="background: #4F46E5; color: #FFF; padding: 10px 22px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">👉 Đăng nhập nộp bài</a>
+        <div style="padding: 16px 4px; color: #1E293B; line-height: 1.6;">
+          <p>Chào em <strong>${escapeHtml(s.name)}</strong>,</p>
+          <p>Thầy/Cô <strong>${escapeHtml(currentUser.name)}</strong> vừa giao bài tập mới:</p>
+          <div style="background: #F8FAFC; border-left: 4px solid #4F46E5; padding: 10px 14px; margin: 12px 0; border-radius: 0 8px 8px 0;">
+            <p style="margin: 3px 0;">📌 <strong>Đề bài:</strong> ${escapeHtml(assignment.title)}</p>
+            <p style="margin: 3px 0;">📚 <strong>Môn học:</strong> ${escapeHtml(assignment.subject)}</p>
+            <p style="margin: 3px 0;">⏰ <strong>Hạn nộp:</strong> <span style="color: #DC2626; font-weight: 700;">${deadlineStr}</span></p>
+            <p style="margin: 3px 0;">📝 <strong>Yêu cầu:</strong> ${escapeHtml(assignment.description || "Làm bài tập và chụp ảnh vở nộp lên web.")}</p>
+          </div>
+          <div style="background: #F1F5F9; border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px 16px; margin: 14px 0;">
+            <p style="margin: 0 0 6px 0; font-weight: 700; color: #334155; font-size: 0.92rem;">🔑 Thông tin tài khoản đăng nhập EduProof của em:</p>
+            <p style="margin: 3px 0; font-size: 0.88rem; color: #1E293B;">• <strong>Tên đăng nhập:</strong> <code style="background: #E2E8F0; padding: 2px 6px; border-radius: 4px; font-weight: 700; color: #4F46E5;">${escapeHtml(sUsername)}</code></p>
+            <p style="margin: 3px 0; font-size: 0.88rem; color: #1E293B;">• <strong>Mật khẩu:</strong> <code style="background: #E2E8F0; padding: 2px 6px; border-radius: 4px; font-weight: 700; color: #0F172A;">${escapeHtml(sPassword)}</code></p>
+          </div>
+          <div style="text-align: center; margin: 20px 0;">
+            <a href="${appUrl}" style="background: #4F46E5; color: #FFF; padding: 10px 22px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">👉 Đăng nhập nộp bài</a>
+          </div>
+          <p style="font-size: 0.82rem; color: #94A3B8; margin-top: 20px; border-top: 1px solid #E2E8F0; padding-top: 10px;">
+            Email tự động gửi từ hệ thống học tập EduProof. Email cá nhân của giáo viên được bảo mật tuyệt đối.
+          </p>
         </div>
       </div>
-    </div>
-  `;
+    `;
+
+    return {
+      to: s.email.trim(),
+      subject: emailSubject,
+      text: sBody,
+      html: sHtml
+    };
+  });
+
+  const emailBody = `Chào các em học sinh,\n\nThầy/Cô ${currentUser.name} vừa giao bài tập mới trên hệ thống EduProof:\n\n📌 Tiêu đề bài tập: ${assignment.title}\n📚 Môn học: ${assignment.subject}\n⏰ Hạn nộp: ${deadlineStr}\n📝 Hướng dẫn: ${assignment.description || "Làm bài tập đầy đủ và chụp ảnh vở bài làm nộp lên EduProof."}\n\n👉 Các em hãy đăng nhập vào hệ thống để nộp bài đúng hạn nhé:\n${appUrl}\n\nChúc các em làm bài tốt!\nThân ái,\n${currentUser.name}`;
+  const emailHtml = batchItems.length > 0 ? batchItems[0].html : "";
 
   try {
     fetch("/api/send-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        items: batchItems,
         bcc: emailsList,
         subject: emailSubject,
         text: emailBody,

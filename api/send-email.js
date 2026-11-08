@@ -12,10 +12,11 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { to, bcc, subject, text, html, teacherName, apiKey, brevoApiKey, resendApiKey, senderEmail } = req.body || {};
-    const recipients = Array.isArray(bcc) && bcc.length > 0 
-      ? bcc 
-      : (Array.isArray(to) ? to : (to ? [to] : []));
+    const { to, bcc, subject, text, html, teacherName, apiKey, brevoApiKey, resendApiKey, senderEmail, items } = req.body || {};
+    const hasBatchItems = Array.isArray(items) && items.length > 0;
+    const recipients = hasBatchItems 
+      ? items.map((it) => it.to)
+      : (Array.isArray(bcc) && bcc.length > 0 ? bcc : (Array.isArray(to) ? to : (to ? [to] : [])));
 
     // Cấu hình Mail ảo / Mail hệ thống chuyên nghiệp của EduProof (Bảo vệ tuyệt đối danh tính và email cá nhân của giáo viên)
     const virtualSenderEmail = "thongbao@eduproof.vn";
@@ -30,27 +31,48 @@ module.exports = async (req, res) => {
     if (activeBrevoKey && recipients.length > 0) {
       try {
         const brevoFromEmail = senderEmail || process.env.BREVO_SENDER_EMAIL || virtualSenderEmail;
-        const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
-          method: "POST",
-          headers: {
-            "api-key": activeBrevoKey,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            sender: { name: displayName, email: brevoFromEmail },
-            to: recipients.map((email) => ({ email })),
-            subject: subject || "[EduProof] Thông báo bài tập",
-            htmlContent: html || text,
-            textContent: text,
-            replyTo: { name: displayName, email: "noreply@eduproof.vn" }
-          })
-        });
-        if (brevoRes.ok) {
+        if (hasBatchItems) {
+          for (const item of items) {
+            await fetch("https://api.brevo.com/v3/smtp/email", {
+              method: "POST",
+              headers: {
+                "api-key": activeBrevoKey,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                sender: { name: displayName, email: brevoFromEmail },
+                to: [{ email: item.to }],
+                subject: item.subject || subject || "[EduProof] Thông báo bài tập",
+                htmlContent: item.html || item.text || html || text,
+                textContent: item.text || text,
+                replyTo: { name: displayName, email: "noreply@eduproof.vn" }
+              })
+            });
+          }
           providerUsed = "brevo";
         } else {
-          const errData = await brevoRes.json().catch(() => ({}));
-          dispatchError = `Brevo error: ${brevoRes.status} ${JSON.stringify(errData)}`;
-          console.warn("[EduProof Brevo dispatch error]:", dispatchError);
+          const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: {
+              "api-key": activeBrevoKey,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              sender: { name: displayName, email: brevoFromEmail },
+              to: recipients.map((email) => ({ email })),
+              subject: subject || "[EduProof] Thông báo bài tập",
+              htmlContent: html || text,
+              textContent: text,
+              replyTo: { name: displayName, email: "noreply@eduproof.vn" }
+            })
+          });
+          if (brevoRes.ok) {
+            providerUsed = "brevo";
+          } else {
+            const errData = await brevoRes.json().catch(() => ({}));
+            dispatchError = `Brevo error: ${brevoRes.status} ${JSON.stringify(errData)}`;
+            console.warn("[EduProof Brevo dispatch error]:", dispatchError);
+          }
         }
       } catch (err) {
         dispatchError = err.message;
@@ -73,27 +95,54 @@ module.exports = async (req, res) => {
         const resendFrom = resendSenderDomain.includes("<") ? resendSenderDomain : `${displayName} <${resendSenderDomain}>`;
         const resendReplyTo = senderEmail || "letienn24680@gmail.com";
 
-        const resendRes = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${activeResendKey}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
+        if (hasBatchItems) {
+          // Gửi theo lô cá nhân hóa (kèm riêng tài khoản & mật khẩu từng học sinh)
+          const batchPayload = items.map((item) => ({
             from: resendFrom,
-            to: recipients,
-            subject: subject || "[EduProof] Thông báo bài tập",
-            html: html || text,
-            text: text,
+            to: [item.to],
+            subject: item.subject || subject || "[EduProof] Thông báo bài tập",
+            html: item.html || item.text || html || text,
+            text: item.text || text,
             reply_to: resendReplyTo
-          })
-        });
-        if (resendRes.ok) {
-          providerUsed = "resend";
+          }));
+          const resendRes = await fetch("https://api.resend.com/emails/batch", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${activeResendKey}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(batchPayload)
+          });
+          if (resendRes.ok) {
+            providerUsed = "resend";
+          } else {
+            const errData = await resendRes.json().catch(() => ({}));
+            dispatchError = `Resend batch error: ${resendRes.status} ${JSON.stringify(errData)}`;
+            console.warn("[EduProof Resend batch dispatch error]:", dispatchError);
+          }
         } else {
-          const errData = await resendRes.json().catch(() => ({}));
-          dispatchError = `Resend error: ${resendRes.status} ${JSON.stringify(errData)}`;
-          console.warn("[EduProof Resend dispatch error]:", dispatchError);
+          const resendRes = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${activeResendKey}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              from: resendFrom,
+              to: recipients,
+              subject: subject || "[EduProof] Thông báo bài tập",
+              html: html || text,
+              text: text,
+              reply_to: resendReplyTo
+            })
+          });
+          if (resendRes.ok) {
+            providerUsed = "resend";
+          } else {
+            const errData = await resendRes.json().catch(() => ({}));
+            dispatchError = `Resend error: ${resendRes.status} ${JSON.stringify(errData)}`;
+            console.warn("[EduProof Resend dispatch error]:", dispatchError);
+          }
         }
       } catch (err) {
         dispatchError = err.message;

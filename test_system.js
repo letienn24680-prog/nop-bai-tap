@@ -2380,5 +2380,79 @@ sendEmailHandler63(mockReq63, mockRes63).then(() => {
   assert.strictEqual(mockResponseJson63.virtualEmail, "thongbao@eduproof.vn", "Phải sử dụng mail ảo hệ thống");
   assert.strictEqual(mockResponseJson63.sentCount, 1, "Số lượng người nhận phải là 1 học sinh");
   console.log("✅ 63. Kiểm thử Tự động Gửi Email Nhắc nộp bài 1 Chạm (Không mở Gmail): ĐẠT");
-  console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (63/63)!");
+
+  // ==========================================
+  // KIỂM THỬ 64: KÈM TÀI KHOẢN VÀ MẬT KHẨU CÁ NHÂN HÓA TRONG EMAIL HỌC SINH
+  // ==========================================
+  const appJs64 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+
+  // 1. Kiểm tra remindStudent kèm tên đăng nhập & mật khẩu của học sinh
+  assert.ok(
+    appJs64.includes("const studentUsername = student.username || student.id") &&
+    appJs64.includes("const studentPassword = student.password") &&
+    appJs64.includes("Tên đăng nhập: ${studentUsername}") &&
+    appJs64.includes("Mật khẩu: ${studentPassword}"),
+    "remindStudent phải kèm chính xác tên đăng nhập và mật khẩu của học sinh vào nội dung email"
+  );
+
+  // 2. Kiểm tra remindAllUnsubmittedByEmail gửi theo lô cá nhân hóa items kèm tk và mk
+  assert.ok(
+    appJs64.includes("const batchItems = unsubmittedWithEmail.map") &&
+    appJs64.includes("items: batchItems"),
+    "remindAllUnsubmittedByEmail phải chuẩn bị batchItems cá nhân hóa với thông tin tài khoản từng học sinh"
+  );
+
+  // 3. Kiểm tra autoDispatchAssignmentEmail gửi theo lô cá nhân hóa items kèm tk và mk
+  assert.ok(
+    appJs64.includes("const batchItems = recipientStudents.map") &&
+    appJs64.includes("items: batchItems"),
+    "autoDispatchAssignmentEmail phải chuẩn bị batchItems cá nhân hóa với thông tin tài khoản từng học sinh"
+  );
+
+  // 4. Kiểm thử chạy thật Serverless Function api/send-email.js với payload items theo lô
+  const sendEmailHandler64 = require(path.join(__dirname, "api", "send-email.js"));
+  let mockStatus64 = null;
+  let mockResponseJson64 = null;
+
+  const mockReq64 = {
+    method: "POST",
+    body: {
+      items: [
+        {
+          to: "hs1@gmail.com",
+          subject: "[EduProof] Bài tập mới kèm tài khoản",
+          text: "TK: hs_01 | MK: 123456",
+          html: "<p>TK: hs_01</p>"
+        },
+        {
+          to: "hs2@gmail.com",
+          subject: "[EduProof] Bài tập mới kèm tài khoản",
+          text: "TK: hs_02 | MK: 123456",
+          html: "<p>TK: hs_02</p>"
+        }
+      ],
+      teacherName: "Cô Ngô Hà"
+    }
+  };
+
+  const mockRes64 = {
+    setHeader: () => {},
+    status: (code) => {
+      mockStatus64 = code;
+      return {
+        json: (data) => {
+          mockResponseJson64 = data;
+        },
+        end: () => {}
+      };
+    }
+  };
+
+  sendEmailHandler64(mockReq64, mockRes64).then(() => {
+    assert.strictEqual(mockStatus64, 200, "api/send-email.js với batch items phải trả về mã 200");
+    assert.strictEqual(mockResponseJson64.success, true, "Phản hồi batch items phải thành công");
+    assert.strictEqual(mockResponseJson64.sentCount, 2, "Số lượng gửi phải tính đúng 2 học sinh theo items");
+    console.log("✅ 64. Kiểm thử Kèm Tài khoản & Mật khẩu Cá nhân Hóa trong Email Học sinh: ĐẠT");
+    console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (64/64)!");
+  });
 });
