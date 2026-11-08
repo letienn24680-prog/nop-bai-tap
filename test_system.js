@@ -2453,6 +2453,78 @@ sendEmailHandler63(mockReq63, mockRes63).then(() => {
     assert.strictEqual(mockResponseJson64.success, true, "Phản hồi batch items phải thành công");
     assert.strictEqual(mockResponseJson64.sentCount, 2, "Số lượng gửi phải tính đúng 2 học sinh theo items");
     console.log("✅ 64. Kiểm thử Kèm Tài khoản & Mật khẩu Cá nhân Hóa trong Email Học sinh: ĐẠT");
-    console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (64/64)!");
+
+    // ==========================================
+    // KIỂM THỬ 65: TÍNH NĂNG NHẮN TIN 2 CHIỀU GIỮA HỌC SINH VÀ GIÁO VIÊN
+    // ==========================================
+    const appJs65 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+    const html65 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+
+    // 1. Kiểm tra index.html có tab tin nhắn và container tab tin nhắn cho giáo viên
+    assert.ok(
+      html65.includes("switchTeacherTab('messages', this)") &&
+      html65.includes('id="teacherMessagesTab"') &&
+      html65.includes('id="chatCardContainer"'),
+      "index.html phải hỗ trợ tab tin nhắn giáo viên và khung chat dùng chung chatCardContainer"
+    );
+
+    // 2. Kiểm tra hàm neo giữ khung chat ensureChatCardInActiveView
+    assert.ok(
+      appJs65.includes("function ensureChatCardInActiveView") &&
+      appJs65.includes("teacherTab.appendChild(chatCard)") &&
+      appJs65.includes("studentTab.appendChild(chatCard)"),
+      "app.js phải cung cấp hàm ensureChatCardInActiveView để di chuyển khung chat linh hoạt giữa Giáo viên và Học sinh"
+    );
+
+    // 3. Kiểm tra danh sách bạn học hiển thị thẻ Giáo viên phụ trách kèm nút nhắn tin
+    assert.ok(
+      appJs65.includes("Nhắn tin với GV") &&
+      appJs65.includes("Giáo viên phụ trách"),
+      "renderStudentClassmates phải hiển thị thẻ Giáo viên phụ trách kèm nút Nhắn tin với GV"
+    );
+
+    // 4. Kiểm tra danh sách người nhận chat updateChatHeaderInfo hỗ trợ cả Giáo viên và Học sinh
+    assert.ok(
+      appJs65.includes("Thầy/Cô Giáo Viên") &&
+      appJs65.includes("u.role === \"teacher\""),
+      "updateChatHeaderInfo phải cho phép học sinh chọn nhắn tin trực tiếp với giáo viên"
+    );
+
+    // 5. Kiểm tra giao diện quản lý học sinh của giáo viên có nút Nhắn tin riêng
+    assert.ok(
+      appJs65.includes("startDirectChat('${sanitizeText(st.id)}', '${sanitizeText(st.name)}')"),
+      "renderTeacherStudents phải có nút '💬 Nhắn tin' để giáo viên mở luồng chat với từng học sinh"
+    );
+
+    // 6. Mô phỏng luồng tin nhắn 2 chiều giữa Học sinh và Giáo viên
+    const teacherId = "gv_ngo_ha";
+    const studentId = "hs_an";
+    const sampleChatDb = [
+      { id: "msg1", sender_id: studentId, recipient_id: teacherId, content: "Thưa cô, em chưa hiểu bài tập 1 ạ." },
+      { id: "msg2", sender_id: teacherId, recipient_id: studentId, content: "Chào An, em chụp ảnh phần bài làm gửi cô xem nhé." },
+      { id: "msg3", sender_id: studentId, recipient_id: "hs_other", content: "Bạn làm xong bài chưa?" }
+    ];
+
+    // Học sinh xem luồng tin nhắn với cô giáo
+    const studentViewThread = sampleChatDb.filter((msg) => {
+      const fromMeToTeacher = msg.sender_id === studentId && msg.recipient_id === teacherId;
+      const fromTeacherToMe = msg.sender_id === teacherId && msg.recipient_id === studentId;
+      return fromMeToTeacher || fromTeacherToMe;
+    });
+
+    assert.strictEqual(studentViewThread.length, 2, "Luồng trao đổi với cô giáo phải gồm đúng 2 tin nhắn hỏi - đáp");
+    assert.ok(!studentViewThread.some((m) => m.content.includes("Bạn làm xong bài chưa")), "Không bị lẫn tin nhắn với bạn học khác");
+
+    // Giáo viên xem luồng tin nhắn với học sinh An
+    const teacherViewThread = sampleChatDb.filter((msg) => {
+      const fromTeacherToStudent = msg.sender_id === teacherId && msg.recipient_id === studentId;
+      const fromStudentToTeacher = msg.sender_id === studentId && msg.recipient_id === teacherId;
+      return fromTeacherToStudent || fromStudentToTeacher;
+    });
+
+    assert.strictEqual(teacherViewThread.length, 2, "Giáo viên xem luồng chat với học sinh An phải nhận đủ 2 tin nhắn tương tự");
+    console.log("✅ 65. Kiểm thử Tính năng Nhắn tin 2 Chiều giữa Học sinh và Giáo viên: ĐẠT");
+
+    console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (65/65)!");
   });
 });

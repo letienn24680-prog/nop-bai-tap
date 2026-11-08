@@ -266,7 +266,7 @@
 
       <!-- Tab 2: Phòng chat giữa các bạn học sinh (Đồng bộ Cloud, Không dùng LocalStorage) -->
       <div id="studentChatTab" style="display: none;">
-        <div class="chat-card-container">
+        <div class="chat-card-container" id="chatCardContainer">
           <div class="chat-header-bar" style="flex-wrap: wrap; gap: 0.6rem;">
             <div style="display: flex; align-items: center; gap: 0.65rem;">
               <span class="chat-header-icon" id="chatHeaderIcon">💬</span>
@@ -371,6 +371,11 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           <span class="tab-label-full">Sổ theo dõi chuyên cần & Làm bài</span>
           <span class="tab-label-short">Sổ theo dõi</span>
+        </button>
+        <button class="tab-btn" onclick="switchTeacherTab('messages', this)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span class="tab-label-full">Tin nhắn học sinh (<span id="teacherDirectMsgCount">0</span>)</span>
+          <span class="tab-label-short">Tin nhắn (<span id="teacherDirectMsgCountShort">0</span>)</span>
         </button>
       </div>
 
@@ -482,6 +487,10 @@
             <!-- Rendered dynamically -->
           </div>
         </div>
+      </div>
+
+      <!-- Tab 6: Teacher Messages Tab (Tin nhắn trao đổi với học sinh) -->
+      <div id="teacherMessagesTab" style="display: none;">
       </div>
     </section>
 

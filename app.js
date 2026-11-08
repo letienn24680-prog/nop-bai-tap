@@ -2181,8 +2181,10 @@ function renderCurrentView() {
   if (isAdmin) {
     renderAdminView();
   } else if (isTeacher) {
+    ensureChatCardInActiveView();
     renderTeacherView();
   } else {
+    ensureChatCardInActiveView();
     switchStudentTab(studentActiveTab || "assignments");
   }
 }
@@ -2195,6 +2197,22 @@ let studentActiveTab = "assignments";
 let liveChatMessages = []; // Lưu trong bộ nhớ RAM - Tuyệt đối không dùng localStorage
 let chatSyncTimer = null;
 let currentChatRecipient = null; // null = Chat chung cả lớp; { id, name } = Nhắn tin riêng 1-1
+
+function ensureChatCardInActiveView() {
+  const chatCard = document.getElementById("chatCardContainer");
+  if (!chatCard) return;
+  if (currentUser && currentUser.role === "teacher") {
+    const teacherTab = document.getElementById("teacherMessagesTab");
+    if (teacherTab && chatCard.parentElement !== teacherTab) {
+      teacherTab.appendChild(chatCard);
+    }
+  } else {
+    const studentTab = document.getElementById("studentChatTab");
+    if (studentTab && chatCard.parentElement !== studentTab) {
+      studentTab.appendChild(chatCard);
+    }
+  }
+}
 
 function switchStudentTab(tab, btnElement) {
   studentActiveTab = tab || "assignments";
@@ -2227,8 +2245,9 @@ function switchStudentTab(tab, btnElement) {
     stopChatAutoSync();
     renderStudentView();
   } else if (studentActiveTab === "chat") {
-    if (titleEl) titleEl.innerText = "Phòng chat học sinh";
-    if (descEl) descEl.innerText = "Trao đổi, thảo luận học tập trực tiếp cùng các bạn trong trường lớp.";
+    if (titleEl) titleEl.innerText = "Phòng chat học sinh & giáo viên";
+    if (descEl) descEl.innerText = "Trao đổi, thảo luận học tập trực tiếp cùng thầy cô và bạn bè.";
+    ensureChatCardInActiveView();
     updateChatHeaderInfo();
     loadChatMessages();
     startChatAutoSync();
@@ -2284,7 +2303,33 @@ function renderStudentClassmates(searchQuery = "") {
 
   // BẢO MẬT TUYỆT ĐỐI: CHỈ XUẤT HỌ TÊN VÀ LỚP.
   // TUYỆT ĐỐI KHÔNG render username hay password ra bất kỳ thẻ HTML hay dataset nào!
-  grid.innerHTML = peerStudents.map((st) => {
+  const myTeacher = myTeacherId ? users.find((u) => u.id === myTeacherId && u.role === "teacher") : users.find((u) => u.role === "teacher");
+  let teacherCardHtml = "";
+  if (myTeacher && (!q || (myTeacher.name || "").toLowerCase().includes(q) || "giáo viên".includes(q) || "thầy cô".includes(q))) {
+    teacherCardHtml = `
+      <div class="classmate-card teacher-card" style="border: 1.5px solid #818CF8; background: linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%); grid-column: 1 / -1; margin-bottom: 0.5rem;">
+        <div class="classmate-avatar" style="background: linear-gradient(135deg, #4F46E5, #7C3AED); color: white; font-size: 1.15rem;">👨‍🏫</div>
+        <div style="flex: 1 1 auto; min-width: 0; overflow: hidden;">
+          <div style="display: flex; align-items: center; gap: 0.35rem; justify-content: space-between;">
+            <span style="font-weight: 700; color: #3730A3; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%;">
+              Thầy/Cô ${sanitizeText(myTeacher.name || "Giáo viên")}
+            </span>
+            <span class="badge" style="background: #4F46E5; color: white; font-size: 0.68rem; padding: 0.1rem 0.35rem; border-radius: 999px; font-weight: 700; flex-shrink: 0;">Giáo viên phụ trách</span>
+          </div>
+          <div style="font-size: 0.76rem; color: #4338CA; display: flex; gap: 0.35rem; align-items: center; margin-top: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            <span class="badge" style="background: white; color: #4F46E5; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 600; flex-shrink: 0; border: 1px solid #C7D2FE;">${sanitizeText(myTeacher.subject || "Giáo viên bộ môn")}</span>
+            <span style="overflow: hidden; text-overflow: ellipsis;">• Hướng dẫn học tập & Chấm bài</span>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm classmate-chat-btn" onclick="startDirectChat('${myTeacher.id}', '${sanitizeText(myTeacher.name)}')" style="white-space: nowrap; flex-shrink: 0; padding: 0.35rem 0.65rem; font-size: 0.76rem; display: flex; align-items: center; gap: 0.3rem;" title="Nhắn tin trực tiếp với giáo viên">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span>Nhắn tin với GV</span>
+        </button>
+      </div>
+    `;
+  }
+
+  grid.innerHTML = teacherCardHtml + peerStudents.map((st) => {
     const isMe = currentUser && st.id === currentUser.id;
     const nameParts = (st.name || "Học sinh").trim().split(" ");
     const initial = nameParts[nameParts.length - 1][0].toUpperCase();
@@ -2324,8 +2369,26 @@ function handleClassmateSearch(val) {
 // 4B. PHÒNG CHAT HỌC SINH (CLOUD SYNC - ZERO LOCALSTORAGE - NHẮN RIÊNG 1-1)
 // ------------------------------------------
 function startDirectChat(studentId, studentName) {
-  currentChatRecipient = { id: studentId, name: studentName };
-  switchStudentTab("chat");
+  let targetId = studentId;
+  let targetName = studentName;
+
+  if (!targetId && currentUser && currentUser.teacherId) {
+    targetId = currentUser.teacherId;
+  }
+  if (!targetName && targetId) {
+    const found = users.find((u) => u.id === targetId);
+    if (found) targetName = found.name;
+  }
+
+  currentChatRecipient = { id: targetId, name: targetName || "Người dùng" };
+
+  if (currentUser && currentUser.role === "teacher") {
+    switchTeacherTab("messages");
+  } else {
+    switchStudentTab("chat");
+  }
+
+  ensureChatCardInActiveView();
   updateChatHeaderInfo();
   loadChatMessages(false);
 }
@@ -2350,6 +2413,7 @@ function handleChatRecipientChange(recipientVal) {
 }
 
 function updateChatHeaderInfo() {
+  ensureChatCardInActiveView();
   const iconEl = document.getElementById("chatHeaderIcon");
   const titleEl = document.getElementById("chatHeaderTitle");
   const descEl = document.getElementById("chatHeaderDesc");
@@ -2357,32 +2421,86 @@ function updateChatHeaderInfo() {
   const selectEl = document.getElementById("chatRecipientSelect");
 
   if (selectEl) {
-    const myTeacherId = currentUser ? currentUser.teacherId : null;
-    const myClass = currentUser ? currentUser.class : null;
-    let peers = users.filter((u) => u.role === "student" && u.id !== (currentUser ? currentUser.id : ""));
-    if (myTeacherId) {
-      const filtered = peers.filter((u) => u.teacherId === myTeacherId || u.class === myClass);
-      if (filtered.length > 0) peers = filtered;
-    }
-    peers.sort((a, b) => (a.name || "").localeCompare(b.name || "", "vi"));
-
+    const isTeacher = currentUser && currentUser.role === "teacher";
     let optionsHtml = `<option value="all">📢 Chat chung cả lớp</option>`;
-    optionsHtml += peers.map((p) => {
-      const isSel = currentChatRecipient && currentChatRecipient.id === p.id ? "selected" : "";
-      return `<option value="${p.id}" ${isSel}>💬 ${sanitizeText(p.name)} (${p.class ? 'Lớp ' + sanitizeText(p.class) : 'HS'})</option>`;
-    }).join("");
+
+    if (isTeacher) {
+      const myStudents = users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
+      const studentList = myStudents.length > 0 ? myStudents : users.filter((u) => u.role === "student");
+      studentList.sort((a, b) => (a.name || "").localeCompare(b.name || "", "vi"));
+
+      if (studentList.length > 0) {
+        optionsHtml += `<optgroup label="👥 Danh sách học sinh (${studentList.length} em)">`;
+        optionsHtml += studentList.map((st) => {
+          const isSel = currentChatRecipient && currentChatRecipient.id === st.id ? "selected" : "";
+          const cls = st.class ? ` - Lớp ${sanitizeText(st.class)}` : "";
+          return `<option value="${st.id}" ${isSel}>💬 ${sanitizeText(st.name)}${cls}</option>`;
+        }).join("");
+        optionsHtml += `</optgroup>`;
+      }
+    } else {
+      const myTeacherId = currentUser ? currentUser.teacherId : null;
+      const myClass = currentUser ? currentUser.class : null;
+
+      let teachers = users.filter((u) => u.role === "teacher");
+      if (myTeacherId) {
+        const found = teachers.find((t) => t.id === myTeacherId);
+        if (found) {
+          teachers = [found, ...teachers.filter((t) => t.id !== myTeacherId)];
+        }
+      }
+
+      if (teachers.length > 0) {
+        optionsHtml += `<optgroup label="👨‍🏫 Thầy/Cô Giáo Viên">`;
+        optionsHtml += teachers.map((t) => {
+          const isSel = currentChatRecipient && currentChatRecipient.id === t.id ? "selected" : "";
+          const subj = t.subject ? ` (Môn ${sanitizeText(t.subject)})` : " (Giáo viên)";
+          const isMyTeacher = t.id === myTeacherId ? " ⭐ Phụ trách" : "";
+          return `<option value="${t.id}" ${isSel}>👨‍🏫 Thầy/Cô ${sanitizeText(t.name)}${subj}${isMyTeacher}</option>`;
+        }).join("");
+        optionsHtml += `</optgroup>`;
+      }
+
+      let peers = users.filter((u) => u.role === "student" && u.id !== (currentUser ? currentUser.id : ""));
+      if (myTeacherId) {
+        const filtered = peers.filter((u) => u.teacherId === myTeacherId || u.class === myClass);
+        if (filtered.length > 0) peers = filtered;
+      }
+      peers.sort((a, b) => (a.name || "").localeCompare(b.name || "", "vi"));
+
+      if (peers.length > 0) {
+        optionsHtml += `<optgroup label="👥 Bạn học cùng lớp">`;
+        optionsHtml += peers.map((p) => {
+          const isSel = currentChatRecipient && currentChatRecipient.id === p.id ? "selected" : "";
+          return `<option value="${p.id}" ${isSel}>💬 ${sanitizeText(p.name)} (${p.class ? 'Lớp ' + sanitizeText(p.class) : 'HS'})</option>`;
+        }).join("");
+        optionsHtml += `</optgroup>`;
+      }
+    }
+
     selectEl.innerHTML = optionsHtml;
     selectEl.value = currentChatRecipient ? currentChatRecipient.id : "all";
   }
 
   if (currentChatRecipient) {
-    if (iconEl) iconEl.innerText = "🔒";
-    if (titleEl) titleEl.innerHTML = `Nhắn tin riêng: <span style="color: #4F46E5;">${sanitizeText(currentChatRecipient.name)}</span>`;
-    if (descEl) descEl.innerText = "Chỉ 2 bạn nhìn thấy tin nhắn này • Bảo mật riêng tư đám mây";
+    const isTeacher = currentUser && currentUser.role === "teacher";
+    const recipientUser = users.find((u) => u.id === currentChatRecipient.id);
+    const isRecipientTeacher = recipientUser && recipientUser.role === "teacher";
+
+    if (iconEl) iconEl.innerText = isRecipientTeacher ? "👨‍🏫" : "🔒";
+    if (titleEl) {
+      const prefix = isRecipientTeacher ? "Thầy/Cô " : "";
+      titleEl.innerHTML = `Nhắn tin riêng: <span style="color: #4F46E5;">${prefix}${sanitizeText(currentChatRecipient.name)}</span>`;
+    }
+    if (descEl) {
+      descEl.innerText = isTeacher
+        ? `Trao đổi bài vở trực tiếp với học sinh ${currentChatRecipient.name} • Bảo mật riêng tư`
+        : (isRecipientTeacher ? `Kênh trao đổi riêng với giáo viên • Thầy/Cô sẽ nhận được ngay` : "Chỉ 2 bạn nhìn thấy tin nhắn này • Bảo mật riêng tư đám mây");
+    }
     if (inputEl) inputEl.placeholder = `Nhắn tin riêng tới ${currentChatRecipient.name}...`;
   } else {
     if (iconEl) iconEl.innerText = "💬";
-    if (titleEl) titleEl.innerText = "Phòng chat chung của các bạn học sinh";
+    if (titleEl) titleEl.innerText = currentUser && currentUser.role === "teacher" ? "Phòng trao đổi chung cả lớp" : "Phòng chat chung của các bạn học sinh";
     if (descEl) descEl.innerText = "Đồng bộ đám mây trực tiếp Cloud • Toàn bộ thành viên đều xem và nhắn tin được";
     if (inputEl) inputEl.placeholder = "Nhập tin nhắn gửi tới cả lớp...";
   }
@@ -2391,7 +2509,9 @@ function updateChatHeaderInfo() {
 function startChatAutoSync() {
   stopChatAutoSync();
   chatSyncTimer = setInterval(() => {
-    if (studentActiveTab === "chat" && currentUser) {
+    const isStudentChat = studentActiveTab === "chat" && currentUser && currentUser.role === "student";
+    const isTeacherChat = teacherActiveTab === "messages" && currentUser && currentUser.role === "teacher";
+    if ((isStudentChat || isTeacherChat) && currentUser) {
       loadChatMessages(false);
     }
   }, 4000);
@@ -2480,8 +2600,9 @@ function renderChatMessagesList() {
 
   box.innerHTML = chatThread.map((msg) => {
     const isSelf = currentUser && msg.sender_id === currentUser.id;
-    const nameParts = (msg.sender_name || "Học sinh").trim().split(" ");
-    const initial = nameParts[nameParts.length - 1][0].toUpperCase();
+    const isTeacher = msg.sender_role === "teacher";
+    const nameParts = (msg.sender_name || (isTeacher ? "Giáo viên" : "Học sinh")).trim().split(" ");
+    const initial = isTeacher ? "GV" : nameParts[nameParts.length - 1][0].toUpperCase();
 
     let timeStr = "";
     try {
@@ -2495,15 +2616,17 @@ function renderChatMessagesList() {
       timeStr = "";
     }
 
-    const classBadge = msg.class ? `<span style="opacity: 0.85; font-size: 0.7rem; font-weight: 600;">[Lớp ${sanitizeText(msg.class)}]</span>` : "";
+    const teacherBadge = isTeacher ? `<span style="font-size: 0.68rem; background: linear-gradient(135deg, #4F46E5, #7C3AED); color: white; padding: 0.1rem 0.35rem; border-radius: 4px; font-weight: 700;">👨‍🏫 Giáo viên</span>` : "";
+    const classBadge = msg.class ? `<span style="opacity: 0.85; font-size: 0.7rem; font-weight: 600;">[${msg.class.startsWith("Lớp") ? sanitizeText(msg.class) : 'Lớp ' + sanitizeText(msg.class)}]</span>` : "";
     const privateBadge = msg.recipient_id && msg.recipient_id !== "all" ? `<span style="font-size: 0.68rem; background: #e0e7ff; color: #3730a3; padding: 0.1rem 0.35rem; border-radius: 4px; font-weight: 600;">🔒 Riêng tư</span>` : "";
+    const avatarBg = isTeacher ? "background: linear-gradient(135deg, #F59E0B, #D97706);" : "";
 
     return `
       <div class="chat-bubble-row ${isSelf ? 'self' : 'peer'}">
-        ${!isSelf ? `<div class="chat-avatar">${initial}</div>` : ''}
+        ${!isSelf ? `<div class="chat-avatar" style="${avatarBg}">${initial}</div>` : ''}
         <div class="chat-bubble-content">
           <div class="chat-sender-meta">
-            ${!isSelf ? `<strong>${sanitizeText(msg.sender_name || "Bạn học")}</strong> ${classBadge}` : ''}
+            ${!isSelf ? `<strong>${sanitizeText(msg.sender_name || (isTeacher ? "Thầy/Cô" : "Bạn học"))}</strong> ${teacherBadge} ${classBadge}` : ''}
             ${privateBadge}
             <span>${timeStr}</span>
           </div>
@@ -2541,11 +2664,11 @@ async function handleSendChatMessage(event) {
   const newMsg = {
     id: "msg_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6),
     sender_id: currentUser.id,
-    sender_name: currentUser.name || "Học sinh",
+    sender_name: currentUser.name || (currentUser.role === "teacher" ? "Giáo viên" : "Học sinh"),
     sender_role: currentUser.role || "student",
     recipient_id: currentChatRecipient ? currentChatRecipient.id : null,
     recipient_name: currentChatRecipient ? currentChatRecipient.name : null,
-    class: currentUser.class || "",
+    class: currentUser.class || (currentUser.role === "teacher" ? (currentUser.subject || "GV") : ""),
     content: content,
     created_at: new Date().toISOString()
   };
@@ -2721,7 +2844,13 @@ function renderStudentView() {
       </div>
       <div class="card-footer">
         <span class="deadline-text">Hạn nộp: <strong>${deadlineFormatted}</strong></span>
-        ${actionBtn}
+        <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="startDirectChat('${asg.teacherId || ''}', '')" title="Nhắn tin hỏi bài Thầy/Cô giao đề" style="padding: 0.35rem 0.6rem; font-size: 0.78rem; display: flex; align-items: center; gap: 0.3rem;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>Hỏi bài</span>
+          </button>
+          ${actionBtn}
+        </div>
       </div>
     `;
 
@@ -3252,12 +3381,23 @@ function switchTeacherTab(tab, btnElement) {
   const asgTab = document.getElementById("teacherAssignmentsTab");
   const stuTab = document.getElementById("teacherStudentsTab");
   const graTab = document.getElementById("teacherGradebookTab");
+  const msgTab = document.getElementById("teacherMessagesTab");
 
   if (subTab) subTab.style.display = tab === "submissions" ? "block" : "none";
   if (camTab) camTab.style.display = tab === "campaigns" ? "block" : "none";
   if (asgTab) asgTab.style.display = tab === "assignments" ? "block" : "none";
   if (stuTab) stuTab.style.display = tab === "students" ? "block" : "none";
   if (graTab) graTab.style.display = tab === "gradebook" ? "block" : "none";
+  if (msgTab) msgTab.style.display = tab === "messages" ? "block" : "none";
+
+  if (tab === "messages") {
+    ensureChatCardInActiveView();
+    updateChatHeaderInfo();
+    loadChatMessages(false);
+    startChatAutoSync();
+  } else if (studentActiveTab !== "chat") {
+    stopChatAutoSync();
+  }
 
   renderTeacherView();
 }
@@ -3279,17 +3419,25 @@ function renderTeacherView() {
   const elStudentsShort = document.getElementById("totalStudentsCountShort");
   if (elStudentsShort) elStudentsShort.innerText = myStudents.length;
 
+  const directMsgs = (liveChatMessages || []).filter((m) => currentUser && m.recipient_id === currentUser.id);
+  const elMsgCount = document.getElementById("teacherDirectMsgCount");
+  if (elMsgCount) elMsgCount.innerText = directMsgs.length;
+  const elMsgCountShort = document.getElementById("teacherDirectMsgCountShort");
+  if (elMsgCountShort) elMsgCountShort.innerText = directMsgs.length;
+
   const subTab = document.getElementById("teacherSubmissionsTab");
   const camTab = document.getElementById("teacherCampaignTab");
   const asgTab = document.getElementById("teacherAssignmentsTab");
   const stuTab = document.getElementById("teacherStudentsTab");
   const graTab = document.getElementById("teacherGradebookTab");
+  const msgTab = document.getElementById("teacherMessagesTab");
 
   if (subTab) subTab.style.display = teacherActiveTab === "submissions" ? "block" : "none";
   if (camTab) camTab.style.display = teacherActiveTab === "campaigns" ? "block" : "none";
   if (asgTab) asgTab.style.display = teacherActiveTab === "assignments" ? "block" : "none";
   if (stuTab) stuTab.style.display = teacherActiveTab === "students" ? "block" : "none";
   if (graTab) graTab.style.display = teacherActiveTab === "gradebook" ? "block" : "none";
+  if (msgTab) msgTab.style.display = teacherActiveTab === "messages" ? "block" : "none";
 
   document.querySelectorAll("#teacherView .filter-tabs .tab-btn").forEach((b) => {
     const isMatch = b.getAttribute("onclick") && b.getAttribute("onclick").includes(`'${teacherActiveTab}'`);
@@ -3306,6 +3454,11 @@ function renderTeacherView() {
     renderTeacherStudents(myStudents);
   } else if (teacherActiveTab === "gradebook") {
     renderTeacherGradebook(myStudents, myAssignments);
+  } else if (teacherActiveTab === "messages") {
+    ensureChatCardInActiveView();
+    updateChatHeaderInfo();
+    loadChatMessages(false);
+    startChatAutoSync();
   }
 }
 
@@ -3614,9 +3767,14 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
                 <td style="color: var(--text-muted);">0 trang</td>
                 <td style="color: var(--text-muted);">—</td>
                 <td>
-                  <button class="btn btn-secondary btn-sm" onclick="remindStudent('${student.id}', '${currentAsg.id}', this)" title="Gửi email nhắc nhở nộp bài tự động đến học sinh này">
-                    📢 Nhắc nộp bài
-                  </button>
+                  <div style="display: flex; gap: 0.35rem; align-items: center;">
+                    <button class="btn btn-secondary btn-sm" onclick="remindStudent('${student.id}', '${currentAsg.id}', this)" title="Gửi email nhắc nhở nộp bài tự động đến học sinh này">
+                      📢 Nhắc nộp bài
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="startDirectChat('${student.id}', '${sanitizeText(student.name)}')" title="Nhắn tin với học sinh">
+                      💬 Nhắn tin
+                    </button>
+                  </div>
                 </td>
               </tr>
             `;
@@ -3689,9 +3847,14 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
                   <span>• 0 trang ảnh</span>
                 </div>
 
-                <button class="btn btn-secondary btn-sm" style="width: 100%; justify-content: center; padding: 0.45rem;" onclick="remindStudent('${student.id}', '${currentAsg.id}', this)" title="Gửi email nhắc nhở nộp bài tự động đến học sinh này">
-                  📢 Nhắc nộp bài
-                </button>
+                <div style="display: flex; gap: 0.35rem;">
+                  <button class="btn btn-secondary btn-sm" style="flex: 1; justify-content: center; padding: 0.45rem;" onclick="remindStudent('${student.id}', '${currentAsg.id}', this)" title="Gửi email nhắc nhở nộp bài tự động đến học sinh này">
+                    📢 Nhắc nộp bài
+                  </button>
+                  <button class="btn btn-primary btn-sm" style="padding: 0.45rem 0.65rem;" onclick="startDirectChat('${student.id}', '${sanitizeText(student.name)}')" title="Nhắn tin với học sinh">
+                    💬 Nhắn tin
+                  </button>
+                </div>
               </div>
             `;
           }
@@ -4582,12 +4745,15 @@ function renderTeacherStudents(myStudentsList) {
                 <td><code>${sanitizeText(st.password)}</code></td>
                 <td>${sanitizeText(st.class || "12A1")}</td>
                 <td><strong>${count} bài</strong></td>
-                <td>
+                <td style="white-space: nowrap;">
+                  <button class="btn btn-primary btn-sm" onclick="startDirectChat('${sanitizeText(st.id)}', '${sanitizeText(st.name)}')" title="Nhắn tin với học sinh này">
+                    💬 Nhắn tin
+                  </button>
                   <button class="btn btn-secondary btn-sm" onclick="copyAccountInfo('${sanitizeText(st.username)}')">
-                    📋 Sao chép gửi HS
+                    📋 Sao chép
                   </button>
                   <button class="btn btn-danger btn-sm" onclick="deleteStudentAccount('${sanitizeText(st.id)}')">
-                    🗑️ Xóa
+                    🗑️
                   </button>
                 </td>
               </tr>
@@ -4623,12 +4789,15 @@ function renderTeacherStudents(myStudentsList) {
                   📧 Email: ${st.email ? `<strong>${sanitizeText(st.email)}</strong>` : `<em style="color: var(--text-muted);">Chưa cài đặt</em>`}
                 </div>
               </div>
-              <div style="display: flex; gap: 0.4rem;">
+              <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                <button class="btn btn-primary btn-sm" style="flex: 1; justify-content: center; padding: 0.45rem;" onclick="startDirectChat('${sanitizeText(st.id)}', '${sanitizeText(st.name)}')">
+                  💬 Nhắn tin
+                </button>
                 <button class="btn btn-secondary btn-sm" style="flex: 1; justify-content: center; padding: 0.45rem;" onclick="copyAccountInfo('${sanitizeText(st.username)}')">
-                  📋 Sao chép gửi HS
+                  📋 Sao chép
                 </button>
                 <button class="btn btn-danger btn-sm" style="padding: 0.45rem 0.75rem;" onclick="deleteStudentAccount('${sanitizeText(st.id)}')">
-                  🗑️ Xóa
+                  🗑️
                 </button>
               </div>
             </div>
