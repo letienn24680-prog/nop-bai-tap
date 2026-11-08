@@ -98,11 +98,11 @@
       </button>
 
       <!-- Active User Profile Display -->
-      <div class="user-profile-badge" id="currentUserDisplay">
+      <div class="user-profile-badge" id="currentUserDisplay" onclick="openCurrentUserProfile()" title="Xem và chỉnh sửa hồ sơ cá nhân" style="cursor: pointer;">
         <div class="avatar-circle" id="userAvatar">A</div>
         <div class="user-profile-info">
           <strong id="userNameText" style="display: block; line-height: 1.1;">Nguyễn Văn An</strong>
-          <span id="userRoleText" style="font-size: 0.72rem; color: var(--text-muted);">Học sinh (12A1)</span>
+          <span id="userRoleText" style="font-size: 0.72rem; color: var(--text-muted);">Học sinh (12A5)</span>
         </div>
       </div>
 
@@ -323,9 +323,13 @@
       <div class="view-header">
         <div>
           <h1 class="view-title">Phòng Quản lý & Chấm bài</h1>
-          <p class="view-desc">Theo dõi tiến độ nộp bài của lớp 12A1 và chữa bài trực tiếp trên ảnh.</p>
+          <p class="view-desc" id="teacherViewDesc">Theo dõi tiến độ nộp bài của lớp 12A5 và chữa bài trực tiếp trên ảnh.</p>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="btn btn-secondary" onclick="openCurrentUserProfile()" title="Xem và cập nhật thông tin hồ sơ giáo viên, lớp chủ nhiệm">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>Hồ sơ giáo viên</span>
+          </button>
           <button class="btn btn-secondary" onclick="openExcelImportModal()">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
             <span>Nhập Excel học sinh</span>
@@ -421,7 +425,7 @@
         <div style="background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); padding: 1.25rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
             <div>
-              <h3 style="font-size: 1.1rem; font-weight: 700;">Danh sách tài khoản học sinh Lớp 12A1</h3>
+              <h3 id="teacherStudentAccountsTitle" style="font-size: 1.1rem; font-weight: 700;">Danh sách tài khoản học sinh Lớp 12A5</h3>
               <p style="font-size: 0.78rem; color: var(--text-muted);">
                 Chỉ có giáo viên mới có quyền tạo và cấp phát tài khoản nộp bài tập cho học sinh.
               </p>
@@ -634,7 +638,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">Lớp học:</label>
-            <input type="text" id="newStudentClass" class="form-input" value="12A1">
+            <input type="text" id="newStudentClass" class="form-input" value="12A5">
           </div>
         </div>
 

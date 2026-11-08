@@ -319,7 +319,8 @@ function initData() {
         password: "000000",
         name: "Cô Ngô Hà",
         role: "teacher",
-        subject: "GVCN Lớp 12A1"
+        class: "12A5",
+        subject: "GVCN Lớp 12A5"
       },
       {
         id: "gv_nam",
@@ -327,6 +328,7 @@ function initData() {
         password: "123456",
         name: "Thầy Nam",
         role: "teacher",
+        class: "12A2",
         subject: "Tiếng Anh - 12A2"
       },
       {
@@ -335,7 +337,7 @@ function initData() {
         password: "123456",
         name: "Nguyễn Văn An",
         role: "student",
-        class: "12A1",
+        class: "12A5",
         teacherId: "gvcn_ngo_ha"
       },
       {
@@ -344,7 +346,7 @@ function initData() {
         password: "123456",
         name: "Trần Thị Mai",
         role: "student",
-        class: "12A1",
+        class: "12A5",
         teacherId: "gvcn_ngo_ha"
       },
       {
@@ -353,7 +355,7 @@ function initData() {
         password: "123456",
         name: "Lê Hoàng Nam",
         role: "student",
-        class: "12A1",
+        class: "12A5",
         teacherId: "gvcn_ngo_ha"
       }
     ];
@@ -378,8 +380,15 @@ function initData() {
       password: "000000",
       name: "Cô Ngô Hà",
       role: "teacher",
-      subject: "GVCN Lớp 12A1"
+      class: "12A5",
+      subject: "GVCN Lớp 12A5"
     });
+  } else {
+    const ngoHaUser = users.find((u) => u.username === "gvcn-ngo-ha");
+    if (ngoHaUser) {
+      if (!ngoHaUser.class || ngoHaUser.class === "12A1") ngoHaUser.class = "12A5";
+      if (!ngoHaUser.subject || ngoHaUser.subject === "GVCN Lớp 12A1") ngoHaUser.subject = "GVCN Lớp 12A5";
+    }
   }
 
   // Đảm bảo tất cả học sinh đều được gán teacherId
@@ -911,6 +920,29 @@ function stopSubmissionsAutoSync() {
 // 2. AUTHENTICATION & USER MANAGEMENT
 // ==========================================
 
+function getTeacherClass(teacher) {
+  if (!teacher) return "12A5";
+  if (teacher.class && String(teacher.class).trim()) {
+    return String(teacher.class).trim();
+  }
+  if (teacher.subject) {
+    const m = String(teacher.subject).match(/\b(1[0-2][A-Z0-9]+)\b/i) || String(teacher.subject).match(/Lớp\s+([A-Z0-9]+)/i);
+    if (m) return m[1].toUpperCase();
+  }
+  const teacherStudents = (typeof users !== "undefined" && Array.isArray(users) ? users : []).filter(
+    (u) => u.role === "student" && u.teacherId === teacher.id && u.class
+  );
+  if (teacherStudents.length > 0 && teacherStudents[0].class) {
+    return teacherStudents[0].class;
+  }
+  return "12A5";
+}
+
+function openCurrentUserProfile() {
+  if (!currentUser) return;
+  openAdminEditUserModal(currentUser.id);
+}
+
 function updateHeaderUserDisplay() {
   if (!currentUser) return;
 
@@ -925,9 +957,10 @@ function updateHeaderUserDisplay() {
     if (currentUser.role === "admin") {
       roleText.innerText = "Quản trị viên (Admin)";
     } else if (currentUser.role === "teacher") {
-      roleText.innerText = `Giáo viên (${currentUser.subject || "Bộ môn"})`;
+      const tClass = getTeacherClass(currentUser);
+      roleText.innerText = `Giáo viên (${currentUser.subject || ("Lớp " + tClass)})`;
     } else {
-      roleText.innerText = `Học sinh (${currentUser.class || "12A1"})`;
+      roleText.innerText = `Học sinh (${currentUser.class || "12A5"})`;
     }
   }
 }
@@ -1063,7 +1096,7 @@ function openCreateStudentModal() {
   }
   document.getElementById("newStudentFullName").value = "";
   document.getElementById("newStudentUsername").value = "";
-  document.getElementById("newStudentClass").value = "12A1";
+  document.getElementById("newStudentClass").value = getTeacherClass(currentUser);
   document.getElementById("newStudentPassword").value = "123456";
   const emailEl = document.getElementById("newStudentEmail");
   if (emailEl) emailEl.value = "";
@@ -1153,7 +1186,7 @@ function autoSuggestUsername(name) {
 function confirmCreateStudentAccount() {
   const fullName = document.getElementById("newStudentFullName").value.trim();
   const username = document.getElementById("newStudentUsername").value.trim();
-  const studentClass = document.getElementById("newStudentClass").value.trim() || "12A1";
+  const studentClass = document.getElementById("newStudentClass").value.trim() || getTeacherClass(currentUser);
   const password = document.getElementById("newStudentPassword").value.trim() || "123456";
   const emailInput = document.getElementById("newStudentEmail");
   const email = emailInput ? emailInput.value.trim() : "";
@@ -1246,7 +1279,7 @@ function copyAccountInfo(username) {
   const student = users.find((u) => u.username === username);
   if (!student) return;
 
-  const msg = `Tài khoản nộp bài tập EduProof:\nHọc sinh: ${student.name}\n- Tên đăng nhập: ${student.username}\n- Mật khẩu: ${student.password}\n- Lớp: ${student.class || "12A1"}`;
+  const msg = `Tài khoản nộp bài tập EduProof:\nHọc sinh: ${student.name}\n- Tên đăng nhập: ${student.username}\n- Mật khẩu: ${student.password}\n- Lớp: ${student.class || getTeacherClass(currentUser)}`;
 
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(msg).catch(() => {});
@@ -1373,7 +1406,7 @@ function handleExcelFile(file) {
         return;
       }
 
-      const defaultClass = currentUser.class || "12A1";
+      const defaultClass = getTeacherClass(currentUser);
       const existingUsernames = new Set(users.map((u) => u.username));
       const myStudents = users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
       const parsedList = [];
@@ -1577,12 +1610,13 @@ function downloadStudentTemplateExcel() {
     return;
   }
 
+  const teacherClass = getTeacherClass(currentUser);
   const sampleData = [
-    { "Họ và tên": "Nguyễn Văn An", "Email": "vanan.nguyen@gmail.com", "Tên đăng nhập": "hs_an", "Lớp": "12A1", "Mật khẩu": "123456" },
-    { "Họ và tên": "Trần Thị Mai", "Email": "thimai.tran@gmail.com", "Tên đăng nhập": "hs_mai", "Lớp": "12A1", "Mật khẩu": "123456" },
-    { "Họ và tên": "Lê Hoàng Nam", "Email": "hoangnam.le@gmail.com", "Tên đăng nhập": "hs_nam", "Lớp": "12A1", "Mật khẩu": "123456" },
-    { "Họ và tên": "Phạm Thu Hà", "Email": "thuha.pham@gmail.com", "Tên đăng nhập": "hs_ha", "Lớp": "12A1", "Mật khẩu": "123456" },
-    { "Họ và tên": "Đỗ Quang Minh", "Email": "quangminh.do@gmail.com", "Tên đăng nhập": "hs_minh", "Lớp": "12A1", "Mật khẩu": "123456" }
+    { "Họ và tên": "Nguyễn Văn An", "Email": "vanan.nguyen@gmail.com", "Tên đăng nhập": "hs_an", "Lớp": teacherClass, "Mật khẩu": "123456" },
+    { "Họ và tên": "Trần Thị Mai", "Email": "thimai.tran@gmail.com", "Tên đăng nhập": "hs_mai", "Lớp": teacherClass, "Mật khẩu": "123456" },
+    { "Họ và tên": "Lê Hoàng Nam", "Email": "hoangnam.le@gmail.com", "Tên đăng nhập": "hs_nam", "Lớp": teacherClass, "Mật khẩu": "123456" },
+    { "Họ và tên": "Phạm Thu Hà", "Email": "thuha.pham@gmail.com", "Tên đăng nhập": "hs_ha", "Lớp": teacherClass, "Mật khẩu": "123456" },
+    { "Họ và tên": "Đỗ Quang Minh", "Email": "quangminh.do@gmail.com", "Tên đăng nhập": "hs_minh", "Lớp": teacherClass, "Mật khẩu": "123456" }
   ];
 
   const ws = XLSX.utils.json_to_sheet(sampleData);
@@ -1788,12 +1822,14 @@ function openAdminEditUserModal(userId) {
       }
     }
   } else if (u.role === "teacher") {
-    modalTitle.textContent = `Chỉnh sửa Giáo viên: ${u.name}`;
+    modalTitle.textContent = (currentUser && currentUser.id === u.id)
+      ? `Hồ sơ Giáo viên: ${u.name}`
+      : `Chỉnh sửa Giáo viên: ${u.name}`;
     if (studentFields) studentFields.style.display = "none";
     if (teacherFields) teacherFields.style.display = "block";
 
     if (teacherSubjectInput) teacherSubjectInput.value = u.subject || "";
-    if (teacherClassInput) teacherClassInput.value = u.class || "";
+    if (teacherClassInput) teacherClassInput.value = u.class || getTeacherClass(u);
   } else {
     modalTitle.textContent = `Chỉnh sửa Tài khoản: ${u.name}`;
     if (studentFields) studentFields.style.display = "none";
@@ -1877,9 +1913,11 @@ function handleAdminEditUserSubmit(e) {
     updatePayload.class = teacherClass || null;
   }
 
-  // Đồng bộ phiên làm việc nếu Admin chỉnh sửa chính tài khoản đang đăng nhập
+  // Đồng bộ phiên làm việc nếu chỉnh sửa chính tài khoản đang đăng nhập
   if (currentUser && currentUser.id === id) {
     currentUser = { ...user };
+    localStorage.setItem(DB_KEY_AUTH, JSON.stringify(currentUser));
+    sessionStorage.setItem(DB_KEY_AUTH, JSON.stringify(currentUser));
     localStorage.setItem("eduproof_user", JSON.stringify(currentUser));
   }
 
@@ -1906,6 +1944,7 @@ function handleAdminEditUserSubmit(e) {
   }
 
   closeAdminEditUserModal();
+  updateHeaderUserDisplay();
   renderCurrentView();
   showNoticeModal(`Đã cập nhật thông tin tài khoản "${name}" thành công!`, "Thành công", "✅");
 }
@@ -3403,6 +3442,16 @@ function switchTeacherTab(tab, btnElement) {
 }
 
 function renderTeacherView() {
+  const teacherClass = getTeacherClass(currentUser);
+  const elTeacherDesc = document.getElementById("teacherViewDesc");
+  if (elTeacherDesc) {
+    elTeacherDesc.innerText = `Theo dõi tiến độ nộp bài của lớp ${teacherClass} và chữa bài trực tiếp trên ảnh.`;
+  }
+  const elAccountsTitle = document.getElementById("teacherStudentAccountsTitle");
+  if (elAccountsTitle) {
+    elAccountsTitle.innerText = `Danh sách tài khoản học sinh Lớp ${teacherClass}`;
+  }
+
   const myStudents = users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
   const myAssignments = assignments.filter((a) => a.teacherId === currentUser.id);
   const myAssignmentIds = new Set(myAssignments.map((a) => a.id));
@@ -3507,7 +3556,7 @@ function renderTeacherSubmissions(mySubmissionsList) {
     });
 
     const studentUser = users.find((u) => u.id === sub.studentId || u.name === sub.studentName);
-    const studentClass = studentUser && studentUser.class ? studentUser.class : (currentUser.class || "12A1");
+    const studentClass = studentUser && studentUser.class ? studentUser.class : getTeacherClass(currentUser);
 
     sub.photos = normalizePhotos(sub.photos);
     const firstPhotoObj = sub.photos && sub.photos[0] ? sub.photos[0] : null;
@@ -3933,7 +3982,7 @@ function exportCampaignReport(assignmentId) {
       "STT": idx + 1,
       "Họ và tên": st.name,
       "Tên đăng nhập": st.username,
-      "Lớp": st.class || "12A1",
+      "Lớp": st.class || getTeacherClass(currentUser),
       "Trạng thái": statusText,
       "Thời gian nộp": submitTime,
       "Số ảnh minh chứng": photoCount,
@@ -3982,7 +4031,7 @@ function copyUnsubmittedStudents(assignmentId) {
   message += `📊 Tiến độ: Còn ${unsubmitted.length}/${studentsList.length} học sinh chưa nộp minh chứng:\n\n`;
 
   unsubmitted.forEach((st, idx) => {
-    message += `${idx + 1}. ${st.name} (${st.class || "12A1"})\n`;
+    message += `${idx + 1}. ${st.name} (${st.class || getTeacherClass(currentUser)})\n`;
   });
 
   message += `\n👉 Các em khẩn trương hoàn thành bài làm và chụp ảnh nộp minh chứng lên hệ thống EduProof đúng hạn!`;
@@ -4743,7 +4792,7 @@ function renderTeacherStudents(myStudentsList) {
                 </td>
                 <td><code>${sanitizeText(st.username)}</code></td>
                 <td><code>${sanitizeText(st.password)}</code></td>
-                <td>${sanitizeText(st.class || "12A1")}</td>
+                <td>${sanitizeText(st.class || getTeacherClass(currentUser))}</td>
                 <td><strong>${count} bài</strong></td>
                 <td style="white-space: nowrap;">
                   <button class="btn btn-primary btn-sm" onclick="startDirectChat('${sanitizeText(st.id)}', '${sanitizeText(st.name)}')" title="Nhắn tin với học sinh này">
@@ -4774,7 +4823,7 @@ function renderTeacherStudents(myStudentsList) {
               <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.35rem;">
                 <div>
                   <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${sanitizeText(st.name)}</div>
-                  <div style="font-size: 0.74rem; color: var(--text-muted);">Lớp: ${sanitizeText(st.class || "12A1")} • Đã nộp ${count} bài</div>
+                  <div style="font-size: 0.74rem; color: var(--text-muted);">Lớp: ${sanitizeText(st.class || getTeacherClass(currentUser))} • Đã nộp ${count} bài</div>
                 </div>
                 <button class="btn btn-secondary btn-sm" style="font-size: 0.72rem; padding: 0.2rem 0.5rem;" onclick="openEditStudentEmailModal('${sanitizeText(st.id)}')">
                   ${st.email ? "✏️ Sửa Email" : "✉️ Thêm Email"}
@@ -4832,7 +4881,7 @@ function exportAllGradebookReport() {
       "STT": idx + 1,
       "Họ và tên": st.name,
       "Tên đăng nhập": st.username,
-      "Lớp": st.class || "12A1",
+      "Lớp": st.class || getTeacherClass(currentUser),
       "Số bài đã nộp": `${stSubs.length} / ${myAssignments.length}`,
       "Điểm trung bình": avgScore,
       "Tỷ lệ hoàn thành": myAssignments.length > 0 ? `${Math.round((stSubs.length / myAssignments.length) * 100)}%` : "0%"
@@ -4955,7 +5004,7 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
           <tr>
             <td style="color: var(--text-muted); font-size: 0.78rem;">${idx + 1}</td>
             <td><strong>${sanitizeText(st.name)}</strong> <span style="font-size: 0.75rem; color: var(--text-muted);">(${sanitizeText(st.username)})</span></td>
-            <td><span class="badge-subject" style="font-size: 0.72rem;">${sanitizeText(st.class || "12A1")}</span></td>
+            <td><span class="badge-subject" style="font-size: 0.72rem;">${sanitizeText(st.class || getTeacherClass(currentUser))}</span></td>
             <td>${badge}</td>
             <td style="font-size: 0.8rem; color: var(--text-muted);">${timeStr}</td>
             <td><span style="font-size: 0.8rem;">📷 ${sub.photos.length} trang</span></td>
@@ -4973,7 +5022,7 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
           <tr>
             <td style="color: var(--text-muted); font-size: 0.78rem;">${idx + 1}</td>
             <td><strong>${sanitizeText(st.name)}</strong> <span style="font-size: 0.75rem; color: var(--text-muted);">(${sanitizeText(st.username)})</span></td>
-            <td><span class="badge-subject" style="font-size: 0.72rem;">${sanitizeText(st.class || "12A1")}</span></td>
+            <td><span class="badge-subject" style="font-size: 0.72rem;">${sanitizeText(st.class || getTeacherClass(currentUser))}</span></td>
             <td><span class="badge-status status-resubmit">❌ Chưa nộp bài</span></td>
             <td style="color: var(--text-muted); font-size: 0.8rem;">—</td>
             <td style="color: var(--text-muted); font-size: 0.8rem;">0 trang</td>
@@ -5011,7 +5060,7 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.45rem;">
               <div>
                 <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${sanitizeText(st.name)}</div>
-                <div style="font-size: 0.74rem; color: var(--text-muted);">${sanitizeText(st.username)} • Lớp ${sanitizeText(st.class || "12A1")}</div>
+                <div style="font-size: 0.74rem; color: var(--text-muted);">${sanitizeText(st.username)} • Lớp ${sanitizeText(st.class || getTeacherClass(currentUser))}</div>
               </div>
               <div>${badge}</div>
             </div>
@@ -5035,7 +5084,7 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.45rem;">
               <div>
                 <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${sanitizeText(st.name)}</div>
-                <div style="font-size: 0.74rem; color: var(--text-muted);">${sanitizeText(st.username)} • Lớp ${sanitizeText(st.class || "12A1")}</div>
+                <div style="font-size: 0.74rem; color: var(--text-muted);">${sanitizeText(st.username)} • Lớp ${sanitizeText(st.class || getTeacherClass(currentUser))}</div>
               </div>
               <div><span class="badge-status status-resubmit">❌ Chưa nộp bài</span></div>
             </div>
@@ -5178,7 +5227,7 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
         <td style="color: var(--text-muted); font-size: 0.78rem;">${idx + 1}</td>
         <td><strong>${sanitizeText(st.name)}</strong></td>
         <td><code>${sanitizeText(st.username)}</code></td>
-        <td>${sanitizeText(st.class || "12A1")}</td>
+        <td>${sanitizeText(st.class || getTeacherClass(currentUser))}</td>
         <td><strong>${stSubs.length} / ${myAssignments.length} bài</strong></td>
         <td style="font-weight: 700; color: #059669; font-size: 0.95rem;">${myAssignments.length > 0 ? Math.round((stSubs.length / myAssignments.length) * 100) + "%" : "0%"}</td>
         <td>${attendanceBadge}</td>
@@ -5210,7 +5259,7 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
           <div>
             <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${sanitizeText(st.name)}</div>
             <div style="font-size: 0.74rem; color: var(--text-muted);">
-              <code>${sanitizeText(st.username)}</code> • Lớp ${sanitizeText(st.class || "12A1")}
+              <code>${sanitizeText(st.username)}</code> • Lớp ${sanitizeText(st.class || getTeacherClass(currentUser))}
             </div>
           </div>
           <div style="text-align: right;">

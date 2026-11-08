@@ -2525,6 +2525,72 @@ sendEmailHandler63(mockReq63, mockRes63).then(() => {
     assert.strictEqual(teacherViewThread.length, 2, "Giáo viên xem luồng chat với học sinh An phải nhận đủ 2 tin nhắn tương tự");
     console.log("✅ 65. Kiểm thử Tính năng Nhắn tin 2 Chiều giữa Học sinh và Giáo viên: ĐẠT");
 
-    console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (65/65)!");
+    // =========================================================================
+    // 66. Kiểm thử Đồng bộ Động Lớp Chủ nhiệm Giáo viên trong Tiêu đề & Hồ sơ
+    // =========================================================================
+    const appJs66 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+    const html66 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+
+    // 1. Kiểm tra index.html có id định danh cho mô tả tiêu đề và tiêu đề danh sách học sinh
+    assert.ok(
+      html66.includes('id="teacherViewDesc"'),
+      "index.html phải có id='teacherViewDesc' để cập nhật động lớp chủ nhiệm của giáo viên"
+    );
+    assert.ok(
+      html66.includes('id="teacherStudentAccountsTitle"'),
+      "index.html phải có id='teacherStudentAccountsTitle' để cập nhật động tên lớp học sinh"
+    );
+    assert.ok(
+      html66.includes("openCurrentUserProfile"),
+      "index.html phải hỗ trợ mở hồ sơ giáo viên bằng openCurrentUserProfile"
+    );
+
+    // 2. Kiểm tra app.js có hàm getTeacherClass và các cập nhật tiêu đề động
+    assert.ok(
+      appJs66.includes("function getTeacherClass"),
+      "app.js phải cung cấp hàm getTeacherClass để tính toán lớp của giáo viên linh hoạt"
+    );
+    assert.ok(
+      appJs66.includes("teacherViewDesc") &&
+      appJs66.includes("Theo dõi tiến độ nộp bài của lớp"),
+      "renderTeacherView phải gán mô tả phòng quản lý theo lớp của giáo viên"
+    );
+    assert.ok(
+      appJs66.includes("teacherStudentAccountsTitle"),
+      "renderTeacherView phải gán tiêu đề danh sách tài khoản theo lớp của giáo viên"
+    );
+
+    // 3. Trích xuất và kiểm thử trực tiếp hàm getTeacherClass
+    const getTeacherClassFn = new Function(
+      "teacher",
+      "users",
+      `
+      ${appJs66.substring(appJs66.indexOf("function getTeacherClass"), appJs66.indexOf("function openCurrentUserProfile"))}
+      return getTeacherClass(teacher);
+      `
+    );
+
+    // TH1: Cô Ngô Hà (class 12A5)
+    const teacherNgoHa = { id: "gvcn_ngo_ha", username: "gvcn-ngo-ha", name: "Cô Ngô Hà", class: "12A5", subject: "GVCN Lớp 12A5" };
+    assert.strictEqual(getTeacherClassFn(teacherNgoHa, []), "12A5", "Cô Ngô Hà phải nhận diện đúng lớp 12A5");
+
+    // TH2: Giáo viên khác có lớp 10A3
+    const teacherOther = { id: "gv_02", username: "gv_hai", name: "Thầy Hải", class: "10A3" };
+    assert.strictEqual(getTeacherClassFn(teacherOther, []), "10A3", "Giáo viên khác có class '10A3' phải tự động hiển thị 10A3");
+
+    // TH3: Giáo viên chỉ có subject ghi 'GVCN Lớp 11B2'
+    const teacherSubjectOnly = { id: "gv_03", username: "gv_lan", name: "Cô Lan", subject: "GVCN Lớp 11B2" };
+    assert.strictEqual(getTeacherClassFn(teacherSubjectOnly, []), "11B2", "Giáo viên ghi subject 'GVCN Lớp 11B2' phải tự trích xuất được 11B2");
+
+    // TH4: Giáo viên có học sinh trong danh sách thuộc lớp 12A4
+    const teacherWithStudents = { id: "gv_04", username: "gv_tuan", name: "Thầy Tuấn" };
+    const mockUsers = [
+      { id: "hs_04", role: "student", teacherId: "gv_04", class: "12A4" }
+    ];
+    assert.strictEqual(getTeacherClassFn(teacherWithStudents, mockUsers), "12A4", "Tự động lấy lớp từ danh sách học sinh nếu giáo viên chưa set class");
+
+    console.log("✅ 66. Kiểm thử Đồng bộ Động Lớp Chủ nhiệm Giáo viên trong Tiêu đề & Hồ sơ: ĐẠT");
+
+    console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (66/66)!");
   });
 });
