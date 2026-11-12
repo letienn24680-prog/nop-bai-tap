@@ -2774,6 +2774,73 @@ sendEmailHandler63(mockReq63, mockRes63).then(() => {
 
     console.log("✅ 67. Kiểm thử Tối ưu hóa Hiệu năng Máy Yếu & Mẫu lời phê nhanh, Tìm kiếm bài tập: ĐẠT");
 
-    console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (67/67)!");
+    // ==========================================
+    // KIỂM THỬ 68: BỐ CỤC TAB DI ĐỘNG GIÁO VIÊN (#teacherView .filter-tabs)
+    // 2 HÀNG X 3 CỘT ĐỀU ĐẶN & ẨN SVG CHỐNG TRÀN CHỮ
+    // ==========================================
+    const appCss68 = fs.readFileSync(path.join(__dirname, "app.css"), "utf8");
+    const html68 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+
+    // 1. Kiểm tra CSS #teacherView .filter-tabs dùng repeat(3, 1fr) trên mobile (max-width: 640px)
+    assert.ok(
+      appCss68.includes("#teacherView .filter-tabs") &&
+      appCss68.includes("grid-template-columns: repeat(3, 1fr) !important;"),
+      "app.css phải thiết lập #teacherView .filter-tabs dùng grid-template-columns: repeat(3, 1fr) !important trên mobile"
+    );
+
+    // 2. Kiểm tra loại bỏ triệt để các rule nth-child span bất đối xứng gây lỗi tab 6 'Tin nhắn' bị cô lập 1 cột
+    assert.ok(
+      !appCss68.includes("#teacherView .tab-btn:nth-child(1)") &&
+      !appCss68.includes("#teacherView .tab-btn:nth-child(4)"),
+      "app.css phải loại bỏ các quy tắc nth-child span 2 / span 3 cũ để các tab tự động dàn đều theo lưới 3 cột"
+    );
+
+    // 3. Kiểm tra ẩn icon SVG trong tab giáo viên trên mobile để không làm chật chội hoặc tràn chữ
+    const teacherSvgRuleMatch = appCss68.match(/#teacherView\s+\.tab-btn\s+svg\s*\{[^}]*display:\s*none\s*!important/);
+    assert.ok(
+      teacherSvgRuleMatch !== null,
+      "app.css phải ẩn icon svg trong #teacherView .tab-btn trên mobile (display: none !important) để nhãn chữ rộng rãi"
+    );
+
+    // 4. Kiểm tra trong index.html: trích xuất các tab của #teacherView và kiểm tra phân bổ 2 hàng x 3 cột
+    const teacherViewSection = html68.substring(
+      html68.indexOf('<section id="teacherView"'),
+      html68.indexOf('id="teacherSubmissionsTab"')
+    );
+    const teacherTabButtons = (teacherViewSection.match(/<button[^>]*class="tab-btn[^"]*"[^>]*>/g) || []);
+    assert.strictEqual(
+      teacherTabButtons.length,
+      6,
+      "Giao diện giáo viên (#teacherView) phải có đúng 6 tab điều hướng"
+    );
+
+    // 5. Kiểm thử mô phỏng phân bổ lưới CSS Grid repeat(3, 1fr)
+    const gridCols = 3;
+    const totalTeacherTabs = teacherTabButtons.length;
+    const totalRows = Math.ceil(totalTeacherTabs / gridCols);
+    const remainder = totalTeacherTabs % gridCols;
+
+    assert.strictEqual(totalRows, 2, "6 tab với lưới 3 cột phải tạo thành đúng 2 hàng");
+    assert.strictEqual(remainder, 0, "6 tab chia cho 3 cột phải chia hết (dư 0), không có tab lẻ nào bị rớt dòng một mình");
+
+    // Xác minh danh sách 6 tab cụ thể
+    const expectedTabs = [
+      "switchTeacherTab('submissions'",
+      "switchTeacherTab('campaigns'",
+      "switchTeacherTab('assignments'",
+      "switchTeacherTab('students'",
+      "switchTeacherTab('gradebook'",
+      "switchTeacherTab('messages'"
+    ];
+    for (const tabCall of expectedTabs) {
+      assert.ok(
+        teacherViewSection.includes(tabCall),
+        `#teacherView phải chứa tab gọi ${tabCall}`
+      );
+    }
+
+    console.log("✅ 68. Kiểm thử Bố cục Tab Di động Giáo viên (2 hàng x 3 cột đều nhau & Ẩn SVG chống tràn): ĐẠT");
+
+    console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (68/68)!");
   });
 });
