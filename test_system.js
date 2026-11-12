@@ -3146,6 +3146,104 @@ sendEmailHandler63(mockReq63, mockRes63).then(() => {
 
     console.log("✅ 70. Kiểm thử Sắp xếp Danh sách Học sinh theo Bảng chữ cái Tiếng Việt (A-Z theo Tên chính, Họ và Tên đệm): ĐẠT");
 
-    console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (70/70)!");
+    // 71. Test: PowerPoint Morph Transitions & Connected View Transitions
+    assert.ok(
+      appJsContent.includes("function runMorphTransition(updateCallback)"),
+      "app.js phải định nghĩa hàm runMorphTransition"
+    );
+    assert.ok(
+      appJsContent.includes("document.startViewTransition") &&
+      appJsContent.includes("low-perf-mode") &&
+      appJsContent.includes("prefers-reduced-motion: reduce"),
+      "runMorphTransition phải kiểm tra startViewTransition, low-perf-mode và prefers-reduced-motion"
+    );
+    assert.ok(
+      appJsContent.includes("window.runMorphTransition = runMorphTransition"),
+      "runMorphTransition phải được gắn vào window.runMorphTransition cho kiểm thử và gỡ lỗi"
+    );
+
+    // Kiểm tra chạy fallback đồng bộ của runMorphTransition
+    const morphFn = new Function(
+      "document",
+      "window",
+      `
+      ${appJsContent.substring(
+        appJsContent.indexOf("function runMorphTransition(updateCallback) {"),
+        appJsContent.indexOf("if (typeof window !== \"undefined\") {\n  window.runMorphTransition = runMorphTransition;")
+      )}
+      return runMorphTransition;
+      `
+    );
+    const fnWithoutTransition = morphFn(
+      { body: { classList: { contains: () => false } } },
+      { matchMedia: () => ({ matches: false }) }
+    );
+    let ran = false;
+    fnWithoutTransition(() => { ran = true; });
+    assert.strictEqual(ran, true, "runMorphTransition phải thực thi updateCallback đồng bộ khi không hỗ trợ startViewTransition");
+
+    // Kiểm tra chạy với startViewTransition có sẵn
+    let startTransitionCalled = false;
+    const fnWithTransition = morphFn(
+      {
+        startViewTransition: (cb) => {
+          startTransitionCalled = true;
+          cb();
+          return { finished: Promise.resolve() };
+        },
+        body: { classList: { contains: () => false } }
+      },
+      { matchMedia: () => ({ matches: false }) }
+    );
+    let ranWithTransition = false;
+    fnWithTransition(() => { ranWithTransition = true; });
+    assert.strictEqual(startTransitionCalled, true, "runMorphTransition phải gọi document.startViewTransition khi môi trường hỗ trợ");
+    assert.strictEqual(ranWithTransition, true, "updateCallback phải được thực thi bên trong startViewTransition");
+
+    // Kiểm tra tích hợp vào switchView, switchTeacherTab, switchStudentTab, openGradingStudio, closeGradingStudio
+    assert.ok(
+      appJsContent.includes("function switchView(viewName) {") &&
+      appJsContent.includes("return runMorphTransition(() => {"),
+      "switchView phải bọc logic chuyển giao diện trong runMorphTransition"
+    );
+    const switchTeacherTabSnippet = appJsContent.substring(
+      appJsContent.indexOf("function switchTeacherTab("),
+      appJsContent.indexOf("function renderTeacherView()")
+    );
+    assert.ok(
+      switchTeacherTabSnippet.includes("runMorphTransition("),
+      "switchTeacherTab phải bọc cập nhật DOM trong runMorphTransition"
+    );
+
+    const switchStudentTabSnippet = appJsContent.substring(
+      appJsContent.indexOf("function switchStudentTab("),
+      appJsContent.indexOf("function renderStudentClassmates(")
+    );
+    assert.ok(
+      switchStudentTabSnippet.includes("runMorphTransition("),
+      "switchStudentTab phải bọc cập nhật DOM trong runMorphTransition"
+    );
+
+    const openGradingStudioSnippet = appJsContent.substring(
+      appJsContent.indexOf("function openGradingStudio("),
+      appJsContent.indexOf("function toggleResubmitCheckbox(")
+    );
+    assert.ok(
+      openGradingStudioSnippet.includes("runMorphTransition("),
+      "openGradingStudio phải bọc mở phòng chấm bài trong runMorphTransition"
+    );
+
+    const closeGradingStudioSnippet = appJsContent.substring(
+      appJsContent.indexOf("function closeGradingStudio() {"),
+      appJsContent.indexOf("function handleGradingImageError(")
+    );
+    assert.ok(
+      closeGradingStudioSnippet.includes("runMorphTransition("),
+      "closeGradingStudio phải bọc đóng phòng chấm bài trong runMorphTransition"
+    );
+
+    console.log("✅ 71. Kiểm thử PowerPoint-style Morph Transitions & Connected View Transitions: ĐẠT");
+
+    console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (71/71)!");
   });
 });

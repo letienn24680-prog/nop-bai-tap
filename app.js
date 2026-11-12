@@ -2224,36 +2224,103 @@ function renderAdminStudentsTree(selectedTeacherId) {
 // 3. VIEW ROUTING & RENDERING
 // ==========================================
 
-function renderCurrentView() {
-  if (!currentUser) {
-    showLoginScreen();
-    return;
-  }
-
-  hideLoginScreen();
-  updateHeaderUserDisplay();
-
-  const isAdmin = currentUser.role === "admin";
-  const isTeacher = currentUser.role === "teacher";
-  const isStudent = currentUser.role === "student";
-
-  const adminEl = document.getElementById("adminView");
-  const teacherEl = document.getElementById("teacherView");
-  const studentEl = document.getElementById("studentView");
-
-  if (adminEl) adminEl.style.display = isAdmin ? "block" : "none";
-  if (teacherEl) teacherEl.style.display = isTeacher ? "block" : "none";
-  if (studentEl) studentEl.style.display = isStudent ? "block" : "none";
-
-  if (isAdmin) {
-    renderAdminView();
-  } else if (isTeacher) {
-    ensureChatCardInActiveView();
-    renderTeacherView();
+function runMorphTransition(updateCallback) {
+  if (typeof document !== "undefined" &&
+      document.startViewTransition &&
+      !document.body.classList.contains("low-perf-mode") &&
+      !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
+    try {
+      return document.startViewTransition(updateCallback);
+    } catch (err) {
+      updateCallback();
+    }
   } else {
-    ensureChatCardInActiveView();
-    switchStudentTab(studentActiveTab || "assignments");
+    updateCallback();
   }
+}
+
+if (typeof window !== "undefined") {
+  window.runMorphTransition = runMorphTransition;
+}
+if (typeof global !== "undefined") {
+  global.runMorphTransition = runMorphTransition;
+}
+
+function switchView(viewName) {
+  return runMorphTransition(() => {
+    const target = viewName || (currentUser ? currentUser.role : "login");
+    if (target === "login" || (!currentUser && !viewName)) {
+      showLoginScreen();
+      return;
+    }
+
+    hideLoginScreen();
+    updateHeaderUserDisplay();
+
+    const normalized = target.replace("View", "").toLowerCase();
+    const isAdmin = normalized === "admin";
+    const isTeacher = normalized === "teacher";
+    const isStudent = normalized === "student";
+
+    const adminEl = document.getElementById("adminView");
+    const teacherEl = document.getElementById("teacherView");
+    const studentEl = document.getElementById("studentView");
+
+    if (adminEl) adminEl.style.display = isAdmin ? "block" : "none";
+    if (teacherEl) teacherEl.style.display = isTeacher ? "block" : "none";
+    if (studentEl) studentEl.style.display = isStudent ? "block" : "none";
+
+    if (isAdmin) {
+      renderAdminView();
+    } else if (isTeacher) {
+      ensureChatCardInActiveView();
+      renderTeacherView();
+    } else if (isStudent) {
+      ensureChatCardInActiveView();
+      switchStudentTab(studentActiveTab || "assignments");
+    }
+  });
+}
+
+if (typeof window !== "undefined") {
+  window.switchView = switchView;
+}
+if (typeof global !== "undefined") {
+  global.switchView = switchView;
+}
+
+function renderCurrentView() {
+  return runMorphTransition(() => {
+    if (!currentUser) {
+      showLoginScreen();
+      return;
+    }
+
+    hideLoginScreen();
+    updateHeaderUserDisplay();
+
+    const isAdmin = currentUser.role === "admin";
+    const isTeacher = currentUser.role === "teacher";
+    const isStudent = currentUser.role === "student";
+
+    const adminEl = document.getElementById("adminView");
+    const teacherEl = document.getElementById("teacherView");
+    const studentEl = document.getElementById("studentView");
+
+    if (adminEl) adminEl.style.display = isAdmin ? "block" : "none";
+    if (teacherEl) teacherEl.style.display = isTeacher ? "block" : "none";
+    if (studentEl) studentEl.style.display = isStudent ? "block" : "none";
+
+    if (isAdmin) {
+      renderAdminView();
+    } else if (isTeacher) {
+      ensureChatCardInActiveView();
+      renderTeacherView();
+    } else {
+      ensureChatCardInActiveView();
+      switchStudentTab(studentActiveTab || "assignments");
+    }
+  });
 }
 
 // ==========================================
@@ -2284,46 +2351,48 @@ function ensureChatCardInActiveView() {
 function switchStudentTab(tab, btnElement) {
   studentActiveTab = tab || "assignments";
 
-  const tabBtns = document.querySelectorAll("#studentTabBtnAssignments, #studentTabBtnChat, #studentTabBtnClassmates");
-  tabBtns.forEach((b) => b.classList.remove("active"));
+  runMorphTransition(() => {
+    const tabBtns = document.querySelectorAll("#studentTabBtnAssignments, #studentTabBtnChat, #studentTabBtnClassmates");
+    tabBtns.forEach((b) => b.classList.remove("active"));
 
-  if (btnElement) {
-    btnElement.classList.add("active");
-  } else {
-    const targetId = studentActiveTab === "chat" ? "studentTabBtnChat" : (studentActiveTab === "classmates" ? "studentTabBtnClassmates" : "studentTabBtnAssignments");
-    const targetBtn = document.getElementById(targetId);
-    if (targetBtn) targetBtn.classList.add("active");
-  }
+    if (btnElement) {
+      btnElement.classList.add("active");
+    } else {
+      const targetId = studentActiveTab === "chat" ? "studentTabBtnChat" : (studentActiveTab === "classmates" ? "studentTabBtnClassmates" : "studentTabBtnAssignments");
+      const targetBtn = document.getElementById(targetId);
+      if (targetBtn) targetBtn.classList.add("active");
+    }
 
-  const asgTab = document.getElementById("studentAssignmentsTab");
-  const chatTab = document.getElementById("studentChatTab");
-  const clsTab = document.getElementById("studentClassmatesTab");
+    const asgTab = document.getElementById("studentAssignmentsTab");
+    const chatTab = document.getElementById("studentChatTab");
+    const clsTab = document.getElementById("studentClassmatesTab");
 
-  if (asgTab) asgTab.style.display = studentActiveTab === "assignments" ? "block" : "none";
-  if (chatTab) chatTab.style.display = studentActiveTab === "chat" ? "block" : "none";
-  if (clsTab) clsTab.style.display = studentActiveTab === "classmates" ? "block" : "none";
+    if (asgTab) asgTab.style.display = studentActiveTab === "assignments" ? "block" : "none";
+    if (chatTab) chatTab.style.display = studentActiveTab === "chat" ? "block" : "none";
+    if (clsTab) clsTab.style.display = studentActiveTab === "classmates" ? "block" : "none";
 
-  const titleEl = document.getElementById("studentViewTitle");
-  const descEl = document.getElementById("studentViewDesc");
+    const titleEl = document.getElementById("studentViewTitle");
+    const descEl = document.getElementById("studentViewDesc");
 
-  if (studentActiveTab === "assignments") {
-    if (titleEl) titleEl.innerText = "Bài tập của tôi";
-    if (descEl) descEl.innerText = "Chụp ảnh vở bài làm hoặc đính kèm minh chứng để nộp đúng hạn.";
-    stopChatAutoSync();
-    renderStudentView();
-  } else if (studentActiveTab === "chat") {
-    if (titleEl) titleEl.innerText = "Phòng chat học sinh & giáo viên";
-    if (descEl) descEl.innerText = "Trao đổi, thảo luận học tập trực tiếp cùng thầy cô và bạn bè.";
-    ensureChatCardInActiveView();
-    updateChatHeaderInfo();
-    loadChatMessages();
-    startChatAutoSync();
-  } else if (studentActiveTab === "classmates") {
-    if (titleEl) titleEl.innerText = "Danh sách bạn cùng lớp";
-    if (descEl) descEl.innerText = "Chỉ hiển thị họ và tên học sinh, bảo mật tuyệt đối tài khoản & mật khẩu.";
-    stopChatAutoSync();
-    renderStudentClassmates();
-  }
+    if (studentActiveTab === "assignments") {
+      if (titleEl) titleEl.innerText = "Bài tập của tôi";
+      if (descEl) descEl.innerText = "Chụp ảnh vở bài làm hoặc đính kèm minh chứng để nộp đúng hạn.";
+      stopChatAutoSync();
+      renderStudentView();
+    } else if (studentActiveTab === "chat") {
+      if (titleEl) titleEl.innerText = "Phòng chat học sinh & giáo viên";
+      if (descEl) descEl.innerText = "Trao đổi, thảo luận học tập trực tiếp cùng thầy cô và bạn bè.";
+      ensureChatCardInActiveView();
+      updateChatHeaderInfo();
+      loadChatMessages();
+      startChatAutoSync();
+    } else if (studentActiveTab === "classmates") {
+      if (titleEl) titleEl.innerText = "Danh sách bạn cùng lớp";
+      if (descEl) descEl.innerText = "Chỉ hiển thị họ và tên học sinh, bảo mật tuyệt đối tài khoản & mật khẩu.";
+      stopChatAutoSync();
+      renderStudentClassmates();
+    }
+  });
 }
 
 // ------------------------------------------
@@ -3458,38 +3527,41 @@ function viewSubmissionSummary(submissionId) {
 function switchTeacherTab(tab, btnElement) {
   teacherActiveTab = tab;
   localStorage.setItem("eduproof_teacher_tab", tab);
-  document.querySelectorAll("#teacherView .filter-tabs .tab-btn").forEach((b) => b.classList.remove("active"));
-  if (btnElement) {
-    btnElement.classList.add("active");
-  } else {
-    const btn = document.querySelector(`#teacherView .filter-tabs .tab-btn[onclick*="'${tab}'"]`);
-    if (btn) btn.classList.add("active");
-  }
 
-  const subTab = document.getElementById("teacherSubmissionsTab");
-  const camTab = document.getElementById("teacherCampaignTab");
-  const asgTab = document.getElementById("teacherAssignmentsTab");
-  const stuTab = document.getElementById("teacherStudentsTab");
-  const graTab = document.getElementById("teacherGradebookTab");
-  const msgTab = document.getElementById("teacherMessagesTab");
+  runMorphTransition(() => {
+    document.querySelectorAll("#teacherView .filter-tabs .tab-btn").forEach((b) => b.classList.remove("active"));
+    if (btnElement) {
+      btnElement.classList.add("active");
+    } else {
+      const btn = document.querySelector(`#teacherView .filter-tabs .tab-btn[onclick*="'${tab}'"]`);
+      if (btn) btn.classList.add("active");
+    }
 
-  if (subTab) subTab.style.display = tab === "submissions" ? "block" : "none";
-  if (camTab) camTab.style.display = tab === "campaigns" ? "block" : "none";
-  if (asgTab) asgTab.style.display = tab === "assignments" ? "block" : "none";
-  if (stuTab) stuTab.style.display = tab === "students" ? "block" : "none";
-  if (graTab) graTab.style.display = tab === "gradebook" ? "block" : "none";
-  if (msgTab) msgTab.style.display = tab === "messages" ? "block" : "none";
+    const subTab = document.getElementById("teacherSubmissionsTab");
+    const camTab = document.getElementById("teacherCampaignTab");
+    const asgTab = document.getElementById("teacherAssignmentsTab");
+    const stuTab = document.getElementById("teacherStudentsTab");
+    const graTab = document.getElementById("teacherGradebookTab");
+    const msgTab = document.getElementById("teacherMessagesTab");
 
-  if (tab === "messages") {
-    ensureChatCardInActiveView();
-    updateChatHeaderInfo();
-    loadChatMessages(false);
-    startChatAutoSync();
-  } else if (studentActiveTab !== "chat") {
-    stopChatAutoSync();
-  }
+    if (subTab) subTab.style.display = tab === "submissions" ? "block" : "none";
+    if (camTab) camTab.style.display = tab === "campaigns" ? "block" : "none";
+    if (asgTab) asgTab.style.display = tab === "assignments" ? "block" : "none";
+    if (stuTab) stuTab.style.display = tab === "students" ? "block" : "none";
+    if (graTab) graTab.style.display = tab === "gradebook" ? "block" : "none";
+    if (msgTab) msgTab.style.display = tab === "messages" ? "block" : "none";
 
-  renderTeacherView();
+    if (tab === "messages") {
+      ensureChatCardInActiveView();
+      updateChatHeaderInfo();
+      loadChatMessages(false);
+      startChatAutoSync();
+    } else if (studentActiveTab !== "chat") {
+      stopChatAutoSync();
+    }
+
+    renderTeacherView();
+  });
 }
 
 function renderTeacherView() {
@@ -5438,67 +5510,69 @@ function openGradingStudio(submissionId, isReadOnly = false) {
     return;
   }
 
-  const headerPrefix = (sub.status === "resubmit_requested" || sub.resubmitRequested)
-    ? "Xem bài đã từ chối ảnh:"
-    : (isReadOnly ? "Xem bài làm:" : "Kiểm tra bài làm:");
-  document.getElementById("gradingStudentName").innerText = `${headerPrefix} ${sub.studentName}`;
-  document.getElementById("gradingSubmissionTime").innerText = `Nộp lúc: ${new Date(sub.submittedAt).toLocaleTimeString("vi-VN")}`;
+  runMorphTransition(() => {
+    const headerPrefix = (sub.status === "resubmit_requested" || sub.resubmitRequested)
+      ? "Xem bài đã từ chối ảnh:"
+      : (isReadOnly ? "Xem bài làm:" : "Kiểm tra bài làm:");
+    document.getElementById("gradingStudentName").innerText = `${headerPrefix} ${sub.studentName}`;
+    document.getElementById("gradingSubmissionTime").innerText = `Nộp lúc: ${new Date(sub.submittedAt).toLocaleTimeString("vi-VN")}`;
 
-  const resubmitCb = document.getElementById("requestResubmitCheckbox");
-  if (resubmitCb) {
-    resubmitCb.checked = sub.status === "resubmit_requested" || Boolean(sub.resubmitRequested);
-    resubmitCb.disabled = isReadOnly;
-    toggleResubmitCheckbox(resubmitCb.checked);
-  }
+    const resubmitCb = document.getElementById("requestResubmitCheckbox");
+    if (resubmitCb) {
+      resubmitCb.checked = sub.status === "resubmit_requested" || Boolean(sub.resubmitRequested);
+      resubmitCb.disabled = isReadOnly;
+      toggleResubmitCheckbox(resubmitCb.checked);
+    }
 
-  const resubmitNote = document.getElementById("resubmitNoteInput");
-  if (resubmitNote) {
-    resubmitNote.value = ((sub.status === "resubmit_requested" || sub.resubmitRequested) && sub.feedback) ? sub.feedback : (sub.feedback || "");
-    resubmitNote.disabled = isReadOnly;
-  }
+    const resubmitNote = document.getElementById("resubmitNoteInput");
+    if (resubmitNote) {
+      resubmitNote.value = ((sub.status === "resubmit_requested" || sub.resubmitRequested) && sub.feedback) ? sub.feedback : (sub.feedback || "");
+      resubmitNote.disabled = isReadOnly;
+    }
 
-  const feedbackInput = document.getElementById("gradingFeedback");
-  if (feedbackInput) {
-    feedbackInput.value = sub.feedback || "";
-    feedbackInput.disabled = isReadOnly;
-  }
+    const feedbackInput = document.getElementById("gradingFeedback");
+    if (feedbackInput) {
+      feedbackInput.value = sub.feedback || "";
+      feedbackInput.disabled = isReadOnly;
+    }
 
-  const chipsContainer = document.getElementById("quickFeedbackChips");
-  if (chipsContainer) {
-    chipsContainer.style.display = isReadOnly ? "none" : "flex";
-  }
+    const chipsContainer = document.getElementById("quickFeedbackChips");
+    if (chipsContainer) {
+      chipsContainer.style.display = isReadOnly ? "none" : "flex";
+    }
 
-  const saveBtn = document.getElementById("saveGradeBtn");
-  if (saveBtn) {
-    saveBtn.style.display = isReadOnly ? "none" : "flex";
-  }
+    const saveBtn = document.getElementById("saveGradeBtn");
+    if (saveBtn) {
+      saveBtn.style.display = isReadOnly ? "none" : "flex";
+    }
 
-  const rejectBtn = document.getElementById("gradingRejectPhotoBtn");
-  if (rejectBtn) {
-    rejectBtn.style.display = (isReadOnly || sub.status === "resubmit_requested" || sub.resubmitRequested) ? "none" : "flex";
-  }
+    const rejectBtn = document.getElementById("gradingRejectPhotoBtn");
+    if (rejectBtn) {
+      rejectBtn.style.display = (isReadOnly || sub.status === "resubmit_requested" || sub.resubmitRequested) ? "none" : "flex";
+    }
 
-  const proofsView = document.getElementById("studentAdditionalProofsView");
-  const safeUrl = sanitizeUrl(sub.linkProof);
+    const proofsView = document.getElementById("studentAdditionalProofsView");
+    const safeUrl = sanitizeUrl(sub.linkProof);
 
-  const directPhotoButtons = sub.photos
-    .map((p, idx) => {
-      const u = p.dataUrl || p.url;
-      if (!u) return "";
-      return `<a href="${u}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="margin-top: 0.3rem; font-size: 0.72rem; width: 100%; justify-content: flex-start; text-decoration: none;">🖼️ Mở ảnh trang ${idx + 1} (tab mới)</a>`;
-    })
-    .join("");
+    const directPhotoButtons = sub.photos
+      .map((p, idx) => {
+        const u = p.dataUrl || p.url;
+        if (!u) return "";
+        return `<a href="${u}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="margin-top: 0.3rem; font-size: 0.72rem; width: 100%; justify-content: flex-start; text-decoration: none;">🖼️ Mở ảnh trang ${idx + 1} (tab mới)</a>`;
+      })
+      .join("");
 
-  proofsView.innerHTML = `
-    <strong>Ảnh minh chứng đã gửi (${sub.photos.length} trang):</strong>
-    <div style="margin: 0.35rem 0 0.65rem 0;">${directPhotoButtons}</div>
-    <strong>Minh chứng khác:</strong><br>
-    ${sub.linkProof && safeUrl !== "#" ? `🔗 <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); word-break: break-all;">${sanitizeText(sub.linkProof)}</a><br>` : "<em>Không có link đính kèm</em><br>"}
-    ${sub.studentNote ? `✍️ <em>Ghi chú: "${sanitizeText(sub.studentNote)}"</em>` : ""}
-  `;
+    proofsView.innerHTML = `
+      <strong>Ảnh minh chứng đã gửi (${sub.photos.length} trang):</strong>
+      <div style="margin: 0.35rem 0 0.65rem 0;">${directPhotoButtons}</div>
+      <strong>Minh chứng khác:</strong><br>
+      ${sub.linkProof && safeUrl !== "#" ? `🔗 <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); word-break: break-all;">${sanitizeText(sub.linkProof)}</a><br>` : "<em>Không có link đính kèm</em><br>"}
+      ${sub.studentNote ? `✍️ <em>Ghi chú: "${sanitizeText(sub.studentNote)}"</em>` : ""}
+    `;
 
-  document.getElementById("gradingModal").style.display = "flex";
-  loadGradingPage(activeGradingPageIndex);
+    document.getElementById("gradingModal").style.display = "flex";
+    loadGradingPage(activeGradingPageIndex);
+  });
 }
 
 function toggleResubmitCheckbox(checked) {
@@ -5519,7 +5593,10 @@ function toggleResubmitCheckbox(checked) {
 }
 
 function closeGradingStudio() {
-  document.getElementById("gradingModal").style.display = "none";
+  runMorphTransition(() => {
+    const modal = document.getElementById("gradingModal");
+    if (modal) modal.style.display = "none";
+  });
 }
 
 function handleGradingImageError(imgEl) {

@@ -2618,4 +2618,131 @@ body {
   }
 }
 
+/* ==========================================================
+   POWERPOINT MORPH TRANSITIONS & CONNECTED UI MOTION STYLES
+   ========================================================== */
+
+/* 1. Native View Transitions API support & Keyframes */
+@keyframes morphFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes morphFadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98) translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.32s;
+    animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+  }
+  ::view-transition-old(root) {
+    animation-name: morphFadeOut;
+  }
+  ::view-transition-new(root) {
+    animation-name: morphFadeIn;
+  }
+}
+
+/* 2. Connected Element Anchors (view-transition-name) */
+#mainHeader {
+  view-transition-name: main-header;
+}
+
+#appHeader {
+  view-transition-name: main-header;
+}
+
+.view-header {
+  view-transition-name: view-header;
+}
+
+#teacherView .filter-tabs {
+  view-transition-name: teacher-nav;
+}
+
+#studentView .filter-tabs {
+  view-transition-name: student-nav;
+}
+
+#chatCard {
+  view-transition-name: chat-card;
+}
+
+#chatCardContainer {
+  view-transition-name: chat-card;
+}
+
+.grading-stage {
+  view-transition-name: grading-stage;
+}
+
+.grading-studio-modal {
+  view-transition-name: grading-stage;
+}
+
+/* 3. Morph Animations & Tab Interactions */
+.tab-btn {
+  transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.tab-pane-morph {
+  animation: tabPaneMorphIn 0.28s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+@keyframes tabPaneMorphIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 4. Smooth Modal Pop-Morph */
+.modal-overlay {
+  transition: backdrop-filter 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-content {
+  animation: modalPopIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 5. Low-performance & Reduced-Motion Safeguards */
+.low-perf-mode * {
+  view-transition-name: none !important;
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    view-transition-name: none !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.01ms !important;
+  }
+}
+
 
