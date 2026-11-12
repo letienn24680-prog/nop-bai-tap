@@ -3731,9 +3731,10 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
         <button class="btn btn-primary btn-sm campaign-action-btn" onclick="remindAllUnsubmittedByEmail('${currentAsg.id}', this)" title="Tự động gửi email nhắc bài 1 chạm tới tất cả học sinh chưa nộp">
           📧 Nhắc Email (${unsubmittedWithEmailCount})
         </button>
+        ${currentUser && currentUser.role === "admin" ? `
         <button class="btn btn-secondary btn-sm campaign-action-btn" onclick="openEmailConfigModal()" title="Cài đặt API gửi email tự động (Resend/Brevo)">
           ⚙️ Cài API Mail
-        </button>
+        </button>` : ""}
         <button class="btn btn-secondary btn-sm campaign-action-btn" onclick="exportCampaignReport('${currentAsg.id}')" title="Xuất file Excel báo cáo tiến độ nộp minh chứng cho Đoàn trường / BGH">
           📊 Xuất Excel
         </button>
@@ -4451,9 +4452,11 @@ function handleRemindDispatchResult(data, student, asg, deadlineStr, emailSubjec
       `<div style="background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 8px; padding: 12px;">` +
         `<div style="font-weight: 700; color: #15803D; margin-bottom: 4px;">Cách 2: Cài mã gửi tự động (Hoàn toàn miễn phí)</div>` +
         `<p style="font-size: 0.83rem; color: #166534; margin-bottom: 8px;">Dán mã API Key Resend (miễn phí 3.000 mail/tháng tại resend.com). Sau khi lưu, mọi lần bấm Nhắc bài & Tạo bài mới sẽ tự động gửi ngầm 100% không cần mở Gmail!</p>` +
-        `<button class="btn btn-secondary" onclick="closeNoticeModal(); openEmailConfigModal();" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 0.85rem; border-radius: 6px;">` +
-          `⚙️ Cài đặt API Key gửi ngầm` +
-        `</button>` +
+        ((currentUser && currentUser.role === "admin")
+          ? `<button class="btn btn-secondary" onclick="closeNoticeModal(); openEmailConfigModal();" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 0.85rem; border-radius: 6px;">` +
+              `⚙️ Cài đặt API Key gửi ngầm` +
+            `</button>`
+          : `<p style="font-size: 0.83rem; color: #15803D; margin: 0; font-weight: 600;">🔒 Vui lòng liên hệ Quản trị viên (Admin) để cấu hình API Key gửi thư ngầm cho hệ thống.</p>`) +
       `</div>` +
       `</div>`,
       "Chưa cấu hình API gửi thư ngầm",
@@ -4526,9 +4529,11 @@ function handleBatchRemindDispatchResult(data, emailsList, asg, deadlineStr, ema
       `<div style="background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 8px; padding: 12px;">` +
         `<div style="font-weight: 700; color: #15803D; margin-bottom: 4px;">Cách 2: Cài mã gửi tự động (Hoàn toàn miễn phí)</div>` +
         `<p style="font-size: 0.83rem; color: #166534; margin-bottom: 8px;">Dán mã API Key Resend (miễn phí 3.000 mail/tháng). Sau khi lưu, mọi lần nhắc bài & tạo bài mới sẽ tự động gửi ngầm 100% không cần mở Gmail!</p>` +
-        `<button class="btn btn-secondary" onclick="closeNoticeModal(); openEmailConfigModal();" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 0.85rem; border-radius: 6px;">` +
-          `⚙️ Cài đặt API Key gửi ngầm` +
-        `</button>` +
+        ((currentUser && currentUser.role === "admin")
+          ? `<button class="btn btn-secondary" onclick="closeNoticeModal(); openEmailConfigModal();" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 0.85rem; border-radius: 6px;">` +
+              `⚙️ Cài đặt API Key gửi ngầm` +
+            `</button>`
+          : `<p style="font-size: 0.83rem; color: #15803D; margin: 0; font-weight: 600;">🔒 Vui lòng liên hệ Quản trị viên (Admin) để cấu hình API Key gửi thư ngầm cho hệ thống.</p>`) +
       `</div>` +
       `</div>`,
       "Chưa cấu hình API gửi thư ngầm",
@@ -4538,6 +4543,10 @@ function handleBatchRemindDispatchResult(data, emailsList, asg, deadlineStr, ema
 }
 
 function openEmailConfigModal() {
+  if (!currentUser || currentUser.role !== "admin") {
+    showNoticeModal("Chức năng Cài đặt API Mail chỉ dành riêng cho Quản trị viên (Admin) để đảm bảo an toàn hệ thống.", "Phân quyền", "🔒");
+    return;
+  }
   const modal = document.getElementById("emailConfigModal");
   if (!modal) return;
   const keyInput = document.getElementById("emailApiKeyInput");
@@ -4558,6 +4567,10 @@ function closeEmailConfigModal() {
 }
 
 function saveEmailApiKey() {
+  if (!currentUser || currentUser.role !== "admin") {
+    showNoticeModal("Chỉ Quản trị viên (Admin) mới có quyền lưu cấu hình API Email.", "Phân quyền", "🔒");
+    return;
+  }
   const keyInput = document.getElementById("emailApiKeyInput");
   const senderInput = document.getElementById("emailSenderInput");
   const statusDiv = document.getElementById("emailConfigStatus");
@@ -4595,6 +4608,10 @@ function saveEmailApiKey() {
 }
 
 async function testEmailDispatch() {
+  if (!currentUser || currentUser.role !== "admin") {
+    showNoticeModal("Chỉ Quản trị viên (Admin) mới có quyền kiểm tra kết nối API Email.", "Phân quyền", "🔒");
+    return;
+  }
   const keyInput = document.getElementById("emailApiKeyInput");
   const senderInput = document.getElementById("emailSenderInput");
   const statusDiv = document.getElementById("emailConfigStatus");

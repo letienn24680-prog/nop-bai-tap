@@ -2841,6 +2841,220 @@ sendEmailHandler63(mockReq63, mockRes63).then(() => {
 
     console.log("✅ 68. Kiểm thử Bố cục Tab Di động Giáo viên (2 hàng x 3 cột đều nhau & Ẩn SVG chống tràn): ĐẠT");
 
-    console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (68/68)!");
+    // =========================================================================
+    // KIỂM THỬ 69: PHÂN QUYỀN CÀI ĐẶT API MAIL (CHỈ DÀNH RIÊNG CHO ADMIN)
+    // 1. #adminView chứa nút 'Cài API Mail' gọi openEmailConfigModal()
+    // 2. #teacherView KHÔNG chứa nút 'Cài API Mail'
+    // 3. openEmailConfigModal() chặn người dùng không phải admin (teacher, student)
+    // 4. saveEmailApiKey() chặn người dùng không phải admin sửa API Key
+    // 5. testEmailDispatch() và các thông báo hướng dẫn chỉ cho phép Admin cấu hình
+    // =========================================================================
+    const html69 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+    const appJs69 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+
+    // 1. Kiểm tra #adminView chứa nút 'Cài API Mail' với openEmailConfigModal()
+    const adminViewSection = html69.substring(
+      html69.indexOf('<section id="adminView"'),
+      html69.indexOf('<section id="teacherView"')
+    );
+    assert.ok(
+      adminViewSection.includes("openEmailConfigModal()") &&
+      adminViewSection.includes("Cài API Mail"),
+      "#adminView phải chứa nút 'Cài API Mail' gọi hàm openEmailConfigModal()"
+    );
+
+    // 2. Kiểm tra #teacherView tuyệt đối KHÔNG chứa nút 'Cài API Mail'
+    const teacherViewSection69 = html69.substring(
+      html69.indexOf('<section id="teacherView"'),
+      html69.indexOf('<section id="studentView"')
+    );
+    assert.ok(
+      !teacherViewSection69.includes("openEmailConfigModal()") &&
+      !teacherViewSection69.includes("Cài API Mail"),
+      "#teacherView tuyệt đối không được chứa nút 'Cài API Mail' hay gọi openEmailConfigModal()"
+    );
+
+    // 3. Kiểm tra kiểm soát phân quyền trong renderTeacherCampaignView (chỉ render nút cho Admin)
+    assert.ok(
+      appJs69.includes('currentUser && currentUser.role === "admin"') &&
+      appJs69.includes('⚙️ Cài API Mail'),
+      "renderTeacherCampaignView chỉ cho phép hiển thị nút 'Cài API Mail' nếu vai trò là admin"
+    );
+
+    // 4. Mô phỏng & kiểm thử trực tiếp hàm openEmailConfigModal() từ app.js
+    const openEmailConfigFn = new Function(
+      "currentUser",
+      "showNoticeModal",
+      "document",
+      "getStoredEmailApiKey",
+      "getStoredEmailSender",
+      `
+      ${appJs69.substring(appJs69.indexOf("function openEmailConfigModal() {"), appJs69.indexOf("function closeEmailConfigModal()"))}
+      return openEmailConfigModal();
+      `
+    );
+
+    // Tạo mock DOM và mock modal
+    let mockModalDisplay = "none";
+    const mockModal = {
+      style: {
+        get display() { return mockModalDisplay; },
+        set display(v) { mockModalDisplay = v; }
+      }
+    };
+    const mockDoc = {
+      getElementById: (id) => {
+        if (id === "emailConfigModal") return mockModal;
+        return { value: "", style: {}, innerHTML: "" };
+      }
+    };
+
+    // 4a. Khi chưa đăng nhập (currentUser = null)
+    let noticeCalled = false;
+    let noticeMessage = "";
+    mockModalDisplay = "none";
+    openEmailConfigFn(
+      null,
+      (msg) => { noticeCalled = true; noticeMessage = msg; },
+      mockDoc,
+      () => "",
+      () => ""
+    );
+    assert.strictEqual(noticeCalled, true, "openEmailConfigModal() phải bật thông báo chặn khi chưa đăng nhập");
+    assert.strictEqual(mockModalDisplay, "none", "Modal không được mở khi chưa đăng nhập");
+
+    // 4b. Khi đăng nhập vai trò Giáo viên (teacher)
+    noticeCalled = false;
+    mockModalDisplay = "none";
+    const mockTeacher = { id: "gv_01", username: "gv_ngoha", role: "teacher", name: "Cô Ngô Hà" };
+    openEmailConfigFn(
+      mockTeacher,
+      (msg) => { noticeCalled = true; noticeMessage = msg; },
+      mockDoc,
+      () => "",
+      () => ""
+    );
+    assert.strictEqual(noticeCalled, true, "openEmailConfigModal() phải chặn giáo viên mở modal");
+    assert.ok(noticeMessage.includes("Quản trị viên (Admin)"), "Thông báo phải nêu rõ chức năng chỉ dành riêng cho Admin");
+    assert.strictEqual(mockModalDisplay, "none", "Modal không được mở đối với tài khoản giáo viên");
+
+    // 4c. Khi đăng nhập vai trò Học sinh (student)
+    noticeCalled = false;
+    mockModalDisplay = "none";
+    const mockStudent = { id: "hs_01", username: "hs_an", role: "student", name: "Nguyễn Văn An" };
+    openEmailConfigFn(
+      mockStudent,
+      (msg) => { noticeCalled = true; noticeMessage = msg; },
+      mockDoc,
+      () => "",
+      () => ""
+    );
+    assert.strictEqual(noticeCalled, true, "openEmailConfigModal() phải chặn học sinh mở modal");
+    assert.strictEqual(mockModalDisplay, "none", "Modal không được mở đối với tài khoản học sinh");
+
+    // 4d. Khi đăng nhập vai trò Quản trị viên (admin)
+    noticeCalled = false;
+    mockModalDisplay = "none";
+    const mockAdmin = { id: "admin_root", username: "admin", role: "admin", name: "Quản trị viên" };
+    openEmailConfigFn(
+      mockAdmin,
+      (msg) => { noticeCalled = false; },
+      mockDoc,
+      () => "re_mock_api_key",
+      () => "thongbao@eduproof.vn"
+    );
+    assert.strictEqual(noticeCalled, false, "Admin mở modal thì không bị chặn thông báo");
+    assert.strictEqual(mockModalDisplay, "flex", "Modal phải được mở với display: flex cho Admin");
+
+    // 5. Mô phỏng & kiểm thử trực tiếp hàm saveEmailApiKey() từ app.js
+    const saveEmailApiKeyFn = new Function(
+      "currentUser",
+      "showNoticeModal",
+      "document",
+      "localStorage",
+      "window",
+      "escapeHtml",
+      "closeEmailConfigModal",
+      `
+      ${appJs69.substring(appJs69.indexOf("function saveEmailApiKey() {"), appJs69.indexOf("async function testEmailDispatch()"))}
+      return saveEmailApiKey();
+      `
+    );
+
+    let mockStorageMap = {};
+    const mockStorage69 = {
+      setItem: (k, v) => { mockStorageMap[k] = String(v); },
+      removeItem: (k) => { delete mockStorageMap[k]; }
+    };
+    const mockKeyInput = { value: "re_new_secret_key_123" };
+    const mockSenderInput = { value: "noreply@eduproof.vn" };
+    const mockStatusDiv = { style: {}, innerHTML: "" };
+    const mockDocSave = {
+      getElementById: (id) => {
+        if (id === "emailApiKeyInput") return mockKeyInput;
+        if (id === "emailSenderInput") return mockSenderInput;
+        if (id === "emailConfigStatus") return mockStatusDiv;
+        return null;
+      }
+    };
+
+    // 5a. Kiểm tra chặn Giáo viên lưu API Key
+    noticeCalled = false;
+    noticeMessage = "";
+    mockStorageMap = {};
+    saveEmailApiKeyFn(
+      mockTeacher,
+      (msg) => { noticeCalled = true; noticeMessage = msg; },
+      mockDocSave,
+      mockStorage69,
+      {},
+      (s) => s,
+      () => {}
+    );
+    assert.strictEqual(noticeCalled, true, "saveEmailApiKey() phải chặn giáo viên lưu cấu hình");
+    assert.ok(noticeMessage.includes("Quản trị viên (Admin)"), "Thông báo phải chỉ rõ quyền của Admin");
+    assert.strictEqual(Object.keys(mockStorageMap).length, 0, "Tuyệt đối không ghi localStorage khi người thực hiện là Giáo viên");
+
+    // 5b. Kiểm tra chặn Học sinh lưu API Key
+    noticeCalled = false;
+    mockStorageMap = {};
+    saveEmailApiKeyFn(
+      mockStudent,
+      (msg) => { noticeCalled = true; noticeMessage = msg; },
+      mockDocSave,
+      mockStorage69,
+      {},
+      (s) => s,
+      () => {}
+    );
+    assert.strictEqual(noticeCalled, true, "saveEmailApiKey() phải chặn học sinh lưu cấu hình");
+    assert.strictEqual(Object.keys(mockStorageMap).length, 0, "Tuyệt đối không ghi localStorage khi người thực hiện là Học sinh");
+
+    // 5c. Kiểm tra Admin được phép lưu API Key
+    noticeCalled = false;
+    mockStorageMap = {};
+    saveEmailApiKeyFn(
+      mockAdmin,
+      (msg) => { noticeCalled = true; },
+      mockDocSave,
+      mockStorage69,
+      {},
+      (s) => s,
+      () => {}
+    );
+    assert.strictEqual(noticeCalled, false, "Admin lưu cấu hình không bị chặn");
+    assert.strictEqual(mockStorageMap["eduproof_email_api_key"], "re_new_secret_key_123", "Admin lưu thành công eduproof_email_api_key vào storage");
+    assert.strictEqual(mockStorageMap["eduproof_email_sender"], "noreply@eduproof.vn", "Admin lưu thành công eduproof_email_sender vào storage");
+
+    // 6. Kiểm tra testEmailDispatch() cũng có cơ chế chặn non-admin
+    assert.ok(
+      appJs69.includes('async function testEmailDispatch()') &&
+      appJs69.includes('Chỉ Quản trị viên (Admin) mới có quyền kiểm tra kết nối API Email.'),
+      "testEmailDispatch() phải có lớp bảo vệ chỉ Admin mới có quyền gửi thư thử nghiệm"
+    );
+
+    console.log("✅ 69. Kiểm thử Phân quyền Cài đặt API Mail (Chỉ dành riêng cho Admin, Chặn Giáo viên & Học sinh): ĐẠT");
+
+    console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (69/69)!");
   });
 });
