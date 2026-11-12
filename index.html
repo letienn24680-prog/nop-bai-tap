@@ -22,6 +22,19 @@
         });
       }
     };
+    // Tự động nhận diện sớm chế độ mượt mà cho máy cấu hình yếu
+    (function() {
+      try {
+        var saved = localStorage.getItem("eduproof_perf_mode");
+        var isLow = saved !== null ? saved === "true" : (
+          (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
+          (navigator.deviceMemory && navigator.deviceMemory <= 4) ||
+          (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) ||
+          (/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent || ""))
+        );
+        if (isLow) document.documentElement.classList.add("low-perf-mode");
+      } catch (e) {}
+    })();
   </script>
 </head>
 <body>
@@ -95,6 +108,12 @@
         <span id="cloudStatusDot" style="width: 8px; height: 8px; border-radius: 50%; background: #16A34A; display: inline-block;"></span>
         <span id="cloudStatusText">Supabase Cloud</span>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+      </button>
+
+      <!-- Smooth Mode Toggle for Low-end Devices -->
+      <button class="btn btn-secondary btn-sm" id="perfModeToggle" onclick="togglePerformanceMode()" title="Bật/Tắt chế độ mượt mà cho máy cấu hình yếu" aria-label="Chế độ mượt mà cho máy yếu" aria-pressed="false">
+        <span>⚡</span>
+        <span class="perf-text">Mượt mà</span>
       </button>
 
       <!-- Active User Profile Display -->
@@ -256,6 +275,11 @@
             <span class="tab-label-full">Đã kiểm tra & Nhận xét</span>
             <span class="tab-label-short">Đã xem</span>
           </button>
+        </div>
+
+        <!-- Search & Filter Bar for Student Assignments -->
+        <div class="student-search-bar" style="margin-bottom: 1.25rem;">
+          <input type="text" id="studentAssignmentSearch" class="form-input" placeholder="🔍 Tìm nhanh bài tập theo tên môn hoặc tiêu đề..." oninput="handleStudentAssignmentSearch(this.value)" style="width: 100%; border-radius: var(--radius-md); font-size: 0.9rem; padding: 0.65rem 1rem;">
         </div>
 
         <!-- Grid of Assignments -->
@@ -758,7 +782,7 @@
 
   <!-- ==================== MODAL 3: TEACHER GRADING STUDIO ==================== -->
   <div id="gradingModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content grading-studio-modal">
+    <div class="modal-content grading-studio-modal" id="gradingStudioModal">
       <div class="modal-header">
         <div>
           <span style="font-weight: 700; font-size: 1.05rem;" id="gradingStudentName">Kiểm tra bài làm: Nguyễn Văn An</span>
@@ -813,6 +837,21 @@
               </div>
               <div id="resubmitNoteGroup" style="display: none; margin-top: 0.5rem;">
                 <input type="text" id="resubmitNoteInput" class="form-input" placeholder="Lý do nộp lại: (ví dụ: ảnh mờ, thiếu câu cuối...)" style="font-size: 0.78rem; background: #FFF;">
+              </div>
+            </div>
+
+            <!-- Quick Feedback Templates & Feedback Textarea -->
+            <div class="grading-feedback-box" style="margin-bottom: 1rem;">
+              <label class="form-label" for="gradingFeedback" style="font-weight: 700; font-size: 0.84rem; margin-bottom: 0.35rem; display: flex; align-items: center; justify-content: space-between;">
+                <span>💬 Nhận xét & Lời phê của giáo viên:</span>
+              </label>
+              <textarea id="gradingFeedback" class="form-textarea" rows="3" placeholder="Nhập lời phê hoặc bấm các mẫu gợi ý nhanh bên dưới..." style="font-size: 0.82rem; width: 100%; border-radius: var(--radius-sm); resize: vertical;"></textarea>
+              <div class="quick-feedback-chips" id="quickFeedbackChips" style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.45rem;">
+                <button type="button" class="btn btn-secondary btn-sm quick-chip" onclick="applyQuickFeedback('🌟 Bài làm rất tốt, trình bày sạch đẹp!')">🌟 Bài làm rất tốt, trình bày sạch đẹp!</button>
+                <button type="button" class="btn btn-secondary btn-sm quick-chip" onclick="applyQuickFeedback('👍 Đã hoàn thành đầy đủ các câu hỏi.')">👍 Đã hoàn thành đầy đủ các câu hỏi.</button>
+                <button type="button" class="btn btn-secondary btn-sm quick-chip" onclick="applyQuickFeedback('⚠️ Chữ viết còn ẩu, cần cẩn thận hơn.')">⚠️ Chữ viết còn ẩu, cần cẩn thận hơn.</button>
+                <button type="button" class="btn btn-secondary btn-sm quick-chip" onclick="applyQuickFeedback('📸 Ảnh chụp bị mờ / thiếu trang, cần chụp lại.')">📸 Ảnh chụp bị mờ / thiếu trang, cần chụp lại.</button>
+                <button type="button" class="btn btn-secondary btn-sm quick-chip" onclick="applyQuickFeedback('⏰ Cần chú ý nộp bài đúng giờ quy định.')">⏰ Cần chú ý nộp bài đúng giờ quy định.</button>
               </div>
             </div>
 

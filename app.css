@@ -668,6 +668,43 @@ body {
   height: 92vh;
 }
 
+.quick-feedback-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+.quick-chip {
+  background: #F1F5F9;
+  border: 1px solid #CBD5E1;
+  color: #334155;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.76rem;
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  line-height: 1.35;
+  font-weight: 500;
+}
+
+.quick-chip:hover {
+  background: #EEF2FF;
+  border-color: #6366F1;
+  color: #4F46E5;
+  transform: translateY(-1px);
+}
+
+.quick-chip:active {
+  transform: translateY(0);
+}
+
+.student-search-bar input:focus {
+  border-color: var(--primary, #4F46E5);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
 .grading-studio-layout {
   display: grid;
   grid-template-columns: 1fr 340px;
@@ -2192,6 +2229,7 @@ body {
   z-index: -10;
   overflow: hidden;
   background-color: #050616;
+  contain: strict;
 }
 
 .galaxy-stars-canvas {
@@ -2202,6 +2240,8 @@ body {
   height: 100%;
   pointer-events: none;
   z-index: 1;
+  contain: strict;
+  will-change: transform;
 }
 
 .galaxy-bg-image {
@@ -2214,6 +2254,7 @@ body {
   opacity: 0.94;
   animation: galaxyDrift 45s ease-in-out infinite alternate;
   transform-origin: center center;
+  will-change: transform;
 }
 
 .galaxy-nebula {
@@ -2468,4 +2509,115 @@ body {
   font-weight: 500 !important;
   box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35) !important;
 }
+
+/* ========================================================
+   6. LOW-SPEC & SMOOTH MODE PERFORMANCE OPTIMIZATIONS
+   ======================================================== */
+
+/* Toggle button styling */
+#perfModeToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+#perfModeToggle.active {
+  background: rgba(16, 185, 129, 0.22) !important;
+  border-color: rgba(52, 211, 153, 0.75) !important;
+  color: #34D399 !important;
+}
+
+@media (max-width: 640px) {
+  #perfModeToggle {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.78rem;
+  }
+  #perfModeToggle .perf-text {
+    display: none;
+  }
+}
+
+/* Stop infinite CSS animations on low-spec / smooth mode */
+.low-perf-mode .galaxy-bg-image,
+.low-perf-mode .galaxy-nebula,
+.low-perf-mode .galaxy-stars-layer1,
+.low-perf-mode .galaxy-stars-layer2,
+.low-perf-mode .galaxy-shooting-star {
+  animation: none !important;
+}
+
+/* Turn off expensive mix-blend-mode screen on low-spec */
+.low-perf-mode .galaxy-nebula {
+  mix-blend-mode: normal !important;
+  opacity: 0.35 !important;
+}
+
+/* Eliminate costly backdrop filters & heavy shadows on low-end hardware */
+.low-perf-mode .topbar,
+.low-perf-mode .assignment-card,
+.low-perf-mode .campaign-banner,
+.low-perf-mode .stat-box,
+.low-perf-mode .campaign-student-card,
+.low-perf-mode .login-card,
+.low-perf-mode .modal-content,
+.low-perf-mode .chat-card-container,
+.low-perf-mode .classmate-card,
+.low-perf-mode .data-table-card,
+.low-perf-mode #studentClassmatesTab > div,
+.low-perf-mode .modal-overlay {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.low-perf-mode .topbar {
+  background: #0B0F22 !important;
+}
+
+.low-perf-mode .assignment-card,
+.low-perf-mode .campaign-banner,
+.low-perf-mode .stat-box,
+.low-perf-mode .campaign-student-card,
+.low-perf-mode .login-card,
+.low-perf-mode .modal-content,
+.low-perf-mode .chat-card-container,
+.low-perf-mode .classmate-card,
+.low-perf-mode .data-table-card,
+.low-perf-mode #studentClassmatesTab > div {
+  background: #FFFFFF !important;
+}
+
+/* Respect user's system OS reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .galaxy-bg-image,
+  .galaxy-nebula,
+  .galaxy-stars-layer1,
+  .galaxy-stars-layer2,
+  .galaxy-shooting-star {
+    animation: none !important;
+  }
+  .galaxy-nebula {
+    mix-blend-mode: normal !important;
+    opacity: 0.35 !important;
+  }
+  .topbar,
+  .assignment-card,
+  .campaign-banner,
+  .stat-box,
+  .campaign-student-card,
+  .login-card,
+  .modal-content,
+  .chat-card-container,
+  .classmate-card,
+  .data-table-card,
+  #studentClassmatesTab > div,
+  .modal-overlay {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
 

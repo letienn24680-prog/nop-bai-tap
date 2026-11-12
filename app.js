@@ -2755,6 +2755,10 @@ function filterStudentAssignments(filter, btnElement) {
   renderStudentView();
 }
 
+function handleStudentAssignmentSearch(query) {
+  renderStudentView();
+}
+
 function renderStudentView() {
   document.querySelectorAll("#studentAssignmentsTab .tab-btn").forEach((b) => {
     const isMatch = b.getAttribute("onclick") && b.getAttribute("onclick").includes(`'${studentFilter}'`);
@@ -2763,6 +2767,9 @@ function renderStudentView() {
 
   const container = document.getElementById("studentAssignmentsList");
   container.innerHTML = "";
+
+  const searchInput = document.getElementById("studentAssignmentSearch");
+  const searchQuery = searchInput ? searchInput.value.trim().toLowerCase() : "";
 
   let pendingCount = 0;
   let submittedCount = 0;
@@ -2788,6 +2795,13 @@ function renderStudentView() {
     if (studentFilter === "pending" && status !== "pending" && status !== "resubmit") return;
     if (studentFilter === "submitted" && status !== "submitted") return;
     if (studentFilter === "graded" && status !== "graded") return;
+
+    if (searchQuery) {
+      const matchTitle = (asg.title || "").toLowerCase().includes(searchQuery);
+      const matchSubject = (asg.subject || "").toLowerCase().includes(searchQuery);
+      const matchDesc = (asg.description || "").toLowerCase().includes(searchQuery);
+      if (!matchTitle && !matchSubject && !matchDesc) return;
+    }
 
     const card = document.createElement("div");
     card.className = "assignment-card";
@@ -2895,6 +2909,15 @@ function renderStudentView() {
 
     container.appendChild(card);
   });
+
+  if (container.children.length === 0) {
+    const emptyNotice = document.createElement("div");
+    emptyNotice.style.cssText = "grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 2.5rem 1rem;";
+    emptyNotice.innerHTML = searchQuery
+      ? `🔍 Không tìm thấy bài tập nào khớp với từ khóa "<strong>${sanitizeText(searchQuery)}</strong>"`
+      : "Chưa có bài tập nào.";
+    container.appendChild(emptyNotice);
+  }
 
   document.getElementById("studentStatsBadge").innerText =
     `Cần làm: ${pendingCount} | Chờ chấm: ${submittedCount} | Đã có điểm: ${gradedCount}`;
@@ -5373,8 +5396,19 @@ function openGradingStudio(submissionId, isReadOnly = false) {
 
   const resubmitNote = document.getElementById("resubmitNoteInput");
   if (resubmitNote) {
-    resubmitNote.value = ((sub.status === "resubmit_requested" || sub.resubmitRequested) && sub.feedback) ? sub.feedback : "";
+    resubmitNote.value = ((sub.status === "resubmit_requested" || sub.resubmitRequested) && sub.feedback) ? sub.feedback : (sub.feedback || "");
     resubmitNote.disabled = isReadOnly;
+  }
+
+  const feedbackInput = document.getElementById("gradingFeedback");
+  if (feedbackInput) {
+    feedbackInput.value = sub.feedback || "";
+    feedbackInput.disabled = isReadOnly;
+  }
+
+  const chipsContainer = document.getElementById("quickFeedbackChips");
+  if (chipsContainer) {
+    chipsContainer.style.display = isReadOnly ? "none" : "flex";
   }
 
   const saveBtn = document.getElementById("saveGradeBtn");
@@ -5708,14 +5742,22 @@ function clearAnnotations() {
   saveCanvasState();
 }
 
-function addQuickComment(text) {
-  const noteInput = document.getElementById("resubmitNoteInput");
-  if (!noteInput) return;
-  if (noteInput.value.trim().length > 0) {
-    noteInput.value += " " + text;
-  } else {
-    noteInput.value = text;
+function applyQuickFeedback(text) {
+  const fb = document.getElementById("gradingFeedback");
+  if (fb) {
+    const cur = fb.value ? fb.value.trim() : "";
+    fb.value = cur ? cur + " " + text : text;
+    fb.focus();
   }
+  const noteInput = document.getElementById("resubmitNoteInput");
+  if (noteInput) {
+    const curNote = noteInput.value ? noteInput.value.trim() : "";
+    noteInput.value = curNote ? curNote + " " + text : text;
+  }
+}
+
+function addQuickComment(text) {
+  applyQuickFeedback(text);
 }
 
 function saveAndReturnGrade() {
@@ -5726,8 +5768,11 @@ function saveAndReturnGrade() {
 
   const resubmitCb = document.getElementById("requestResubmitCheckbox");
   const requestResubmit = resubmitCb ? resubmitCb.checked : false;
+  const feedbackInput = document.getElementById("gradingFeedback");
   const noteInput = document.getElementById("resubmitNoteInput");
-  const noteVal = noteInput ? noteInput.value.trim() : "";
+  const noteVal = (feedbackInput && feedbackInput.value.trim())
+    ? feedbackInput.value.trim()
+    : (noteInput ? noteInput.value.trim() : "");
 
   if (requestResubmit) {
     sub.status = "resubmit_requested";
@@ -6258,13 +6303,69 @@ async function confirmCreateAssignment() {
 }
 
 // ==========================================
-// 8. GALAXY STARS DYNAMIC MOTION & DEVICE SHAKE / TILT PARALLAX
+// 8. GALAXY STARS DYNAMIC MOTION & DEVICE SHAKE / TILT PARALLAX & LOW-SPEC OPTIMIZATION
 // ==========================================
+
+function isLowSpecDevice() {
+  try {
+    const saved = localStorage.getItem("eduproof_perf_mode");
+    if (saved !== null) return saved === "true";
+  } catch (e) {}
+  const lowCores = typeof navigator.hardwareConcurrency === "number" && navigator.hardwareConcurrency <= 4;
+  const lowMemory = typeof navigator.deviceMemory === "number" && navigator.deviceMemory <= 4;
+  const prefersReduced = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const isMobile = typeof navigator !== "undefined" && (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || "") ||
+    (typeof window !== "undefined" && window.innerWidth <= 768 && "ontouchstart" in window));
+  return Boolean(lowCores || lowMemory || prefersReduced || isMobile);
+}
+
+let updateGalaxyPerfMode = null;
+
+function togglePerformanceMode(enable) {
+  const isEnabled = (typeof enable === "boolean")
+    ? enable
+    : !document.body.classList.contains("low-perf-mode");
+
+  if (document.body) {
+    document.body.classList.toggle("low-perf-mode", isEnabled);
+  }
+  if (document.documentElement) {
+    document.documentElement.classList.toggle("low-perf-mode", isEnabled);
+  }
+  try {
+    localStorage.setItem("eduproof_perf_mode", isEnabled ? "true" : "false");
+  } catch (e) {}
+
+  const toggleBtn = document.getElementById("perfModeToggle");
+  if (toggleBtn) {
+    toggleBtn.classList.toggle("active", isEnabled);
+    toggleBtn.setAttribute("aria-pressed", isEnabled ? "true" : "false");
+    toggleBtn.title = isEnabled
+      ? "Chế độ Mượt mà: ĐANG BẬT (Tối ưu cho máy yếu / tiết kiệm pin) - Bấm để chuyển chế độ đầy đủ"
+      : "Chế độ Mượt mà: ĐANG TẮT - Bấm để bật chế độ tối ưu máy yếu & mượt mà";
+    const textEl = toggleBtn.querySelector(".perf-text");
+    if (textEl) {
+      textEl.textContent = isEnabled ? "Mượt mà: Bật" : "Mượt mà";
+    }
+  }
+
+  if (typeof updateGalaxyPerfMode === "function") {
+    updateGalaxyPerfMode(isEnabled);
+  }
+
+  return isEnabled;
+}
+window.togglePerformanceMode = togglePerformanceMode;
+
 function initGalaxyMotion() {
   const canvas = document.getElementById("galaxyStarsCanvas");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
+
+  // Tự động nhận diện cấu hình máy hoặc áp dụng thiết lập đã lưu
+  const initialPerf = isLowSpecDevice();
+  togglePerformanceMode(initialPerf);
 
   let width = (canvas.width = window.innerWidth);
   let height = (canvas.height = window.innerHeight);
@@ -6275,11 +6376,10 @@ function initGalaxyMotion() {
   }
   window.addEventListener("resize", resizeCanvas, { passive: true });
 
-  const starCount = Math.min(130, Math.max(60, Math.floor((width * height) / 8500)));
-  const stars = [];
   const starColors = ["#FFFFFF", "#E0E7FF", "#C7D2FE", "#DDD6FE", "#FDE047", "#F472B6"];
+  const stars = [];
 
-  for (let i = 0; i < starCount; i++) {
+  for (let i = 0; i < 130; i++) {
     stars.push({
       x: Math.random() * width,
       y: Math.random() * height,
@@ -6300,12 +6400,14 @@ function initGalaxyMotion() {
   let shakeVelocityX = 0, shakeVelocityY = 0;
   let lastAccX = 0, lastAccY = 0, lastAccZ = 0;
   let lastMotionTime = 0;
+  let lastOrientTime = 0;
 
-  // 1. Cảm biến con quay hồi chuyển khi nghiêng hoặc lắc điện thoại (DeviceOrientation & DeviceMotion)
+  // 1. Cảm biến con quay hồi chuyển khi nghiêng hoặc lắc điện thoại (DeviceOrientation & DeviceMotion - Throttled)
   function handleOrientation(e) {
+    const now = performance.now();
+    if (now - lastOrientTime < 40) return; // Giảm tần suất xử lý tránh nghẽn CPU
+    lastOrientTime = now;
     if (e.gamma !== null && e.beta !== null) {
-      // gamma: nghiêng trái / phải (-90 đến +90)
-      // beta: nghiêng trước / sau
       targetTiltX = Math.max(-45, Math.min(45, e.gamma)) * 1.6;
       targetTiltY = Math.max(-45, Math.min(45, e.beta - 45)) * 1.6;
     }
@@ -6351,19 +6453,40 @@ function initGalaxyMotion() {
   window.addEventListener("touchstart", requestGyroPermission, { once: true, passive: true });
   window.addEventListener("click", requestGyroPermission, { once: true, passive: true });
 
-  // 2. Fallback trỏ chuột máy tính (Mouse Parallax)
+  // 2. Fallback trỏ chuột máy tính (Mouse Parallax throttled via rAF)
+  let mousePending = false;
   window.addEventListener("mousemove", (e) => {
-    const cx = window.innerWidth / 2;
-    const cy = window.innerHeight / 2;
-    targetTiltX = ((e.clientX - cx) / cx) * 32;
-    targetTiltY = ((e.clientY - cy) / cy) * 32;
+    if (mousePending) return;
+    mousePending = true;
+    requestAnimationFrame(() => {
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight / 2;
+      targetTiltX = ((e.clientX - cx) / cx) * 32;
+      targetTiltY = ((e.clientY - cy) / cy) * 32;
+      mousePending = false;
+    });
   }, { passive: true });
 
-  const nebulaEl = document.querySelector(".galaxy-nebula");
+  // Loại bỏ hoàn toàn biến đổi DOM tinh vân mỗi frame để tránh giật lag composite layout
 
-  // 3. Vòng lặp chuyển động 60FPS mượt mà của các vì sao
+  let isLoopRunning = false;
+  let rafId = null;
+
+  function getRenderStarCount() {
+    const isLowPerf = document.body && document.body.classList.contains("low-perf-mode");
+    if (isLowPerf) return 30; // Giảm xuống 30 sao (từ 130) trên máy yếu
+    return Math.min(130, Math.max(60, Math.floor((width * height) / 8500)));
+  }
+
+  // 3. Vòng lặp chuyển động mượt mà của các vì sao (tự động dừng khi tab ẩn)
   function renderGalaxy() {
-    ctx.clearRect(0, 0, width, height);
+    if (document.visibilityState === "hidden") {
+      isLoopRunning = false;
+      return; // Dừng vòng lặp rAF khi tab không hiển thị
+    }
+
+    const isLowPerf = document.body && document.body.classList.contains("low-perf-mode");
+    const prefersReducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     // Damping chuyển động mượt mà (lerp)
     tiltX += (targetTiltX - tiltX) * 0.08;
@@ -6373,29 +6496,30 @@ function initGalaxyMotion() {
     shakeVelocityX *= 0.92;
     shakeVelocityY *= 0.92;
 
-    // Dịch chuyển nhẹ tinh vân vũ trụ theo góc nghiêng
-    if (nebulaEl) {
-      nebulaEl.style.transform = `translate3d(${tiltX * 0.15}px, ${tiltY * 0.15}px, 0)`;
-    }
+    ctx.clearRect(0, 0, width, height);
 
-    for (let i = 0; i < stars.length; i++) {
+    const activeStarCount = getRenderStarCount();
+
+    for (let i = 0; i < activeStarCount; i++) {
       const s = stars[i];
 
-      // Di chuyển tự nhiên + lực gia tốc khi lắc
-      s.x += s.vx + shakeVelocityX * (s.layer * 0.15);
-      s.y += s.vy + shakeVelocityY * (s.layer * 0.15);
+      if (!prefersReducedMotion) {
+        // Di chuyển tự nhiên + lực gia tốc khi lắc
+        s.x += s.vx + shakeVelocityX * (s.layer * 0.15);
+        s.y += s.vy + shakeVelocityY * (s.layer * 0.15);
 
-      // Quấn vòng màn hình
-      if (s.x < 0) s.x = width;
-      else if (s.x > width) s.x = 0;
-      if (s.y < 0) s.y = height;
-      else if (s.y > height) s.y = 0;
+        // Quấn vòng màn hình
+        if (s.x < 0) s.x = width;
+        else if (s.x > width) s.x = 0;
+        if (s.y < 0) s.y = height;
+        else if (s.y > height) s.y = 0;
 
-      // Nhấp nháy độ sáng
-      s.twinklePhase += s.twinkleSpeed;
-      s.alpha = s.baseAlpha + Math.sin(s.twinklePhase) * 0.35;
-      if (s.alpha < 0.1) s.alpha = 0.1;
-      if (s.alpha > 1) s.alpha = 1;
+        // Nhấp nháy độ sáng
+        s.twinklePhase += s.twinkleSpeed;
+        s.alpha = s.baseAlpha + Math.sin(s.twinklePhase) * 0.35;
+        if (s.alpha < 0.1) s.alpha = 0.1;
+        if (s.alpha > 1) s.alpha = 1;
+      }
 
       // Vị trí vẽ có tính độ sâu thị sai (Parallax) theo góc nghiêng
       const drawX = s.x + tiltX * s.layer;
@@ -6407,8 +6531,8 @@ function initGalaxyMotion() {
       ctx.globalAlpha = s.alpha;
       ctx.fill();
 
-      // Hào quang lấp lánh cho các vì sao to
-      if (s.size > 1.8) {
+      // Hào quang lấp lánh (Tắt trên chế độ máy yếu để tiết kiệm 50% thao tác vẽ Canvas)
+      if (!isLowPerf && s.size > 1.8) {
         ctx.beginPath();
         ctx.arc(drawX, drawY, s.size * 2.2, 0, Math.PI * 2);
         ctx.fillStyle = s.color;
@@ -6418,10 +6542,40 @@ function initGalaxyMotion() {
     }
 
     ctx.globalAlpha = 1;
-    requestAnimationFrame(renderGalaxy);
+
+    // Nếu người dùng bật giảm chuyển động và khung cảnh tĩnh, tạm ngưng render tiếp
+    if (prefersReducedMotion) {
+      isLoopRunning = false;
+      return;
+    }
+
+    rafId = requestAnimationFrame(renderGalaxy);
   }
 
-  requestAnimationFrame(renderGalaxy);
+  function startLoop() {
+    if (!isLoopRunning && document.visibilityState !== "hidden") {
+      isLoopRunning = true;
+      rafId = requestAnimationFrame(renderGalaxy);
+    }
+  }
+
+  updateGalaxyPerfMode = function() {
+    if (!isLoopRunning && document.visibilityState !== "hidden") {
+      startLoop();
+    }
+  };
+
+  // Tạm dừng requestAnimationFrame khi chuyển tab và kích hoạt lại khi quay lại
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      isLoopRunning = false;
+      if (rafId) cancelAnimationFrame(rafId);
+    } else {
+      startLoop();
+    }
+  });
+
+  startLoop();
 }
 
 window.addEventListener("DOMContentLoaded", () => {

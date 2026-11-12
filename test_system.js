@@ -2591,6 +2591,189 @@ sendEmailHandler63(mockReq63, mockRes63).then(() => {
 
     console.log("✅ 66. Kiểm thử Đồng bộ Động Lớp Chủ nhiệm Giáo viên trong Tiêu đề & Hồ sơ: ĐẠT");
 
-    console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (66/66)!");
+    // --- TEST 67: Kiểm thử Tối ưu hóa Hiệu năng Máy Yếu, Chế độ Mượt mà & Tiết kiệm Pin (Performance & Smooth Mode) ---
+    const appJs67 = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+    const appCss67 = fs.readFileSync(path.join(__dirname, "app.css"), "utf8");
+    const html67 = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+
+    // 1. Kiểm tra nút gạt Chế độ Mượt mà (#perfModeToggle) trong .topbar-actions
+    assert.ok(
+      html67.includes('id="perfModeToggle"') &&
+      html67.includes('onclick="togglePerformanceMode()"') &&
+      html67.includes('class="perf-text">Mượt mà</span>'),
+      "index.html phải có nút #perfModeToggle trong .topbar-actions gọi togglePerformanceMode()"
+    );
+    assert.ok(
+      html67.includes('aria-label="Chế độ mượt mà cho máy yếu"') &&
+      html67.includes('aria-pressed="false"'),
+      "Nút #perfModeToggle phải có các thuộc tính trợ năng aria-label và aria-pressed"
+    );
+    assert.ok(
+      html67.includes('eduproof_perf_mode') &&
+      html67.includes('document.documentElement.classList.add("low-perf-mode")'),
+      "index.html phải có script nhận diện sớm thiết bị yếu ở <head> để tránh giật lag ngay từ frame đầu"
+    );
+
+    // 2. Kiểm tra CSS tối ưu phần cứng, vô hiệu hóa animation và backdrop-filter trên máy yếu
+    assert.ok(
+      appCss67.includes("contain: strict;") &&
+      appCss67.includes("will-change: transform;"),
+      "app.css phải bổ sung gợi ý tăng tốc phần cứng contain: strict và will-change: transform"
+    );
+    assert.ok(
+      appCss67.includes(".low-perf-mode .galaxy-bg-image") &&
+      appCss67.includes("animation: none !important;"),
+      "app.css phải dừng toàn bộ animation vô tận khi bật .low-perf-mode"
+    );
+    assert.ok(
+      appCss67.includes(".low-perf-mode .galaxy-nebula") &&
+      appCss67.includes("mix-blend-mode: normal !important;"),
+      "app.css phải tắt mix-blend-mode: screen tốn tài nguyên GPU trên máy yếu"
+    );
+    assert.ok(
+      appCss67.includes(".low-perf-mode .topbar") &&
+      appCss67.includes("backdrop-filter: none !important;"),
+      "app.css phải gỡ bỏ backdrop-filter làm chậm GPU máy yếu"
+    );
+    assert.ok(
+      appCss67.includes("@media (prefers-reduced-motion: reduce)") &&
+      appCss67.includes("#perfModeToggle.active"),
+      "app.css phải hỗ trợ @media (prefers-reduced-motion: reduce) và kiểu dáng trạng thái kích hoạt cho nút gạt"
+    );
+
+    // 3. Kiểm tra logic JS trong app.js: tự nhận diện máy yếu, togglePerformanceMode, visibilityState
+    assert.ok(
+      appJs67.includes("function isLowSpecDevice()") &&
+      appJs67.includes("navigator.hardwareConcurrency") &&
+      appJs67.includes("navigator.deviceMemory") &&
+      appJs67.includes("prefers-reduced-motion"),
+      "app.js phải cung cấp hàm isLowSpecDevice tự phát hiện số nhân, RAM và thiết lập giảm chuyển động"
+    );
+    assert.ok(
+      appJs67.includes("function togglePerformanceMode(") &&
+      appJs67.includes("localStorage.setItem(\"eduproof_perf_mode\"") &&
+      appJs67.includes("perfModeToggle"),
+      "app.js phải cài đặt togglePerformanceMode và lưu trạng thái vào localStorage"
+    );
+    assert.ok(
+      appJs67.includes("document.visibilityState === \"hidden\"") &&
+      appJs67.includes("document.addEventListener(\"visibilitychange\""),
+      "app.js phải tạm dừng vòng lặp requestAnimationFrame khi chuyển tab ẩn"
+    );
+    assert.ok(
+      !appJs67.includes("nebulaEl.style.transform"),
+      "app.js phải loại bỏ triệt để đột biến DOM per-frame nebulaEl.style.transform để tránh composite thrashing"
+    );
+    assert.ok(
+      appJs67.includes("return 30;") &&
+      appJs67.includes("!isLowPerf && s.size > 1.8"),
+      "app.js phải giảm số lượng sao xuống 30 và tắt vẽ hào quang kép (double-glow) khi ở chế độ máy yếu"
+    );
+
+    // 4. Kiểm thử chạy thử hàm logic giả lập togglePerformanceMode
+    let mockStorage = {};
+    const mockLocalStorage = {
+      getItem: (k) => mockStorage[k] || null,
+      setItem: (k, v) => { mockStorage[k] = String(v); }
+    };
+
+    function testIsLowSpec(cores, memory, isReduced, ua, saved) {
+      if (saved !== null && saved !== undefined) return saved === "true";
+      const lowCores = typeof cores === "number" && cores <= 4;
+      const lowMem = typeof memory === "number" && memory <= 4;
+      const prefersRed = Boolean(isReduced);
+      const isMob = /Android|iPhone|iPad|Mobile/i.test(ua || "");
+      return Boolean(lowCores || lowMem || prefersRed || isMob);
+    }
+
+    // Máy PC khủng 16 nhân, 32GB RAM
+    assert.strictEqual(testIsLowSpec(16, 32, false, "Windows PC", null), false, "PC mạnh không tự bật máy yếu");
+    // Điện thoại Android giá rẻ 4 nhân, 3GB RAM
+    assert.strictEqual(testIsLowSpec(4, 3, false, "Android Phone", null), true, "Máy 4 nhân / 3GB RAM tự bật máy yếu");
+    // Người dùng đã tự lưu cấu hình 'true'
+    assert.strictEqual(testIsLowSpec(16, 32, false, "Windows PC", "true"), true, "Ưu tiên thiết lập người dùng đã lưu");
+
+    // 5. Kiểm tra Mẫu lời phê nhanh 1-chạm (#gradingFeedback, #quickFeedbackChips) trong Grading Studio (#gradingStudioModal)
+    assert.ok(
+      html67.includes('id="gradingStudioModal"') &&
+      html67.includes('id="gradingFeedback"') &&
+      html67.includes('id="quickFeedbackChips"'),
+      "index.html phải có #gradingStudioModal, textarea #gradingFeedback và khung gợi ý #quickFeedbackChips"
+    );
+    const feedbackChips = [
+      "🌟 Bài làm rất tốt, trình bày sạch đẹp!",
+      "👍 Đã hoàn thành đầy đủ các câu hỏi.",
+      "⚠️ Chữ viết còn ẩu, cần cẩn thận hơn.",
+      "📸 Ảnh chụp bị mờ / thiếu trang, cần chụp lại.",
+      "⏰ Cần chú ý nộp bài đúng giờ quy định."
+    ];
+    for (const chip of feedbackChips) {
+      assert.ok(
+        html67.includes(chip),
+        `index.html phải có mẫu lời phê nhanh: ${chip}`
+      );
+    }
+    assert.ok(
+      appJs67.includes("function applyQuickFeedback(") &&
+      appJs67.includes("applyQuickFeedback(text)"),
+      "app.js phải cung cấp hàm applyQuickFeedback để gắn ngay hoặc nối thêm lời phê vào #gradingFeedback"
+    );
+
+    // Mô phỏng hàm gắn mẫu lời phê applyQuickFeedback
+    function simulateApplyFeedback(currentText, chipText) {
+      const cur = currentText ? currentText.trim() : "";
+      return cur ? cur + " " + chipText : chipText;
+    }
+    assert.strictEqual(
+      simulateApplyFeedback("", "🌟 Bài làm rất tốt!"),
+      "🌟 Bài làm rất tốt!",
+      "Khi ô lời phê rỗng, chip phải gán trực tiếp"
+    );
+    assert.strictEqual(
+      simulateApplyFeedback("Cô khen An.", "👍 Đã hoàn thành đầy đủ các câu hỏi."),
+      "Cô khen An. 👍 Đã hoàn thành đầy đủ các câu hỏi.",
+      "Khi đã có lời phê, chip phải nối tiếp có dấu cách"
+    );
+
+    // 6. Kiểm tra Thanh tìm kiếm bài tập học sinh (#studentAssignmentSearch)
+    assert.ok(
+      html67.includes('id="studentAssignmentSearch"') &&
+      html67.includes('placeholder="🔍 Tìm nhanh bài tập theo tên môn hoặc tiêu đề..."'),
+      "index.html phải có ô tìm kiếm #studentAssignmentSearch trong #studentView với đúng placeholder"
+    );
+    assert.ok(
+      appJs67.includes("handleStudentAssignmentSearch") &&
+      appJs67.includes("document.getElementById(\"studentAssignmentSearch\")") &&
+      appJs67.includes("toLowerCase().includes(searchQuery)"),
+      "app.js phải lọc danh sách bài tập theo tiêu đề hoặc môn học khi người dùng gõ vào ô tìm kiếm"
+    );
+
+    // Mô phỏng logic lọc bài tập tức thì của học sinh theo từ khóa
+    const sampleAssignments = [
+      { id: "a1", title: "Ôn tập Đại số chương 1", subject: "Toán học", description: "Làm bài 1 đến 5" },
+      { id: "a2", title: "Phân tích tác phẩm Vợ chồng A Phủ", subject: "Ngữ văn", description: "Viết đoạn văn" },
+      { id: "a3", title: "Khảo sát dao động điều hòa", subject: "Vật lý", description: "Vẽ đồ thị" }
+    ];
+
+    function filterAssignmentsByQuery(items, query) {
+      const q = (query || "").trim().toLowerCase();
+      if (!q) return items;
+      return items.filter((asg) => {
+        const matchTitle = (asg.title || "").toLowerCase().includes(q);
+        const matchSubject = (asg.subject || "").toLowerCase().includes(q);
+        const matchDesc = (asg.description || "").toLowerCase().includes(q);
+        return matchTitle || matchSubject || matchDesc;
+      });
+    }
+
+    assert.strictEqual(filterAssignmentsByQuery(sampleAssignments, "Toán").length, 1, "Tìm theo môn 'Toán' phải ra 1 bài");
+    assert.strictEqual(filterAssignmentsByQuery(sampleAssignments, "Vợ chồng").length, 1, "Tìm theo tiêu đề 'Vợ chồng' phải ra 1 bài");
+    assert.strictEqual(filterAssignmentsByQuery(sampleAssignments, "đồ thị").length, 1, "Tìm theo mô tả 'đồ thị' phải ra 1 bài");
+    assert.strictEqual(filterAssignmentsByQuery(sampleAssignments, "hóa học").length, 0, "Từ khóa không khớp phải ra 0 bài");
+    assert.strictEqual(filterAssignmentsByQuery(sampleAssignments, "").length, 3, "Từ khóa rỗng phải trả về toàn bộ bài tập");
+
+    console.log("✅ 67. Kiểm thử Tối ưu hóa Hiệu năng Máy Yếu & Mẫu lời phê nhanh, Tìm kiếm bài tập: ĐẠT");
+
+    console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (67/67)!");
   });
 });
