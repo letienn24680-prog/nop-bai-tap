@@ -55,6 +55,30 @@ function getAssignmentTime(asg) {
   return 0;
 }
 
+// Sắp xếp danh sách tên theo chuẩn bảng chữ cái Tiếng Việt (A-Z theo Tên chính, sau đó đến Họ và Tên đệm)
+function compareVietnameseNames(a, b) {
+  const nameA = (a && a.name ? a.name : (typeof a === "string" ? a : "")).trim();
+  const nameB = (b && b.name ? b.name : (typeof b === "string" ? b : "")).trim();
+  if (!nameA && !nameB) return 0;
+  if (!nameA) return 1;
+  if (!nameB) return -1;
+
+  const partsA = nameA.split(/\s+/);
+  const partsB = nameB.split(/\s+/);
+  const firstNameA = partsA[partsA.length - 1];
+  const firstNameB = partsB[partsB.length - 1];
+
+  // 1. So sánh Tên chính theo chuẩn bảng chữ cái Tiếng Việt
+  const cmpFirst = firstNameA.localeCompare(firstNameB, "vi", { sensitivity: "base" });
+  if (cmpFirst !== 0) return cmpFirst;
+
+  // 2. Nếu cùng Tên, so sánh Họ và Tên đệm
+  const cmpFull = nameA.localeCompare(nameB, "vi", { sensitivity: "base" });
+  if (cmpFull !== 0) return cmpFull;
+
+  return nameA.localeCompare(nameB, "vi");
+}
+
 const FALLBACK_PHOTO_SVG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' fill='none'%3E%3Crect width='48' height='48' rx='8' fill='%23EEF2FF'/%3E%3Cpath d='M14 18C14 16.8954 14.8954 16 16 16H20L22 13H26L28 16H32C33.1046 16 34 16.8954 34 18V32C34 33.1046 33.1046 34 32 34H16C14.8954 34 14 33.1046 14 32V18Z' stroke='%234F46E5' stroke-width='2.2' stroke-linejoin='round'/%3E%3Ccircle cx='24' cy='25' r='5' stroke='%234F46E5' stroke-width='2.2'/%3E%3C/svg%3E";
 
 function handlePhotoError(imgEl) {
@@ -1628,7 +1652,10 @@ function downloadStudentTemplateExcel() {
 }
 
 function copyAllStudentAccounts() {
-  const myStudents = users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
+  const myStudents = users
+    .filter((u) => u.role === "student" && u.teacherId === currentUser.id)
+    .slice()
+    .sort(compareVietnameseNames);
   if (myStudents.length === 0) {
     showNoticeModal("Chưa có tài khoản học sinh nào trong danh sách.", "Thông báo", "⚠️");
     return;
@@ -2102,6 +2129,7 @@ function renderAdminStudentsTree(selectedTeacherId) {
   if (adminSelectedTeacherId !== "all") {
     studentUsers = studentUsers.filter((u) => u.teacherId === adminSelectedTeacherId);
   }
+  studentUsers.sort(compareVietnameseNames);
 
   const table = document.getElementById("adminStudentsTreeTable");
   const cardsContainer = document.getElementById("adminStudentsTreeCards");
@@ -2328,7 +2356,7 @@ function renderStudentClassmates(searchQuery = "") {
     peerStudents = peerStudents.filter((u) => (u.name || "").toLowerCase().includes(q));
   }
 
-  peerStudents.sort((a, b) => (a.name || "").localeCompare(b.name || "", "vi"));
+  peerStudents.sort(compareVietnameseNames);
 
   if (peerStudents.length === 0) {
     grid.innerHTML = `
@@ -2466,7 +2494,7 @@ function updateChatHeaderInfo() {
     if (isTeacher) {
       const myStudents = users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
       const studentList = myStudents.length > 0 ? myStudents : users.filter((u) => u.role === "student");
-      studentList.sort((a, b) => (a.name || "").localeCompare(b.name || "", "vi"));
+      studentList.sort(compareVietnameseNames);
 
       if (studentList.length > 0) {
         optionsHtml += `<optgroup label="👥 Danh sách học sinh (${studentList.length} em)">`;
@@ -2505,7 +2533,7 @@ function updateChatHeaderInfo() {
         const filtered = peers.filter((u) => u.teacherId === myTeacherId || u.class === myClass);
         if (filtered.length > 0) peers = filtered;
       }
-      peers.sort((a, b) => (a.name || "").localeCompare(b.name || "", "vi"));
+      peers.sort(compareVietnameseNames);
 
       if (peers.length > 0) {
         optionsHtml += `<optgroup label="👥 Bạn học cùng lớp">`;
@@ -3651,7 +3679,8 @@ function renderTeacherCampaignView(myAssignmentsList, myStudentsList) {
   if (!container) return;
 
   const myAssignments = (myAssignmentsList || assignments.filter((a) => a.teacherId === currentUser.id)).slice().sort((a, b) => getAssignmentTime(b) - getAssignmentTime(a));
-  const studentsList = myStudentsList || users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
+  const rawStudents = myStudentsList || users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
+  const studentsList = [...rawStudents].sort(compareVietnameseNames);
 
   if (myAssignments.length === 0) {
     container.innerHTML = `
@@ -3972,7 +4001,10 @@ function exportCampaignReport(assignmentId) {
   const asg = assignments.find((a) => a.id === assignmentId);
   if (!asg) return;
 
-  const studentsList = users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
+  const studentsList = users
+    .filter((u) => u.role === "student" && u.teacherId === currentUser.id)
+    .slice()
+    .sort(compareVietnameseNames);
   const asgSubmissions = submissions.filter((s) => s.assignmentId === asg.id);
 
   const rows = studentsList.map((st, idx) => {
@@ -4031,7 +4063,10 @@ function copyUnsubmittedStudents(assignmentId) {
   const asg = assignments.find((a) => a.id === assignmentId);
   if (!asg) return;
 
-  const studentsList = users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
+  const studentsList = users
+    .filter((u) => u.role === "student" && u.teacherId === currentUser.id)
+    .slice()
+    .sort(compareVietnameseNames);
   const asgSubmissions = submissions.filter((s) => s.assignmentId === asg.id);
   const submittedIds = new Set(asgSubmissions.map((s) => s.studentId));
 
@@ -4795,7 +4830,8 @@ function handleTeacherStudentSearch(query) {
 function renderTeacherStudents(myStudentsList) {
   const table = document.getElementById("studentAccountsTable");
   const cardsContainer = document.getElementById("studentAccountsCards");
-  const studentUsers = myStudentsList || users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
+  const rawStudents = myStudentsList || users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
+  const studentUsers = [...rawStudents].sort(compareVietnameseNames);
 
   if (table) {
     table.innerHTML = `
@@ -4908,7 +4944,10 @@ function filterGradebookStudents(mode) {
 
 function exportAllGradebookReport() {
   const myAssignments = assignments.filter((a) => a.teacherId === currentUser.id);
-  const myStudents = users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
+  const myStudents = users
+    .filter((u) => u.role === "student" && u.teacherId === currentUser.id)
+    .slice()
+    .sort(compareVietnameseNames);
 
   const rows = myStudents.map((st, idx) => {
     const stSubs = submissions.filter((s) => s.studentId === st.id);
@@ -4943,7 +4982,8 @@ function renderTeacherGradebook(myStudentsList, myAssignmentsList) {
   const topActions = document.getElementById("gradebookTopActions");
   const detailContainer = document.getElementById("gradebookDetailContainer");
 
-  const studentUsers = myStudentsList || users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
+  const rawStudents = myStudentsList || users.filter((u) => u.role === "student" && u.teacherId === currentUser.id);
+  const studentUsers = [...rawStudents].sort(compareVietnameseNames);
   const myAssignments = (myAssignmentsList || assignments.filter((a) => a.teacherId === currentUser.id)).slice().sort((a, b) => getAssignmentTime(b) - getAssignmentTime(a));
 
   if (myAssignments.length === 0) {

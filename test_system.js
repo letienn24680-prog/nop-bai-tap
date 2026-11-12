@@ -3055,6 +3055,97 @@ sendEmailHandler63(mockReq63, mockRes63).then(() => {
 
     console.log("✅ 69. Kiểm thử Phân quyền Cài đặt API Mail (Chỉ dành riêng cho Admin, Chặn Giáo viên & Học sinh): ĐẠT");
 
-    console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (69/69)!");
+    // ==========================================
+    // 70. KIỂM THỬ SẮP XẾP DANH SÁCH HỌC SINH THEO BẢNG CHỮ CÁI TIẾNG VIỆT (A-Z)
+    // ==========================================
+    const appJsContent = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+
+    // 1. Kiểm tra sự hiện diện của hàm chuẩn hóa compareVietnameseNames
+    assert.ok(
+      appJsContent.includes("function compareVietnameseNames(a, b)"),
+      "app.js phải định nghĩa hàm chuẩn compareVietnameseNames"
+    );
+
+    // 2. Trích xuất hàm compareVietnameseNames để kiểm thử thuật toán
+    const fnMatch = appJsContent.match(/function compareVietnameseNames\(a, b\) \{[\s\S]*?\n\}/);
+    assert.ok(fnMatch, "Phải tìm thấy thân hàm compareVietnameseNames");
+    const compareVietnameseNames = new Function(`return (${fnMatch[0]});`)();
+
+    // 2a. Kiểm thử trường hợp thực tế người dùng phản ánh:
+    // "Dương Thị Phượng", "Lê Thuận Tiến", "Trần Trọng Trường", "Mai Lệ Trúc"
+    // Theo chuẩn Tiếng Việt: Phượng (P) -> Tiến (T) -> Trúc (Tr-u) -> Trường (Tr-ư)
+    const testList = [
+      { name: "Dương Thị Phượng" },
+      { name: "Lê Thuận Tiến" },
+      { name: "Trần Trọng Trường" },
+      { name: "Mai Lệ Trúc" }
+    ];
+
+    const sortedList = [...testList].sort(compareVietnameseNames);
+    assert.strictEqual(sortedList[0].name, "Dương Thị Phượng", "Thứ nhất phải là Dương Thị Phượng (Tên: Phượng)");
+    assert.strictEqual(sortedList[1].name, "Lê Thuận Tiến", "Thứ hai phải là Lê Thuận Tiến (Tên: Tiến)");
+    assert.strictEqual(sortedList[2].name, "Mai Lệ Trúc", "Thứ ba phải là Mai Lệ Trúc (Trúc trước Trường)");
+    assert.strictEqual(sortedList[3].name, "Trần Trọng Trường", "Thứ tư phải là Trần Trọng Trường (Trường sau Trúc)");
+
+    // 2b. Kiểm thử trường hợp trùng Tên chính (so sánh Họ và Tên đệm)
+    // Ví dụ cụ thể theo yêu cầu: "Nguyễn Văn An" phải đứng trước "Trần Thị An"
+    const sameNameList = [
+      { name: "Vũ Văn An" },
+      { name: "Trần Thị An" },
+      { name: "Nguyễn Văn An" },
+      { name: "Bùi Văn An" }
+    ];
+    const sortedSame = [...sameNameList].sort(compareVietnameseNames);
+    assert.strictEqual(sortedSame[0].name, "Bùi Văn An");
+    assert.strictEqual(sortedSame[1].name, "Nguyễn Văn An", "Nguyễn Văn An phải đứng trước Trần Thị An khi cùng tên An");
+    assert.strictEqual(sortedSame[2].name, "Trần Thị An", "Trần Thị An phải đứng sau Nguyễn Văn An");
+    assert.strictEqual(sortedSame[3].name, "Vũ Văn An");
+
+    // 3. Kiểm thử tích hợp tại các hàm bắt buộc trong app.js
+    const renderTeacherStudentsSnippet = appJsContent.substring(
+      appJsContent.indexOf("function renderTeacherStudents("),
+      appJsContent.indexOf("function filterGradebookStudents(")
+    );
+    assert.ok(
+      renderTeacherStudentsSnippet.includes("compareVietnameseNames"),
+      "renderTeacherStudents phải gọi compareVietnameseNames để sắp xếp danh sách học sinh"
+    );
+
+    const renderTeacherCampaignSnippet = appJsContent.substring(
+      appJsContent.indexOf("function renderTeacherCampaignView("),
+      appJsContent.indexOf("function renderCampaignStudentSubmissionsTable(")
+    );
+    assert.ok(
+      renderTeacherCampaignSnippet.includes("compareVietnameseNames"),
+      "renderTeacherCampaignView phải gọi compareVietnameseNames để sắp xếp danh sách học sinh"
+    );
+
+    const renderTeacherGradebookSnippet = appJsContent.substring(
+      appJsContent.indexOf("function renderTeacherGradebook("),
+      appJsContent.indexOf("function openGradebookSubmissionDetail(")
+    );
+    assert.ok(
+      renderTeacherGradebookSnippet.includes("compareVietnameseNames"),
+      "renderTeacherGradebook phải gọi compareVietnameseNames để sắp xếp bảng điểm"
+    );
+
+    const renderStudentClassmatesSnippet = appJsContent.substring(
+      appJsContent.indexOf("function renderStudentClassmates("),
+      appJsContent.indexOf("function updateChatBadge(")
+    );
+    assert.ok(
+      renderStudentClassmatesSnippet.includes("compareVietnameseNames"),
+      "renderStudentClassmates phải gọi compareVietnameseNames để sắp xếp bạn học cùng lớp"
+    );
+
+    assert.ok(
+      appJsContent.includes(".sort(compareVietnameseNames);\n  if (myStudents.length === 0) {") ||
+      appJsContent.includes(".sort(compareVietnameseNames);\r\n  if (myStudents.length === 0) {"),
+      "copyAllStudentAccounts phải sắp xếp học sinh bằng compareVietnameseNames"
+    );
+
+    console.log("✅ 70. Kiểm thử Sắp xếp Danh sách Học sinh theo Bảng chữ cái Tiếng Việt (A-Z theo Tên chính, Họ và Tên đệm): ĐẠT");
+
+    console.log("\n🎉 TẤT CẢ CÁC BÀI KIỂM THỬ ĐÃ VƯỢT QUA THÀNH CÔNG (70/70)!");
   });
 });
